@@ -3,6 +3,6 @@
 # 3: CRVAL2 (deg)
 # 4: ORIENTAT (deg; ranges from -180 to +180)
 
-roman_sim_orient1  70.6441687  -53.6419206  -80.0
-roman_sim_orient2  70.6441687  -53.6419206  -120.0
-roman_sim_orient3  70.6441687  -53.6419206  +50.0
+romansim1  70.6441687  -53.6419206  -80.0
+romansim2  70.6441687  -53.6419206  -135.0
+romansim3  70.6441687  -53.6419206  120.0
