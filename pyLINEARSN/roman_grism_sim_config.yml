@@ -2,11 +2,11 @@
 # Configuration file for Roman Space Telescope slitless spectroscopy simulations
 
 # First define the absolute path to this file
-conffile: &CONFFILE /Users/bhavinjoshi/Documents/GitHub/roman-slitless/pyLINEARSN/roman_grism_sim_config.yml
+conffile: &CONFFILE /Users/baj/Documents/GitHub/roman-slitless/pyLINEARSN/roman_grism_sim_config.yml
 
 # CPU params
 cpu: &CPU
-  ncpu: 2                             # number of processors to use
+  ncpu: 4                             # number of processors to use
   verbose: true
 
 # Calibration params
@@ -17,7 +17,7 @@ calib: &CALIB
 
 # H5 table params
 tables: &TABLES
-  path: /Users/bhavinjoshi/Documents/roman_slitless_sims_results/TABLES2/                         # relative path for the tables
+  path: /Users/baj/Documents/roman_slitless_sims_results/TABLES2/                         # relative path for the tables
   remake: true                           # force to remake the tables
   gzip: true                             # gzip the resulting data
   nsub: 5                                # num intervals for trap. integrate
@@ -25,8 +25,8 @@ tables: &TABLES
   
 # Source params
 sources:
-  segmap: /Users/bhavinjoshi/Documents/roman_direct_sims/fiducial_Y106_1_16_segmap.fits                 # segmentation map for sources
-  obslst: /Users/bhavinjoshi/Documents/GitHub/roman-slitless/pyLINEARSN/obs.lst                        # file describing the bands
+  segmap: /Users/baj/Documents/roman_direct_sims/fiducial_Y106_1_16_segmap.fits                 # segmentation map for sources
+  obslst: /Users/baj/Documents/GitHub/roman-slitless/pyLINEARSN/obs.lst                        # file describing the bands
   detindex: 0                            # detection index in obslst
   maglim: 19.                            # magnitude limit of sources
   minpix: 5                              # minimum number of pixels
@@ -42,8 +42,8 @@ modules:
     grism: G141                          # which grism to simulate
     imgtype: wcs                         # where WCS comes from: wcs or img
     gzip: true                           # gzip the outputs
-    imglst: /Users/bhavinjoshi/Documents/GitHub/roman-slitless/pyLINEARSN/wcs.lst                      # list of WCS properties
-    sedlst: /Users/bhavinjoshi/Documents/GitHub/roman-slitless/pyLINEARSN/sed.lst                      # list of SEDs
+    imglst: /Users/baj/Documents/GitHub/roman-slitless/pyLINEARSN/wcs.lst                      # list of WCS properties
+    sedlst: /Users/baj/Documents/GitHub/roman-slitless/pyLINEARSN/sed.lst                      # list of SEDs
     noise:                               # the noise module
       perform: false                     # flag to perform noise calculation
       exptime: 700.                      # effective exposure time
@@ -58,7 +58,7 @@ modules:
     group: True                          # flag to group objects
     logdamp: [-5.,0.,0.1]                # damping values (depending on mode)
     outroot: romansim                        # rootname of output products
-    imglst: /Users/bhavinjoshi/Documents/GitHub/roman-slitless/pyLINEARSN/flt.lst                      # input list of FLTs to extract
+    imglst: /Users/baj/Documents/GitHub/roman-slitless/pyLINEARSN/flt.lst                      # input list of FLTs to extract
     beam: A                              # beam(s) to extract
     mask: null                           # beam(s) to mask
     dqamask: 3583                        # bitmask for DQA (can also be binary
@@ -89,7 +89,7 @@ modules:
   cutout:
     perform: false                       # flag to perform the cutouts
     beam: A                              # which beams to cutout
-    imglst: /Users/bhavinjoshi/Documents/GitHub/roman-slitless/pyLINEARSN/flt.lst                      # the observed images to cutout
+    imglst: /Users/baj/Documents/GitHub/roman-slitless/pyLINEARSN/flt.lst                      # the observed images to cutout
     padding: [0,2]                       # padding to the cutouts [x,y]
     cpu: *CPU                            # import CPU settings
     calib: *CALIB                        # import calibration settings
