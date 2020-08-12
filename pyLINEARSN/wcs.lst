@@ -1,8 +1,8 @@
 # 1: ROOTNAME
 # 2: CRVAL1 (deg)
 # 3: CRVAL2 (deg)
-# 4: ORIENTAT (deg; ranges from -180 to +180)
+# 4: ORIENTAT (deg; ranges from -180 to +180 relative to east +ve cw)
 
-romansim1  70.6441687  -53.6419206  -80.0
-romansim2  70.6441687  -53.6419206  -135.0
-romansim3  70.6441687  -53.6419206  120.0
+romansim1  71.1200832  -53.5885139  -80.0
+romansim2  71.1200832  -53.5885139  -135.0
+romansim3  71.1200832  -53.5885139  120.0

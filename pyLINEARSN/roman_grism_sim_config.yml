@@ -25,7 +25,7 @@ tables: &TABLES
   
 # Source params
 sources:
-  segmap: /Users/baj/Documents/roman_direct_sims/fiducial_Y106_1_16_segmap.fits                 # segmentation map for sources
+  segmap: /Users/baj/Documents/roman_direct_sims/K_akari_rotate_subset/akari_match_Y106_11_1_segmap.fits                 # segmentation map for sources
   obslst: /Users/baj/Documents/GitHub/roman-slitless/pyLINEARSN/obs.lst                        # file describing the bands
   detindex: 0                            # detection index in obslst
   maglim: 19.                            # magnitude limit of sources
@@ -37,7 +37,7 @@ sources:
 # Params for simulation, extraction, and cutout modules
 modules:
   simulation:
-    perform: false                       # flag to run the simulation
+    perform: true                       # flag to run the simulation
     beam: A                              # beams to simulate
     grism: G141                          # which grism to simulate
     imgtype: wcs                         # where WCS comes from: wcs or img
@@ -53,7 +53,7 @@ modules:
     tables: *TABLES                      # import Tables settings
 
   extraction:
-    perform: true                        # flag to perform the extraction
+    perform: false                        # flag to perform the extraction
     mode: golden                         # type of extraction
     group: True                          # flag to group objects
     logdamp: [-5.,0.,0.1]                # damping values (depending on mode)
