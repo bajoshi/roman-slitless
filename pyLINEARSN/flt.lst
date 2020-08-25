@@ -1,6 +1,0 @@
-# Path to each flt image
-# This has to be a simulated or observed dispersed image
-
-/Users/bhavinjoshi/Documents/GitHub/pyLINEAR-fork/pylinear_fork/romansim1_flt.fits
-/Users/bhavinjoshi/Documents/GitHub/pyLINEAR-fork/pylinear_fork/romansim2_flt.fits
-/Users/bhavinjoshi/Documents/GitHub/pyLINEAR-fork/pylinear_fork/romansim3_flt.fits
