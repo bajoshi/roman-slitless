@@ -189,9 +189,9 @@ def main():
             sn_spec_path = get_sn_spec_path(chosen_redshift)
             gal_spec_path = get_gal_spec_path(chosen_redshift)
 
-            fh.write(str(current_id) + " " + sn_spec_path + " " + str(chosen_redshift))
+            fh.write(str(current_id) + " " + sn_spec_path)
             fh.write("\n")
-            fh.write(str(hostid) + " " + gal_spec_path + " " + str(chosen_redshift))
+            fh.write(str(hostid) + " " + gal_spec_path)
             fh.write("\n")
 
             print(current_id, sn_spec_path, "{:.3f}".format(chosen_redshift))
@@ -203,7 +203,7 @@ def main():
             else:
                 spec_path = get_gal_spec_path(chosen_redshift)
 
-                fh.write(str(current_id) + " " + spec_path + " " + str(chosen_redshift))
+                fh.write(str(current_id) + " " + spec_path)
                 fh.write("\n")
 
                 print(current_id, spec_path, "{:.3f}".format(chosen_redshift))

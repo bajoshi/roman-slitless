@@ -162,3 +162,4 @@ def get_pz(chi2_map, z_arr_to_check):
         pz[i] = np.sum(norm_likelihood[i])
 
     return pz
+    
