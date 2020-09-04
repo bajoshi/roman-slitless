@@ -114,31 +114,34 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         ### Zeroth element
         lam_step = resampling_grid[1] - resampling_grid[0]
         idx = np.where((redshifted_model_grid >= resampling_grid[0] - lam_step) & \
-                       (redshifted_model_grid < resampling_grid[0] + lam_step))[0]
+                       (redshifted_model_grid <  resampling_grid[0] + lam_step))[0]
         models_mod[:, 0] = np.mean(models_redshifted[:, idx], axis=1)
 
         ### all elements in between
         for u in range(1, len(resampling_grid) - 1):
             idx = np.where((redshifted_model_grid >= resampling_grid[u-1]) & \
-                           (redshifted_model_grid < resampling_grid[u+1]))[0]
+                           (redshifted_model_grid <  resampling_grid[u+1]))[0]
             models_mod[:, u] = np.mean(models_redshifted[:, idx], axis=1)
         
         ### Last element
         lam_step = resampling_grid[-1] - resampling_grid[-2]
         idx = np.where((redshifted_model_grid >= resampling_grid[-1] - lam_step) & \
-                       (redshifted_model_grid < resampling_grid[-1] + lam_step))[0]
+                       (redshifted_model_grid <  resampling_grid[-1] + lam_step))[0]
         models_mod[:, -1] = np.mean(models_redshifted[:, idx], axis=1)
 
         # ----------------- Chi2 ----------------- #
-        num = np.nansum(2 * models_mod * obs_flux / obs_flux_err**2)
-        den = 2 * np.nansum(models_mod**2 / obs_flux_err**2)
+        num = np.sum(obs_flux * models_mod / (obs_flux_err**2), axis=1)
+        den = np.sum(models_mod**2 / obs_flux_err**2, axis=1)
+
         alpha = num / den  # vertical scaling factor
-        print("Alpha:", "{:.2e}".format(alpha))
+
         chi2 = (alpha * models_mod - obs_flux)**2 / obs_flux_err**2
         chi2 = np.nansum(chi2, axis=1)
 
+        # Get min chi2 and indices
         min_chi2 = min(chi2)
         print("Min chi2:", min_chi2)
+
         bestidx = np.argmin(chi2)
         fit_idx_z[z] = bestidx
         chi2_z[z] = min_chi2
