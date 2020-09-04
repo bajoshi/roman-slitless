@@ -3,6 +3,7 @@ import scipy.interpolate as interpolate
 
 import os
 import sys
+import time
 
 import matplotlib.pyplot as plt
 
@@ -75,11 +76,14 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     """
 
     # ----------------- Redshift fitting ----------------- #
-    redshift_search_grid = np.linspace(0.001, 1.0, 100)
+    redshift_search_grid = np.linspace(0.001, 0.04, 20)
     print("Will search within the following redshift grid:", redshift_search_grid)
 
-    fit_idx_z = np.zeros(len(redshift_search_grid))
+    start = time.time()
+
+    fit_idx_z = np.zeros(len(redshift_search_grid), dtype=np.int)
     chi2_z = np.zeros(len(redshift_search_grid))
+    alpha_z = np.zeros(len(redshift_search_grid))
 
     for z in range(len(redshift_search_grid)):
 
@@ -89,14 +93,19 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         dl = dl * 3.09e24  # convert to cm
 
         redshifted_model_grid = models_grid * (1 + redshift)
-        models_redshifted = models_llam / (4 * np.pi * dl * dl * (1 + redshift))
+        models_redshifted = np.zeros(models_llam.shape)
+        div_fac = 4 * np.pi * dl * dl * (1 + redshift)
+        for w in range(total_models):
+            # explicit for loop goes faster because it isn't throttled 
+            # by the OS since it doesn't ask for too much memory
+            models_redshifted[w] = models_llam[w] / div_fac
         # NOTE: the stellar mass for this model still remains at one solar.
         # However, I haven't yet multiplied by 1 solar luminosity here.
         # So the units are a bit wacky.... the solar lum factor gets absorbed into alpha below.
         # The stellar mass will be solved for later.
 
         print("\nRedshift:", redshift)
-        print("Luminosity distance [cm]:", dl)
+        #print("Luminosity distance [cm]:", dl)
 
         # ----------------- Downgrading Resolution ----------------- #
         resampling_grid = obs_wav
@@ -130,20 +139,42 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
 
         min_chi2 = min(chi2)
         print("Min chi2:", min_chi2)
-        fit_idx_z[z] = np.argmin(chi2)
+        bestidx = np.argmin(chi2)
+        fit_idx_z[z] = bestidx
         chi2_z[z] = min_chi2
+        alpha_z[z] = alpha[bestidx]
 
-    # ----------------- plot p(z) ----------------- #
+    print("Total time taken for fitting:", "{:.2f}".format(time.time() - start), "seconds.")
+
+    # ----------------- p(z) ----------------- #
     pz = get_pz(chi2_z, redshift_search_grid)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    # ----------------- set up fit dict ----------------- #
+    fit_dict = {}
 
-    ax.plot(redshift_search_grid, pz)
+    # Best fit spectrum and redshift
+    fit_dict['wav'] = obs_wav
 
-    plt.show()
+    chi2_idx = np.argmin(chi2_z)
+    bestfit_idx = int(fit_idx_z[chi2_idx])
+    print("Best fit index:", bestfit_idx)
+    fit_flam = models_mod[bestfit_idx]
 
-    sys.exit(0)
+    fit_dict['flam'] = fit_flam
+
+    fit_dict['redshift'] = redshift_search_grid[chi2_idx]
+
+    fit_dict['alpha'] = alpha_z[chi2_idx]
+
+    # also give full res spectrum
+    fit_dict['model_lam'] = models_grid
+    fit_dict['fullres'] = models_llam[bestfit_idx]
+
+    # pz and search grid
+    fit_dict['zsearch'] = redshift_search_grid
+    fit_dict['pz'] = pz
+
+    # Stellar pop params
 
     return fit_dict
 
@@ -162,4 +193,3 @@ def get_pz(chi2_map, z_arr_to_check):
         pz[i] = np.sum(norm_likelihood[i])
 
     return pz
-    

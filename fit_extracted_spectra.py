@@ -5,6 +5,7 @@ import os
 import sys
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
@@ -66,14 +67,20 @@ def main():
 
             # ---- Fit template to SN
             # First assign a 33% (3-sigma) error to each point
-            sn_ferr = 0.33 * sn_flam
-            fit_dict_sn = fm.do_fitting(sn_wav, sn_flam, sn_ferr, object_type='supernova')
+            # sn_ferr = 0.33 * sn_flam
+            # fit_dict_sn = fm.do_fitting(sn_wav, sn_flam, sn_ferr, object_type='supernova')
 
-            fit_wav = fit_dict['wav']
-            fit_flam = fit_dict['flam']
-            fit_z = fit_dict['redshift']
+            fit_wav_host = fit_dict_host['wav']
+            fit_flam_host = fit_dict_host['flam']
+            fit_z_host = fit_dict_host['redshift']
 
-            sys.exit(0)
+            fit_alpha_host = fit_dict_host['alpha']
+
+            fit_model_grid_host = fit_dict_host['model_lam']
+            fit_fullres_host = fit_dict_host['fullres']
+
+            fit_pz_host = fit_dict_host['pz']
+            fit_zsearch_host = fit_dict_host['zsearch']
 
             # ----------------- Plotting -------------------- #
             # Set up the figure
@@ -84,10 +91,17 @@ def main():
             ax.set_ylabel(r'$\mathrm{F_{\lambda}\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}\, \times 10^{-17}]}$', fontsize=16)
 
             # Plot the extracted spectrum
-            ax.plot(wav, flam, 'o-', markersize=1.0, color='tab:blue', label='{}'.format(segid))
+            ax.plot(host_wav, host_flam, 'o-', markersize=1.0, color='tab:blue', label='{}'.format(segid), zorder=2)
 
             # Plot template spectra
-            ax.plot(bestfit_wav, bestfit_flam, 'o-', markersize=1.0, color='tab:red')
+            #ax.plot(fit_model_grid_host, fit_fullres_host, 'o-', markersize=1.0, color='tab:gray', alpha=0.7, zorder=1)
+            ax.plot(fit_wav_host, fit_alpha_host * fit_flam_host, 'o-', markersize=1.0, color='tab:red', zorder=3)
+
+            # Add info of test and recovered parameters
+
+            # Add p(z) as an inset plot
+            ax_in = inset_axes(ax, width=1.5, height=1.0)  # width and height in inches
+            ax_in.plot(fit_zsearch_host, fit_pz_host)
 
             # Wavelength limits
             ax.set_xlim(9000, 20000)

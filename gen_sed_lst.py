@@ -213,7 +213,7 @@ def main():
 
     # ------------------ SORT ----------------- #
     # Now read in the sed.lst file that was just saved 
-    # and make sure that the sedmentation ids are in ascending order.
+    # and make sure that the segmentation ids are in ascending order.
 
 
     return None
