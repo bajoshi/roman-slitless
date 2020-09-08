@@ -105,7 +105,7 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
 
     # ----------------- Redshift fitting ----------------- #
     redshift_search_grid = np.linspace(0.001, 1.0, 20)
-    print("Will search within the following redshift grid:", redshift_search_grid)
+    print("\nWill search within the following redshift grid:", redshift_search_grid)
 
     start = time.time()
 
@@ -182,6 +182,9 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         alpha_z[z] = alpha[bestidx]
         models_mod_z[z] = models_mod[bestidx]
 
+        if object_type == 'supernova':
+            print("SN best fit day:", days_arr[bestidx])
+
     print("Total time taken for fitting:", "{:.2f}".format(time.time() - start), "seconds.")
 
     # ----------------- p(z) ----------------- #
@@ -212,7 +215,14 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     fit_dict['zsearch'] = redshift_search_grid
     fit_dict['pz'] = pz
 
+    #if object_type == 'galaxy':
     # Stellar pop params
+
+    # Add DAY relative to peak if the object fitted was a SN
+    if object_type == 'supernova':
+        sn_day = days_arr[bestfit_idx]
+        print("Best fit for day relative to peak:", sn_day)
+        fit_dict['day'] = sn_day
 
     return fit_dict
 
