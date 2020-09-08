@@ -24,6 +24,18 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
 
         total_models = len(models_llam)
 
+        log_age_arr = np.load(pears_figs_data_dir + 'log_age_arr_chab.npy', mmap_mode='r')
+        metal_arr = np.load(pears_figs_data_dir + 'metal_arr_chab.npy', mmap_mode='r')
+        nlyc_arr = np.load(pears_figs_data_dir + 'nlyc_arr_chab.npy', mmap_mode='r')
+        tau_gyr_arr = np.load(pears_figs_data_dir + 'tau_gyr_arr_chab.npy', mmap_mode='r')
+        tauv_arr = np.load(pears_figs_data_dir + 'tauv_arr_chab.npy', mmap_mode='r')
+        ub_col_arr = np.load(pears_figs_data_dir + 'ub_col_arr_chab.npy', mmap_mode='r')
+        bv_col_arr = np.load(pears_figs_data_dir + 'bv_col_arr_chab.npy', mmap_mode='r')
+        vj_col_arr = np.load(pears_figs_data_dir + 'vj_col_arr_chab.npy', mmap_mode='r')
+        ms_arr = np.load(pears_figs_data_dir + 'ms_arr_chab.npy', mmap_mode='r')
+        mgal_arr = np.load(pears_figs_data_dir + 'mgal_arr_chab.npy', mmap_mode='r')
+        sfr_arr = np.load(pears_figs_data_dir + 'sfr_arr_chab.npy', mmap_mode='r')
+
     elif object_type == 'supernova':
         # Read in SALT2 SN IA file from Lou
         salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
@@ -215,8 +227,12 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     fit_dict['zsearch'] = redshift_search_grid
     fit_dict['pz'] = pz
 
-    #if object_type == 'galaxy':
     # Stellar pop params
+    if object_type == 'galaxy':
+        fit_age = log_age_arr[bestfit_idx]
+        fit_av = tauv_arr[bestfit_idx] * 1.0857
+        fit_dict['age'] = fit_age
+        fit_dict['av'] = fit_av
 
     # Add DAY relative to peak if the object fitted was a SN
     if object_type == 'supernova':

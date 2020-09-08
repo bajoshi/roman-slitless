@@ -6,6 +6,7 @@ import os
 import sys
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
@@ -54,7 +55,8 @@ def add_noise(sig_arr, noise_level):
             if (iter_count >= max_iters) and (spec_noise[k] < 0):
                 spec_noise[k] = sig_arr[k]
 
-        err_arr[k] = np.sqrt(spec_noise[k])
+        # err_arr[k] = np.sqrt(spec_noise[k])
+        err_arr[k] = noise_level * spec_noise[k]
 
     return spec_noise, err_arr
 
@@ -144,40 +146,32 @@ def main():
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Fit template to HOST
-            noise_level = 0.33  # relative to signal
+            noise_level = 0.2  # relative to signal
             # First assign a 33% (3-sigma) error to each point
-            #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
-            #fit_dict_host = fm.do_fitting(host_wav, host_flam_noisy, host_ferr, object_type='galaxy')
+            host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
+            fit_dict_host = fm.do_fitting(host_wav, host_flam_noisy, host_ferr, object_type='galaxy')
 
             # ---- Fit template to SN
             # First assign a 33% (3-sigma) error to each point
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
-            
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(sn_wav, sn_flam_noisy, zorder=1)
-            ax.plot(sn_wav, sn_flam, zorder=2)
-            ax.fill_between(sn_wav, sn_flam_noisy - sn_ferr, sn_flam_noisy + sn_ferr, color='gray', alpha=0.2)
-
-            plt.show()
-            sys.exit(0)
-
             fit_dict_sn = fm.do_fitting(sn_wav, sn_flam_noisy, sn_ferr, object_type='supernova')
 
             # ---- Assign recovered params to variables
             # ---- HOST
-            #fit_wav_host = fit_dict_host['wav']
-            #fit_flam_host = fit_dict_host['flam']
-            #fit_z_host = fit_dict_host['redshift']
+            fit_wav_host = fit_dict_host['wav']
+            fit_flam_host = fit_dict_host['flam']
+            fit_z_host = fit_dict_host['redshift']
 
-            #fit_alpha_host = fit_dict_host['alpha']
+            fit_alpha_host = fit_dict_host['alpha']
 
-            #fit_model_grid_host = fit_dict_host['model_lam']
-            #fit_fullres_host = fit_dict_host['fullres']
+            fit_model_grid_host = fit_dict_host['model_lam']
+            fit_fullres_host = fit_dict_host['fullres']
 
-            #fit_pz_host = fit_dict_host['pz']
-            #fit_zsearch = fit_dict_host['zsearch']  # only defined once because the same search grid is used for HOST and SN
+            fit_pz_host = fit_dict_host['pz']
+            fit_zsearch = fit_dict_host['zsearch']  # only defined once because the same search grid is used for HOST and SN
+
+            fit_age_host = fit_dict_host['age']
+            fit_av_host  = fit_dict_host['av']
 
             # ---- SN
             fit_wav_sn = fit_dict_sn['wav']
@@ -196,82 +190,103 @@ def main():
 
             # ----------------- Plotting -------------------- #
             # Set up the figure
-            fig = plt.figure(figsize=(9,5))
-            ax = fig.add_subplot(111)
+            fig = plt.figure(figsize=(12.5,5))
 
-            ax.set_xlabel(r'$\mathrm{Wavelength\ [\AA]}$', fontsize=16)
-            ax.set_ylabel(r'$\mathrm{F_{\lambda}\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=16)
+            gs = gridspec.GridSpec(6,9)
+            gs.update(left=0.05, right=0.95, bottom=0.1, top=0.9, wspace=0.00, hspace=0.7)
+
+            axh = fig.add_subplot(gs[:, :4])
+            axs = fig.add_subplot(gs[:, 5:])
+
+            axh.set_xlabel(r'$\mathrm{Wavelength\ [\AA]}$', fontsize=16)
+            axh.set_ylabel(r'$\mathrm{F_{\lambda}\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=16)
+            axh.xaxis.set_label_coords(1.1, -0.07)
 
             # Plot the extracted spectrum
-            #ax.plot(host_wav, host_flam, 'o-', markersize=1.0, color='tab:blue', zorder=2, label=r'$\mathrm{Simulated\ data}$')
-            #ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, color='gray', alpha=0.5)
-            ax.plot(sn_wav, sn_flam, 'o-', markersize=1.0, color='tab:blue', zorder=2, label=r'$\mathrm{Simulated\ data}$')
-            ax.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, color='gray', alpha=0.5)
+            axh.plot(host_wav, host_flam_noisy, 'o-', markersize=1.0, color='tab:blue', zorder=2, \
+                label=r'$\mathrm{Simulated\ host\ galaxy\ data}$')
+            axh.fill_between(host_wav, host_flam_noisy - host_ferr, host_flam_noisy + host_ferr, color='gray', alpha=0.5)
+            axs.plot(sn_wav, sn_flam_noisy, 'o-', markersize=1.0, color='tab:blue', zorder=2, \
+                label=r'$\mathrm{Simulated\ SN\ data}$')
+            axs.fill_between(sn_wav, sn_flam_noisy - sn_ferr, sn_flam_noisy + sn_ferr, color='gray', alpha=0.5)
 
             # Plot template spectra
-            #ax.plot(fit_model_grid_host, fit_fullres_host, 'o-', markersize=1.0, color='tab:gray', alpha=0.7, zorder=1)
-            #ax.plot(fit_wav_host, fit_alpha_host * fit_flam_host, 'o-', markersize=1.0, color='tab:red', \
-            #    zorder=3, label=r'$\mathrm{Template\ fit}$')
-            #ax.plot(fit_model_grid_host, fit_fullres_host, 'o-', markersize=1.0, color='tab:gray', alpha=0.7, zorder=1)
-            ax.plot(fit_wav_sn, fit_alpha_sn * fit_flam_sn, 'o-', markersize=1.0, color='tab:red', \
+            #axh.plot(fit_model_grid_host, fit_fullres_host, 'o-', markersize=1.0, color='tab:gray', alpha=0.7, zorder=1)
+            axh.plot(fit_wav_host, fit_alpha_host * fit_flam_host, 'o-', markersize=1.0, color='tab:red', \
+                zorder=3, label=r'$\mathrm{Template\ fit}$')
+            #axs.plot(fit_model_grid_sn, fit_fullres_sn, 'o-', markersize=1.0, color='tab:gray', alpha=0.7, zorder=1)
+            axs.plot(fit_wav_sn, fit_alpha_sn * fit_flam_sn, 'o-', markersize=1.0, color='tab:red', \
                 zorder=3, label=r'$\mathrm{Template\ fit}$')
 
             # ---------- Add info of input and recovered parameters
-            """
-                rows = [r'$z_\mathrm{peak}$', r'$z_\mathrm{wt}$', \
-                r'$\mathrm{Stellar\ mass\, [log(M/M_\odot)]}$', 'Age [Gyr]', r'$A_V$']
-                columns = ['Input', 'Recovered']
+            # Table bounding box for both HOST and SN tables
+            table_bbox = np.array([0.77, 0.25, 0.2, 0.3])  # A numpy array of the form [left, bottom, width, height]... I think
 
-                z_wt_host = trapz(y=fit_zsearch * fit_pz_host, x=fit_zsearch)
-                ms = np.log10(fit_alpha_host)
-                #age = 
-                av = 0.0
+            # ---- HOST
+            rows_host = [r'$z_\mathrm{peak}$', r'$z_\mathrm{wt}$', \
+            r'$\mathrm{Stellar\ mass\, [log(M/M_\odot)]}$', 'Age [Gyr]', r'$A_V$']
+            columns_host = ['Input', 'Recovered']
 
-                cell_text = [['{:.3f}'.format(host_z),   '{:.3f}'.format(fit_z_host)], 
-                             ['{:.3f}'.format(host_z),   '{:.3f}'.format(z_wt_host)],
-                             ['{:.3f}'.format(host_ms),  '{:.2f}'.format(ms)],
-                             ['{:.3f}'.format(host_age), '{:.2f}'.format(age)],
-                             ['0',     '{:.2f}'.format(av)]]
+            z_wt_host = trapz(y=fit_zsearch * fit_pz_host, x=fit_zsearch)
+            ms = np.log10(fit_alpha_host)
 
-                table = plt.table(cellText=cell_text, rowLabels=rows, rowLoc='center', colWidths=[0.2, 0.1, 0.1],
-                                  cellLoc='center', colLabels=columns, loc='lower center', 
-                                  fontsize=10, figure=fig)
-            """
+            cell_text_host = [['{:.3f}'.format(host_z),   '{:.3f}'.format(fit_z_host)], 
+                         ['{:.3f}'.format(host_z),   '{:.3f}'.format(z_wt_host)],
+                         ['{:.3f}'.format(host_ms),  '{:.2f}'.format(ms)],
+                         ['{:.3f}'.format(host_age), '{:.2f}'.format(fit_age_host)],
+                         ['0',     '{:.2f}'.format(fit_av_host)]]
 
-            rows = [r'$z_\mathrm{peak}$', r'$z_\mathrm{wt}$', \
+            table_host = axh.table(cellText=cell_text_host, rowLabels=rows_host, rowLoc='center', colWidths=[0.1, 0.1],
+                                   cellLoc='center', colLabels=columns_host, bbox=table_bbox, 
+                                   fontsize=12)
+
+            # ---- SN
+            rows_sn = [r'$z_\mathrm{peak}$', r'$z_\mathrm{wt}$', \
             'SN Day [rel to peak]', r'$A_V$']
-            columns = ['Input', 'Recovered']
+            columns_sn = ['Input', 'Recovered']
 
             z_wt_sn = trapz(y=fit_zsearch * fit_pz_sn, x=fit_zsearch)
             av = 0.0
 
-            cell_text = [['{:.3f}'.format(sn_z),   '{:.3f}'.format(fit_z_sn)], 
+            cell_text_sn = [['{:.3f}'.format(sn_z),   '{:.3f}'.format(fit_z_sn)], 
                          ['{:.3f}'.format(sn_z),   '{:.3f}'.format(z_wt_sn)],
                          ['{:d}'.format(sn_day),   '{:d}'.format(fit_sn_day)],
                          ['0',     '{:.2f}'.format(av)]]
 
-            table = plt.table(cellText=cell_text, rowLabels=rows, rowLoc='center', colWidths=[0.1, 0.1],
-                              cellLoc='center', colLabels=columns, loc='lower center', 
-                              fontsize=10, figure=fig)
+            table_sn = axs.table(cellText=cell_text_sn, rowLabels=rows_sn, rowLoc='center', colWidths=[0.1, 0.1],
+                                 cellLoc='center', colLabels=columns_sn, bbox=table_bbox, 
+                                 fontsize=12)
  
-            #ax.text(0.01, 0.2, s=r'$\mathrm{SegID}: $' + str(hostid), \
-            #    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='k', size=12)
-            ax.text(0.01, 0.2, s=r'$\mathrm{SegID}: $' + str(segid), \
-                verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='k', size=12)
+            axh.text(0.01, 0.2, s=r'$\mathrm{SegID}: $' + str(hostid), \
+                verticalalignment='top', horizontalalignment='left', transform=axh.transAxes, color='k', size=12)
+            axs.text(0.01, 0.2, s=r'$\mathrm{SegID}: $' + str(segid), \
+                verticalalignment='top', horizontalalignment='left', transform=axs.transAxes, color='k', size=12)
 
             # ------------ Add p(z) as an inset plot
-            rect = [0.63, 0.65, 0.25, 0.2]  # [left, bottom, width, height] and also width and height in axes units (i.e., between 0 to 1)
-            ax_in = fig.add_axes(rect)
-            #ax_in.plot(fit_zsearch, fit_pz_host)
-            ax_in.plot(fit_zsearch, fit_pz_sn)
+            # This has to come after the table apparently 
+            # because otherwise it puts the table inside the inset axes.
+            # For the rectangles below:
+            # [left, bottom, width, height] and also width and height in 
+            # relative figure units (i.e., between 0 to 1 as a fraction of
+            # the dimension -- height or width -- that you are referring to).
+            rect_h = [0.28, 0.67, 0.15, 0.2]
+            rect_s = [0.78, 0.67, 0.15, 0.2]
+            axh_in = fig.add_axes(rect_h)
+            axs_in = fig.add_axes(rect_s)
+            axh_in.plot(fit_zsearch, fit_pz_host)
+            axs_in.plot(fit_zsearch, fit_pz_sn)
 
-            ax_in.set_xlabel('z', fontsize=12)
-            ax_in.set_ylabel('p(z)', fontsize=12)
+            axh_in.set_xlabel('z', fontsize=12)
+            axh_in.set_ylabel('p(z)', fontsize=12)
+            axs_in.set_xlabel('z', fontsize=12)
+            axs_in.set_ylabel('p(z)', fontsize=12)
 
             # Wavelength limits
-            ax.set_xlim(9000, 20000)
+            axh.set_xlim(9000, 20000)
+            axs.set_xlim(9000, 20000)
 
-            ax.legend(loc=3)
+            axh.legend(loc=3)
+            axs.legend(loc=3)
 
             plt.show()
             plt.clf()
@@ -279,18 +294,13 @@ def main():
             plt.close()
 
             # ------------ Save figure
-            if object_type == 'galaxy':
-                fig.savefig(roman_slitless_dir + 'fit_host_' + str(hostid) + '.pdf', dpi=200, bbox_inches='tight')
-            if object_type == 'supernova':
-                fig.savefig(roman_slitless_dir + 'fit_sn_' + str(segid) + '.pdf', dpi=200, bbox_inches='tight')
+            fig.savefig(roman_slitless_dir + 'fitres_sn' + str(segid) + '.pdf', dpi=200, bbox_inches='tight')
 
             # ------------ Save fit results
-            fhost = roman_slitless_sims_results + 'fitting_results/fitres_host_' + str(hostid) + '.npy'
-            fsn = roman_slitless_sims_results + 'fitting_results/fitres_sn_' + str(segid) + '.npy'
+            fhost = ext_spectra_dir + 'fitting_results/fitres_host_' + str(hostid) + '.npy'
+            fsn = ext_spectra_dir + 'fitting_results/fitres_sn_' + str(segid) + '.npy'
             np.save(fhost, fit_dict_host)
             np.save(fsn, fit_dict_sn)
-
-            sys.exit(0)
 
     return None
 
