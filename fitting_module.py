@@ -23,6 +23,14 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
 
         total_models = len(models_llam)
 
+    elif object_type == 'supernova':
+
+        models_llam = 
+        models_grid = 
+
+        total_models = 
+
+
     # ----------------- Downgrading Resolution ----------------- #
     """
     # Modify models to observed wavelength binning
@@ -76,7 +84,7 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     """
 
     # ----------------- Redshift fitting ----------------- #
-    redshift_search_grid = np.linspace(0.001, 0.04, 20)
+    redshift_search_grid = np.linspace(0.001, 1.0, 20)
     print("Will search within the following redshift grid:", redshift_search_grid)
 
     start = time.time()
@@ -84,6 +92,7 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     fit_idx_z = np.zeros(len(redshift_search_grid), dtype=np.int)
     chi2_z = np.zeros(len(redshift_search_grid))
     alpha_z = np.zeros(len(redshift_search_grid))
+    models_mod_z = np.zeros(shape=(len(redshift_search_grid), len(obs_wav)))
 
     for z in range(len(redshift_search_grid)):
 
@@ -105,7 +114,6 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         # The stellar mass will be solved for later.
 
         print("\nRedshift:", redshift)
-        #print("Luminosity distance [cm]:", dl)
 
         # ----------------- Downgrading Resolution ----------------- #
         resampling_grid = obs_wav
@@ -130,13 +138,19 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         models_mod[:, -1] = np.mean(models_redshifted[:, idx], axis=1)
 
         # ----------------- Chi2 ----------------- #
-        num = np.sum(obs_flux * models_mod / (obs_flux_err**2), axis=1)
-        den = np.sum(models_mod**2 / obs_flux_err**2, axis=1)
+        num = np.nansum(obs_flux * models_mod / (obs_flux_err**2), axis=1)
+        den = np.nansum(models_mod**2 / obs_flux_err**2, axis=1)
 
         alpha = num / den  # vertical scaling factor
 
-        chi2 = (alpha * models_mod - obs_flux)**2 / obs_flux_err**2
+        #print("Alpha:", alpha)
+        #print("Alpha shape:", alpha.shape)
+
+        chi2 = ((alpha * models_mod.T).T - obs_flux)**2 / obs_flux_err**2
         chi2 = np.nansum(chi2, axis=1)
+        #print("Chi2 arr", chi2)
+        #print("Chi2 arr shape:", chi2.shape)
+        #print("Obs data shape", obs_flux.shape)
 
         # Get min chi2 and indices
         min_chi2 = min(chi2)
@@ -146,6 +160,7 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         fit_idx_z[z] = bestidx
         chi2_z[z] = min_chi2
         alpha_z[z] = alpha[bestidx]
+        models_mod_z[z] = models_mod[bestidx]
 
     print("Total time taken for fitting:", "{:.2f}".format(time.time() - start), "seconds.")
 
@@ -161,7 +176,7 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     chi2_idx = np.argmin(chi2_z)
     bestfit_idx = int(fit_idx_z[chi2_idx])
     print("Best fit index:", bestfit_idx)
-    fit_flam = models_mod[bestfit_idx]
+    fit_flam = models_mod_z[chi2_idx]
 
     fit_dict['flam'] = fit_flam
 
