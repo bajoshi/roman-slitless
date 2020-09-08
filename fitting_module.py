@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 home = os.getenv("HOME")
 pears_figs_data_dir = home + "/Documents/pears_figs_data/"
 stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_codes/"
+roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
 sys.path.append(stacking_util_codes)
 from proper_and_lum_dist import luminosity_distance
@@ -24,12 +25,31 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         total_models = len(models_llam)
 
     elif object_type == 'supernova':
+        # Read in SALT2 SN IA file from Lou
+        salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
+            dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
-        models_llam = 
-        models_grid = 
+        # Set up days array
+        days_arr = np.arange(-19, 51, 1, dtype=np.int)
 
-        total_models = 
+        # Set up other arrays
+        total_models = len(days_arr)
 
+        idx_for_sn_grid = np.where(salt2_spec['day'] == 0)[0]
+        models_grid = salt2_spec['lam'][idx_for_sn_grid]
+
+        models_llam = np.zeros(shape=(total_models, len(models_grid)))
+
+        for i in range(len(days_arr)):
+
+            current_day = days_arr[i]
+
+            # pull out spectrum for the chosen day
+            day_idx = np.where(salt2_spec['day'] == current_day)[0]
+
+            sn_spec_flam = salt2_spec['flam'][day_idx]
+
+            models_llam[i] = sn_spec_flam
 
     # ----------------- Downgrading Resolution ----------------- #
     """

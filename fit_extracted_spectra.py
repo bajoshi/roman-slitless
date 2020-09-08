@@ -4,9 +4,10 @@ from scipy.integrate import trapz
 
 import os
 import sys
+import pickle
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+#from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
@@ -54,21 +55,46 @@ def main():
             # Read in template
             template = np.genfromtxt(template_dir + template_name, dtype=None, names=True, encoding='ascii')
 
-    # Set up input params dict
-    input_dict = {}
+            # ---------------------------- Set up input params dict ---------------------------- #
+            input_dict = {}
 
-    input_dict['host_z'] = 
-    input_dict['host_ms'] = 
-    input_dict['host_age'] = 
+            print("INPUTS:")
+            # ---- SN
+            t = template_name.split('.txt')[0].split('_')
 
-    input_dict['sn_z'] = 
+            sn_z = float(t[-1].replace('p', '.').replace('z',''))
+            sn_day = int(t[-2].replace('day',''))
+            print("Supernova input z:", sn_z)
+            print("Supernova day:", sn_day, "\n")
 
-    z_host_input = input_dict['host_z']
-    ms_host_input = input_dict['host_ms']
-    age_host_input = input_dict['host_age']
+            # ---- HOST
+            h_idx = int(np.where(sedlst['segid'] == hostid)[0])
+            h_path = sedlst['sed_path'][h_idx]
+            th = os.path.basename(h_path)
 
-    z_sn_input = input_dict['sn_z']
+            th = th.split('.txt')[0].split('_')
 
+            host_z = float(th[-1].replace('p', '.').replace('z',''))
+            host_ms = float(th[-2].replace('p', '.').replace('ms',''))
+
+            host_age_u = th[-3]
+            if host_age_u == 'gyr':
+                host_age = float(th[2])
+            elif host_age_u == 'myr':
+                host_age = float(th[2])/1e3
+
+            print("Host input z:", host_z)
+            print("Host input stellar mass [log(Ms/Msol)]:", host_ms)
+            print("Host input age [Gyr]:", host_age, end='\n')
+
+            input_dict['host_z'] = host_z
+            input_dict['host_ms'] = host_ms
+            input_dict['host_age'] = host_age
+
+            input_dict['sn_z'] = sn_z
+            input_dict['sn_day'] = sn_day
+
+            # ---------------------------- FITTING ---------------------------- #
             # ---------- Get spectrum for host and sn
             host_wav = ext_hdu[hostid].data['wavelength']
             host_flam = ext_hdu[hostid].data['flam'] * pylinear_flam_scale_fac
@@ -78,8 +104,8 @@ def main():
 
             # ---- Fit template to HOST
             # First assign a 33% (3-sigma) error to each point
-            host_ferr = 0.33 * host_flam
-            fit_dict_host = fm.do_fitting(host_wav, host_flam, host_ferr, object_type='galaxy')
+            #host_ferr = 0.33 * host_flam
+            #fit_dict_host = fm.do_fitting(host_wav, host_flam, host_ferr, object_type='galaxy')
 
             # ---- Fit template to SN
             # First assign a 33% (3-sigma) error to each point
@@ -98,10 +124,19 @@ def main():
             fit_fullres_host = fit_dict_host['fullres']
 
             fit_pz_host = fit_dict_host['pz']
-            fit_zsearch = fit_dict_host['zsearch']
+            fit_zsearch = fit_dict_host['zsearch']  # only defined once because the same search grid is used for HOST and SN
 
             # ---- SN
-            
+            fit_wav_sn = fit_dict_sn['wav']
+            fit_flam_sn = fit_dict_sn['flam']
+            fit_z_sn = fit_dict_sn['redshift']
+
+            fit_alpha_sn = fit_dict_sn['alpha']
+
+            fit_model_grid_sn = fit_dict_sn['model_lam']
+            fit_fullres_sn = fit_dict_sn['fullres']
+
+            fit_pz_sn = fit_dict_sn['pz']
 
             # ----------------- Plotting -------------------- #
             # Set up the figure
@@ -126,13 +161,13 @@ def main():
 
             z_wt_host = trapz(y=fit_zsearch * fit_pz_host, x=fit_zsearch)
             ms = np.log10(fit_alpha_host)
-            age = 
+            #age = 
             av = 0.0
 
-            cell_text = [['{:.3f}'.format(z_host_input),   '{:.3f}'.format(fit_z_host)], 
-                         ['{:.3f}'.format(z_host_input),   '{:.3f}'.format(z_wt_host)],
-                         ['{:.3f}'.format(ms_host_input),  '{:.2f}'.format(ms)],
-                         ['{:.3f}'.format(age_host_input), '{:.2f}'.format(age)],
+            cell_text = [['{:.3f}'.format(host_z),   '{:.3f}'.format(fit_z_host)], 
+                         ['{:.3f}'.format(host_z),   '{:.3f}'.format(z_wt_host)],
+                         ['{:.3f}'.format(host_ms),  '{:.2f}'.format(ms)],
+                         ['{:.3f}'.format(host_age), '{:.2f}'.format(age)],
                          ['0',     '{:.2f}'.format(av)]]
 
             table = plt.table(cellText=cell_text, rowLabels=rows, rowLoc='center', colWidths=[0.2, 0.1, 0.1],
@@ -143,7 +178,8 @@ def main():
                 verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='k', size=12)
 
             # ------------ Add p(z) as an inset plot
-            ax_in = inset_axes(ax, width=2.5, height=1.5)  # width and height in inches
+            rect = [0.65, 0.6, 2.5, 1.5]  # [left, bottom, width, height] # width and height in inches
+            ax_in = fig.add_axes(rect)
             ax_in.plot(fit_zsearch, fit_pz_host)
 
             ax_in.set_xlabel('z', fontsize=12)
@@ -153,16 +189,25 @@ def main():
             ax.set_xlim(9000, 20000)
 
             ax.legend(loc=3)
-            plt.show()
 
+            plt.show()
             plt.clf()
             plt.cla()
             plt.close()
 
+            # ------------ Save figure
             if object_type == 'galaxy':
                 fig.savefig(roman_slitless_dir + 'fit_host_' + str(hostid) + '.pdf', dpi=200, bbox_inches='tight')
             if object_type == 'supernova':
                 fig.savefig(roman_slitless_dir + 'fit_sn_' + str(segid) + '.pdf', dpi=200, bbox_inches='tight')
+
+            # ------------ Save fit results
+            fhost = roman_slitless_sims_results + 'fitting_results/fitres_host_' + str(hostid) + '.npy'
+            fsn = roman_slitless_sims_results + 'fitting_results/fitres_sn_' + str(segid) + '.npy'
+            np.save(fhost, fit_dict_host)
+            np.save(fsn, fit_dict_sn)
+
+            sys.exit(0)
 
     return None
 
