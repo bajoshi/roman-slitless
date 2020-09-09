@@ -146,7 +146,7 @@ def main():
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Fit template to HOST
-            noise_level = 0.2  # relative to signal
+            noise_level = 0.05  # relative to signal
             # First assign a 33% (3-sigma) error to each point
             host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             fit_dict_host = fm.do_fitting(host_wav, host_flam_noisy, host_ferr, object_type='galaxy')

@@ -125,10 +125,10 @@ def main():
     img_sim_dir = roman_direct_dir + 'K_akari_rotate_subset/'
     img_truth_dir = roman_direct_dir + 'K_akari_rotate_truth/'
     img_basename = 'akari_match_'
-    img_suffix = 'Y106_11_1'
+    img_suffix = 'Y106_11_2'
 
     # Open empty file for saving sed.lst
-    fh = open(roman_slitless_dir + 'sed.lst', 'w')
+    fh = open(roman_slitless_dir + 'sed_' + img_suffix + '.lst', 'w')
 
     # Write header
     fh.write("# 1: SEGMENTATION ID" + "\n")
@@ -164,9 +164,14 @@ def main():
     #host_ra = np.array([71.0192822, ])
     #host_dec = np.array([-53.6038719, ])
 
-    host_segids = np.array([475, 755, 548, 207])
-    sn_segids = np.array([481, 753, 547, 241])
+    # For Y106_11_1
+    #host_segids = np.array([475, 755, 548, 207])
+    #sn_segids = np.array([481, 753, 547, 241])
     
+    # For Y106_11_2
+    host_segids = np.array([623, 441, 725, 390, 1051])
+    sn_segids = np.array([626, 456, 729, 388, 1040])
+
     # --------- End dummy defs --------- #
 
     # Loop over all objects and assign spectra

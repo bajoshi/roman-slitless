@@ -12,14 +12,16 @@ home = os.getenv('HOME')
 
 os.chdir(home + '/Documents/roman_slitless_sims_results/')
 
+img_suffix = 'Y106_11_2'
+
 # Define list files and other preliminary stuff
-segfile = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/akari_match_Y106_11_1_segmap.fits'
-obslst = home + '/Documents/GitHub/roman-slitless/obs.lst'
-wcslst = home + '/Documents/GitHub/roman-slitless/wcs.lst'
-sedlst = home + '/Documents/GitHub/roman-slitless/sed.lst'
+segfile = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/akari_match_' + img_suffix + '_segmap.fits'
+obslst = home + '/Documents/GitHub/roman-slitless/obs_' + img_suffix + '.lst'
+wcslst = home + '/Documents/GitHub/roman-slitless/wcs_' + img_suffix + '.lst'
+sedlst = home + '/Documents/GitHub/roman-slitless/sed_' + img_suffix + '.lst'
 beam = '+1'
 maglim = 99.0
-seddir = 'SEDs'
+seddir = 'SEDs_' + img_suffix
 
 # Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
@@ -49,7 +51,7 @@ print('Default parameters: range = {},{} A, sampling = {} A'.format(*extraction_
 # Set extraction params
 sources.update_extraction_parameters(*extraction_parameters)
 method = 'grid'
-root = 'romansim_ext'
+root = 'romansim2_ext'
 logdamp = [-4, -1, 0.1]
 
 print("Extracting...")
