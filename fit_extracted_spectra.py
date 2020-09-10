@@ -12,7 +12,6 @@ home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
-ext_root = "romansim2"
 
 import fitting_module as fm
 
@@ -65,7 +64,8 @@ def add_noise(sig_arr, noise_level):
 
 def main():
 
-    img_suffix = 'Y106_11_2'
+    ext_root = "romansim1"
+    img_suffix = 'Y106_11_1'
 
     # Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
@@ -83,12 +83,12 @@ def main():
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
     # For Y106_11_1
-    #host_segids = np.array([475, 755, 548, 207])
-    #sn_segids = np.array([481, 753, 547, 241])
+    host_segids = np.array([475, 755, 548, 207])
+    sn_segids = np.array([481, 753, 547, 241])
     
     # For Y106_11_2
-    host_segids = np.array([623, 441, 725, 390, 1051])
-    sn_segids = np.array([626, 456, 729, 388, 1040])
+    #host_segids = np.array([623, 441, 725, 390, 1051])
+    #sn_segids = np.array([626, 456, 729, 388, 1040])
 
     for i in range(len(sedlst)):
 
@@ -102,13 +102,10 @@ def main():
             continue
         else:
             print("Segmentation ID:", segid, "is a SN. Will begin fitting.")
-            #if segid in [388, 456]:
-            #    print("Skipping SN ID:", segid)
-            #    continue
 
             # Get corresponding host ID
             hostid = int(host_segids[np.where(sn_segids == segid)[0]])
-            print("I have the following host and SN IDs:", segid, hostid)
+            print("I have the following SN and HOST IDs:", segid, hostid)
 
             # Read in template
             template = np.genfromtxt(template_dir + template_name, dtype=None, names=True, encoding='ascii')
@@ -179,8 +176,10 @@ def main():
                 sn_flam_noisy = sn_flam_noisy[wav_idx]
                 sn_ferr = sn_ferr[wav_idx]
 
-            fit_dict_host = fm.do_fitting(host_wav, host_flam_noisy, host_ferr, object_type='galaxy')
-            fit_dict_sn = fm.do_fitting(sn_wav, sn_flam_noisy, sn_ferr, object_type='supernova')
+            fit_dict_sn = fm.do_fitting(sn_wav, sn_flam_noisy, sn_ferr, None, object_type='supernova')
+            # Now use SN z as a z_prior
+            zp = fit_dict_sn['redshift']
+            fit_dict_host = fm.do_fitting(host_wav, host_flam_noisy, host_ferr, zp, object_type='galaxy')
 
             # ---- Assign recovered params to variables
             # ---- HOST
@@ -315,23 +314,25 @@ def main():
             axs.legend(loc=3)
 
             # ------------ Save figure
-            fig.savefig(roman_slitless_dir + 'fitres_sn_' + img_suffix + '_' str(segid) + '.pdf', \
+            fig.savefig(roman_slitless_dir + 'fitres_sn_' + img_suffix + '_' + str(segid) + '.pdf', \
                 dpi=200, bbox_inches='tight')
 
             # ------------ Save fit results
-            fhost = ext_spectra_dir + 'fitting_results/fitres_host_' + str(hostid) + '.npy'
-            fsn = ext_spectra_dir + 'fitting_results/fitres_sn_' + str(segid) + '.npy'
+            fhost = ext_spectra_dir + 'fitting_results/fitres_' + img_suffix + '_host_' + str(hostid) + '.npy'
+            fsn = ext_spectra_dir + 'fitting_results/fitres_' + img_suffix + '_sn_' + str(segid) + '.npy'
             np.save(fhost, fit_dict_host)
             np.save(fsn, fit_dict_sn)
 
             # ------------ Save input dict
-            ext_spectra_dir + 'fitting_results/input_sn_' + str(segid) + '.npy'
+            finp = ext_spectra_dir + 'fitting_results/input_' + img_suffix + '_sn_' + str(segid) + '.npy'
             np.save(finp, input_dict)
 
             #plt.show()
             plt.clf()
             plt.cla()
             plt.close()
+
+            sys.exit(0)
 
     return None
 

@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.interpolate as interpolate
+from scipy.integrate import trapz
 
 import os
 import sys
@@ -15,7 +16,7 @@ roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 sys.path.append(stacking_util_codes)
 from proper_and_lum_dist import luminosity_distance
 
-def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
+def do_fitting(obs_wav, obs_flux, obs_flux_err, zp, object_type='galaxy'):
 
     # Load models
     if object_type == 'galaxy':
@@ -116,7 +117,12 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     """
 
     # ----------------- Redshift fitting ----------------- #
-    redshift_search_grid = np.linspace(0.001, 1.0, 20)
+    if object_type == 'supernova':
+        redshift_search_grid = np.linspace(0.001, 1.0, 100)
+    elif object_type == 'galaxy':
+        sn_hubble_vel = speed_of_light * zp
+        z1000kms = 
+        redshift_search_grid = np.linspace(zp - z1000kms, zp + z1000kms, 20)
     print("\nWill search within the following redshift grid:", redshift_search_grid)
 
     start = time.time()
@@ -200,7 +206,11 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
     print("Total time taken for fitting:", "{:.2f}".format(time.time() - start), "seconds.")
 
     # ----------------- p(z) ----------------- #
-    pz = get_pz(chi2_z, redshift_search_grid)
+    chi2_z_red = chi2_z / len(obs_wav)
+    pz = get_pz(chi2_z_red, redshift_search_grid)
+
+    # Normalize pz???
+    pz = pz / max(pz)
 
     # ----------------- set up fit dict ----------------- #
     fit_dict = {}
@@ -210,7 +220,6 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
 
     chi2_idx = np.argmin(chi2_z)
     bestfit_idx = int(fit_idx_z[chi2_idx])
-    print("Best fit index:", bestfit_idx)
     fit_flam = models_mod_z[chi2_idx]
 
     fit_dict['flam'] = fit_flam
@@ -233,6 +242,7 @@ def do_fitting(obs_wav, obs_flux, obs_flux_err, object_type='galaxy'):
         fit_av = tauv_arr[bestfit_idx] * 1.0857
         fit_dict['age'] = fit_age
         fit_dict['av'] = fit_av
+        print("Stellar pop params for best fit:")
 
     # Add DAY relative to peak if the object fitted was a SN
     if object_type == 'supernova':
@@ -248,12 +258,12 @@ def get_pz(chi2_map, z_arr_to_check):
     likelihood = np.exp(-1 * chi2_map / 2)
 
     # Normalize likelihood function
-    norm_likelihood = likelihood / np.sum(likelihood)
+    norm_likelihood = likelihood / np.nansum(likelihood)
 
     # Get p(z)
     pz = np.zeros(len(z_arr_to_check))
 
     for i in range(len(z_arr_to_check)):
-        pz[i] = np.sum(norm_likelihood[i])
+        pz[i] = np.nansum(norm_likelihood[i])
 
     return pz
