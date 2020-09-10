@@ -12,7 +12,7 @@ home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
-ext_root = "romansim"
+ext_root = "romansim2"
 
 import fitting_module as fm
 
@@ -40,7 +40,15 @@ def add_noise(sig_arr, noise_level):
 
         # Now vary flux using numpy random.normal
         # HAS TO BE POSITIVE!
-        spec_noise[k] = np.random.normal(mu, sigma, 1)
+        try:
+            spec_noise[k] = np.random.normal(mu, sigma, 1)
+        except ValueError:
+            print(mu, sigma)
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(np.arange(len(sig_arr)), sig_arr)
+            plt.show()
+            sys.exit(0)
 
         if spec_noise[k] < 0:
             max_iters = 10
@@ -62,21 +70,30 @@ def add_noise(sig_arr, noise_level):
 
 def main():
 
+    img_suffix = 'Y106_11_2'
+
     # Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
-    sedlst = np.genfromtxt(roman_slitless_dir + 'sed.lst', dtype=None, names=sedlst_header, encoding='ascii')
+    sedlst = np.genfromtxt(roman_slitless_dir + 'sed_' + img_suffix + '.lst', \
+        dtype=None, names=sedlst_header, encoding='ascii')
 
     # Read in the extracted spectra
     ext_spec_filename = ext_spectra_dir + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
+    print("Read in extracted spectra from:", ext_spec_filename)
 
     # Set pylinear f_lambda scaling factor
     pylinear_flam_scale_fac = 1e-17
 
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
-    host_segids = np.array([475, 755, 548, 207])
-    sn_segids = np.array([481, 753, 547, 241])
+    # For Y106_11_1
+    #host_segids = np.array([475, 755, 548, 207])
+    #sn_segids = np.array([481, 753, 547, 241])
+    
+    # For Y106_11_2
+    host_segids = np.array([623, 441, 725, 390, 1051])
+    sn_segids = np.array([626, 456, 729, 388, 1040])
 
     for i in range(len(sedlst)):
 
@@ -90,6 +107,9 @@ def main():
             continue
         else:
             print("Segmentation ID:", segid, "is a SN. Will begin fitting.")
+            if segid == 388:
+                print("Skipping SN ID:", segid)
+                continue
 
             # Get corresponding host ID
             hostid = int(host_segids[np.where(sn_segids == segid)[0]])

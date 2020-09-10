@@ -6,7 +6,7 @@ import time
 import datetime as dt
 
 start = time.time()
-print("Starting at:", dt.now())
+print("Starting at:", dt.datetime.now())
 
 home = os.getenv('HOME')
 
@@ -26,6 +26,7 @@ seddir = 'SEDs_' + img_suffix
 # Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
+"""
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
@@ -36,9 +37,10 @@ print("Simulating...")
 simulate = pylinear.modules.Simulate(sedlst, gzip=False)
 fltnames = simulate.run(grisms, sources, beam)
 print("Simulation done.")
+"""
 
 # Extraction
-fltlst = home + '/Documents/GitHub/roman-slitless/flt.lst'
+fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
 tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
