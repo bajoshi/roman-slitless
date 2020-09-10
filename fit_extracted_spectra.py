@@ -39,16 +39,11 @@ def add_noise(sig_arr, noise_level):
         sigma = sigma_arr[k]
 
         # Now vary flux using numpy random.normal
-        # HAS TO BE POSITIVE!
-        try:
+        # mu and the resulting new flux value HAVE TO BE POSITIVE!
+        if mu >= 0:
             spec_noise[k] = np.random.normal(mu, sigma, 1)
-        except ValueError:
-            print(mu, sigma)
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(np.arange(len(sig_arr)), sig_arr)
-            plt.show()
-            sys.exit(0)
+        elif mu < 0:
+            spec_noise[k] = np.nan
 
         if spec_noise[k] < 0:
             max_iters = 10
@@ -107,9 +102,9 @@ def main():
             continue
         else:
             print("Segmentation ID:", segid, "is a SN. Will begin fitting.")
-            if segid == 388:
-                print("Skipping SN ID:", segid)
-                continue
+            #if segid in [388, 456]:
+            #    print("Skipping SN ID:", segid)
+            #    continue
 
             # Get corresponding host ID
             hostid = int(host_segids[np.where(sn_segids == segid)[0]])
@@ -165,15 +160,26 @@ def main():
             sn_wav = ext_hdu[segid].data['wavelength']
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
-            # ---- Fit template to HOST
-            noise_level = 0.05  # relative to signal
-            # First assign a 33% (3-sigma) error to each point
+            # ---- Fit template to HOST and SN
+            noise_level = 0.01  # relative to signal
+            # First assign noise to each point
             host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
-            fit_dict_host = fm.do_fitting(host_wav, host_flam_noisy, host_ferr, object_type='galaxy')
-
-            # ---- Fit template to SN
-            # First assign a 33% (3-sigma) error to each point
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
+
+            if segid == 388:
+                wav_idx = np.where((sn_wav >= 13200.0) & (sn_wav <= 18900.0))[0]
+
+                host_wav = host_wav[wav_idx]
+                host_flam = host_flam[wav_idx]
+                host_flam_noisy = host_flam_noisy[wav_idx]
+                host_ferr = host_ferr[wav_idx]
+
+                sn_wav = sn_wav[wav_idx]
+                sn_flam = sn_flam[wav_idx]
+                sn_flam_noisy = sn_flam_noisy[wav_idx]
+                sn_ferr = sn_ferr[wav_idx]
+
+            fit_dict_host = fm.do_fitting(host_wav, host_flam_noisy, host_ferr, object_type='galaxy')
             fit_dict_sn = fm.do_fitting(sn_wav, sn_flam_noisy, sn_ferr, object_type='supernova')
 
             # ---- Assign recovered params to variables
@@ -308,19 +314,24 @@ def main():
             axh.legend(loc=3)
             axs.legend(loc=3)
 
-            plt.show()
-            plt.clf()
-            plt.cla()
-            plt.close()
-
             # ------------ Save figure
-            fig.savefig(roman_slitless_dir + 'fitres_sn' + str(segid) + '.pdf', dpi=200, bbox_inches='tight')
+            fig.savefig(roman_slitless_dir + 'fitres_sn_' + img_suffix + '_' str(segid) + '.pdf', \
+                dpi=200, bbox_inches='tight')
 
             # ------------ Save fit results
             fhost = ext_spectra_dir + 'fitting_results/fitres_host_' + str(hostid) + '.npy'
             fsn = ext_spectra_dir + 'fitting_results/fitres_sn_' + str(segid) + '.npy'
             np.save(fhost, fit_dict_host)
             np.save(fsn, fit_dict_sn)
+
+            # ------------ Save input dict
+            ext_spectra_dir + 'fitting_results/input_sn_' + str(segid) + '.npy'
+            np.save(finp, input_dict)
+
+            #plt.show()
+            plt.clf()
+            plt.cla()
+            plt.close()
 
     return None
 
