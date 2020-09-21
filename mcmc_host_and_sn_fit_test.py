@@ -17,10 +17,12 @@ import matplotlib.gridspec as gridspec
 
 home = os.getenv('HOME')
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
+pears_figs_dir = home + '/Documents/pears_figs_data/'
 
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
+roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
 sys.path.append(stacking_utils)
 import proper_and_lum_dist as cosmo
@@ -43,6 +45,9 @@ Array ranges are:
 """
 
 def main():
+
+    print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * * \n")
+    print("\n * * * *    [WARNING]: check vertical scaling.    * * * * \n")
 
     ext_root = "romansim1"
     img_suffix = 'Y106_11_1'
@@ -149,25 +154,31 @@ def main():
             jump_size_av = 0.2  # magnitudes
             jump_size_lsf = 5.0  # angstroms
 
+            jump_size_day = 1  # days
+
             # Labels for corner and trace plots
-            label_list = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
+            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
+            label_list_sn = [r'$z$', r'$Day$']
 
             # Setup dims and walkers
-            ndim, nwalkers = 5, 100  # setting up emcee params--number of params and number of walkers
+            ndim_host, nwalkers = 5, 100  # setting up emcee params--number of params and number of walkers
+            ndim_sn, nwalkers   = 2, 100  # setting up emcee params--number of params and number of walkers
 
             # generating "intial" ball of walkers about best fit from min chi2
-            pos_host = np.zeros(shape=(nwalkers, ndim))
+            pos_host = np.zeros(shape=(nwalkers, ndim_host))
+            pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
 
             # Define initial position
             # The parameter vector is (redshift, age, tau, av, lsf_sigma)
             # age in gyr and tau in gyr
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
-            r_host = np.array([0.1, 1.0, 1.0, 1.0, 10.0])
-            #r_sn = np.array([])
+            r_host = np.array([0.4, 1.0, 1.0, 1.0, 10.0])
+            r_sn = np.array([0.2, 1])  # redshift and day relative to peak
 
             for i in range(nwalkers):
 
+                # ---------- For HOST
                 rn0 = float(r_host[0] + jump_size_z * np.random.normal(size=1))
                 rn1 = float(r_host[1] + jump_size_age * np.random.normal(size=1))
                 rn2 = float(r_host[2] + jump_size_tau * np.random.normal(size=1))
@@ -178,14 +189,34 @@ def main():
 
                 pos_host[i] = rn
 
+                # ---------- For SN
+                rsn0 = float(r_sn[0] + jump_size_z * np.random.normal(size=1))
+                rsn1 = int(r_sn[1] + jump_size_day * np.random.normal(size=1))
+
+                rsn = np.array([rsn0, rsn1])
+
+                pos_sn[i] = rsn
+
+            #sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr])
+            #sampler_sn.run_mcmc(pos_sn, 100, progress=True)
+
             from multiprocessing import Pool
 
             with Pool() as pool:
-                
-                sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
-                sampler.run_mcmc(pos_host, 1000, progress=True)
 
-            chains = sampler.chain
+                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
+                sampler_sn.run_mcmc(pos_sn, 100, progress=True)
+
+            print("Done with SN fitting.")
+
+            with Pool() as pool:            
+                sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
+                sampler_host.run_mcmc(pos_host, 100, progress=True)
+
+            print("Done with host galaxy fitting.")
+
+            chains_host = sampler_host.chain
+            chains_sn = sampler_sn.chain
             print("Finished running emcee.")
 
             # plot trace
@@ -193,15 +224,42 @@ def main():
             ax1 = fig1.add_subplot(111)
 
             for i in range(nwalkers):
-                for j in range(ndim):
-                    ax1.plot(chains[i,:,j], label=label_list[j], alpha=0.2)
+                for j in range(ndim_host):
+                    ax1.plot(chains_host[i,:,j], label=label_list_host[j], alpha=0.2)
+
+            fig1.savefig(roman_slitless_dir + 'mcmc_trace_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(111)
+
+            for i in range(nwalkers):
+                for j in range(ndim_sn):
+                    ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
+
+            fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            plt.clf()
+            plt.cla()
+            plt.close()
 
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            burn_in = 100
-            samples = sampler.chain[:, burn_in:, :].reshape((-1, ndim))
+            burn_in = 10
+            samples_host = sampler_host.chain[:, burn_in:, :].reshape((-1, ndim_host))
+            samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
 
             # plot corner plot
-            corner.corner(samples, plot_contours='True', labels=label_list, label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14})
+            fig_host = corner.corner(samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
+                show_titles='True', title_kwargs={"fontsize": 12})
+            fig_host.savefig(roman_slitless_dir + 'mcmc_fitres_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
+                show_titles='True', title_kwargs={"fontsize": 12})
+            fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
             plt.show()
 
     return None
@@ -261,24 +319,50 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     return redshifted_wav, redshifted_flux
 
-def loglike(theta, x, data, err):
+def loglike_sn(theta, x, data, err):
+    
+    z, day = theta
+
+    y = model_sn(x, z, day)
+    #print("Model SN func result:", y)
+
+    # ------- Vertical scaling factor
+    alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
+    #print("Alpha SN:", "{:.2e}".format(alpha))
+
+    y = y * alpha
+
+    lnLike = -0.5 * np.nansum((y-data)**2/err**2)
+    
+    return lnLike
+
+def loglike_host(theta, x, data, err):
     
     z, age, tau, av, lsf_sigma = theta
 
-    y = model(x, z, age, tau, av, lsf_sigma)
+    y = model_host(x, z, age, tau, av, lsf_sigma)
     #print("Model func result:", y)
 
     # ------- Vertical scaling factor
-    alpha = np.sum(data * y / err**2) / np.sum(y**2 / err**2)
+    alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
     #print("Alpha:", "{:.2e}".format(alpha))
 
     y = y * alpha
 
-    lnLike = -0.5 * np.sum((y-data)**2/err**2)
+    lnLike = -0.5 * np.nansum((y-data)**2/err**2)
     
     return lnLike
 
-def logprior(theta):
+def logprior_sn(theta):
+
+    z, day = theta
+
+    if ( 0.01 <= z <= 6.0  and  -19 <= day <= 50):
+        return 0.0
+    
+    return -np.inf
+
+def logprior_host(theta):
 
     z, age, tau, av, lsf_sigma = theta
     
@@ -292,18 +376,72 @@ def logprior(theta):
     
     return -np.inf
 
-def logpost(theta, x, data, err):
+def logpost_host(theta, x, data, err):
 
-    lp = logprior(theta)
+    lp = logprior_host(theta)
     
     if not np.isfinite(lp):
         return -np.inf
     
-    lnL = loglike(theta, x, data, err)
+    lnL = loglike_host(theta, x, data, err)
+
+    #print("Likelihood:", lnL)
     
     return lp + lnL
 
-def model(x, z, age_gyr, tau_gyr, av, lsf_sigma):
+def logpost_sn(theta, x, data, err):
+
+    lp = logprior_sn(theta)
+    
+    if not np.isfinite(lp):
+        return -np.inf
+    
+    lnL = loglike_sn(theta, x, data, err)
+
+    #print("Likelihood:", lnL)
+    
+    return lp + lnL
+
+def model_sn(x, z, day):
+
+    day = int(day)
+
+    # Read in SALT2 SN IA file from Lou
+    salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
+        dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
+
+    # Set up days array
+    days_arr = np.arange(-19, 51, 1, dtype=np.int)
+
+    # pull out spectrum for the chosen day
+    day_idx = np.where(salt2_spec['day'] == day)[0]
+
+    sn_spec_flam = salt2_spec['flam'][day_idx]
+
+    # ------ Apply redshift
+    sn_lam_z, sn_flam_z = apply_redshift(salt2_spec['lam'][day_idx], sn_spec_flam, z)
+
+    # ------ Downgrade to grism resolution
+    sn_mod = np.zeros(len(x))
+
+    ### Zeroth element
+    lam_step = x[1] - x[0]
+    idx = np.where((sn_lam_z >= x[0] - lam_step) & (sn_lam_z < x[0] + lam_step))[0]
+    sn_mod[0] = np.mean(sn_flam_z[idx])
+
+    ### all elements in between
+    for j in range(1, len(x) - 1):
+        idx = np.where((sn_lam_z >= x[j-1]) & (sn_lam_z < x[j+1]))[0]
+        sn_mod[j] = np.mean(sn_flam_z[idx])
+    
+    ### Last element
+    lam_step = x[-1] - x[-2]
+    idx = np.where((sn_lam_z >= x[-1] - lam_step) & (sn_lam_z < x[-1] + lam_step))[0]
+    sn_mod[-1] = np.mean(sn_flam_z[idx])
+
+    return sn_mod
+
+def model_host(x, z, age_gyr, tau_gyr, av, lsf_sigma):
     """
     This function will return the closest BC03 template 
     from a large grid of pre-generated templates.
