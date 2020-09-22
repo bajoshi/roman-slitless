@@ -37,10 +37,6 @@ metal_arr = np.load(pears_figs_dir + 'metal_arr_chab.npy', mmap_mode='r')
 tau_gyr_arr = np.load(pears_figs_dir + 'tau_gyr_arr_chab.npy', mmap_mode='r')
 tauv_arr = np.load(pears_figs_dir + 'tauv_arr_chab.npy', mmap_mode='r')
 
-# Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
-    dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
-
 """
 Array ranges are:
 1. Age: 7.02 to 10.114 (this is log of the age in years)
@@ -49,289 +45,9 @@ Array ranges are:
 4. TauV: 0.0 to 2.8 (Visual dust extinction in magnitudes. SSP models get -99.0)
 """
 
-def main():
-
-    print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * * \n")
-    print("\n * * * *    [WARNING]: check vertical scaling.    * * * * \n")
-
-    ext_root = "romansim1"
-    img_suffix = 'Y106_11_1'
-
-    # Read in sed.lst
-    sedlst_header = ['segid', 'sed_path']
-    sedlst = np.genfromtxt(roman_slitless_dir + 'sed_' + img_suffix + '.lst', \
-        dtype=None, names=sedlst_header, encoding='ascii')
-
-    # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + ext_root + '_ext_x1d.fits'
-    ext_hdu = fits.open(ext_spec_filename)
-    print("Read in extracted spectra from:", ext_spec_filename)
-
-    # Set pylinear f_lambda scaling factor
-    pylinear_flam_scale_fac = 1e-17
-
-    # This will come from detection on the direct image
-    # For now this comes from the sedlst generation code
-    # For Y106_11_1
-    host_segids = np.array([475, 755, 548, 207])
-    sn_segids = np.array([481, 753, 547, 241])
-
-    for i in range(len(sedlst)):
-
-        # Get info
-        segid = sedlst['segid'][i]
-
-        # Read in the dummy template passed to pyLINEAR
-        template_name = os.path.basename(sedlst['sed_path'][i])
-
-        if 'salt' not in template_name:
-            continue
-        else:
-            print("Segmentation ID:", segid, "is a SN. Will begin fitting.")
-
-            # Get corresponding host ID
-            hostid = int(host_segids[np.where(sn_segids == segid)[0]])
-            print("I have the following SN and HOST IDs:", segid, hostid)
-
-            # Read in template
-            template = np.genfromtxt(template_dir + template_name, dtype=None, names=True, encoding='ascii')
-
-            # ---------------------------- Set up input params dict ---------------------------- #
-            input_dict = {}
-
-            print("INPUTS:")
-            # ---- SN
-            t = template_name.split('.txt')[0].split('_')
-
-            sn_z = float(t[-1].replace('p', '.').replace('z',''))
-            sn_day = int(t[-2].replace('day',''))
-            print("Supernova input z:", sn_z)
-            print("Supernova day:", sn_day, "\n")
-
-            # ---- HOST
-            h_idx = int(np.where(sedlst['segid'] == hostid)[0])
-            h_path = sedlst['sed_path'][h_idx]
-            th = os.path.basename(h_path)
-
-            th = th.split('.txt')[0].split('_')
-
-            host_z = float(th[-1].replace('p', '.').replace('z',''))
-            host_ms = float(th[-2].replace('p', '.').replace('ms',''))
-
-            host_age_u = th[-3]
-            if host_age_u == 'gyr':
-                host_age = float(th[2])
-            elif host_age_u == 'myr':
-                host_age = float(th[2])/1e3
-
-            print("Host input z:", host_z)
-            print("Host input stellar mass [log(Ms/Msol)]:", host_ms)
-            print("Host input age [Gyr]:", host_age)
-
-            input_dict['host_z'] = host_z
-            input_dict['host_ms'] = host_ms
-            input_dict['host_age'] = host_age
-
-            input_dict['sn_z'] = sn_z
-            input_dict['sn_day'] = sn_day
-
-            # ---------------------------- FITTING ---------------------------- #
-            # ---------- Get spectrum for host and sn
-            host_wav = ext_hdu[hostid].data['wavelength']
-            host_flam = ext_hdu[hostid].data['flam'] * pylinear_flam_scale_fac
-        
-            sn_wav = ext_hdu[segid].data['wavelength']
-            sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
-
-            # ---- Fit template to HOST and SN
-            noise_level = 0.01  # relative to signal
-            # First assign noise to each point
-            host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
-            sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
-
-            # ----------------------- Using MCMC to fit ----------------------- #
-            print("\nRunning emcee...")
-
-            # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-            jump_size_z = 0.01  
-            jump_size_age = 0.1  # in gyr
-            jump_size_tau = 0.1  # in gyr
-            jump_size_av = 0.2  # magnitudes
-            jump_size_lsf = 5.0  # angstroms
-
-            jump_size_day = 1  # days
-
-            # Labels for corner and trace plots
-            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
-            label_list_sn = [r'$z$', r'$Day$']
-
-            # Define initial position
-            # The parameter vector is (redshift, age, tau, av, lsf_sigma)
-            # age in gyr and tau in gyr
-            # dust parameter is av not tauv
-            # lsf_sigma in angstroms
-            rhost_init = np.array([0.4, 1.0, 1.0, 1.0, 10.0])
-            rsn_init = np.array([0.01, 1])  # redshift and day relative to peak
-
-            """
-            # Setup dims and walkers
-            ndim_host, nwalkers = 5, 100  # setting up emcee params--number of params and number of walkers
-            ndim_sn, nwalkers   = 2, 100  # setting up emcee params--number of params and number of walkers
-
-            # generating "intial" ball of walkers about best fit from min chi2
-            pos_host = np.zeros(shape=(nwalkers, ndim_host))
-            pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
-
-            for i in range(nwalkers):
-
-                # ---------- For HOST
-                rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
-                rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
-                rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
-                rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
-                rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
-
-                rh = np.array([rh0, rh1, rh2, rh3, rh4])
-
-                pos_host[i] = rh
-
-                # ---------- For SN
-                rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
-                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
-
-                rsn = np.array([rsn0, rsn1])
-
-                pos_sn[i] = rsn
-            """
-
-            logp = logpost_sn(rsn_init, sn_wav, sn_flam_noisy, sn_ferr)
-            print("Initial parameter vector probability:", logp)
-
-            # Explicit Metropolis-Hastings
-            samples = []
-            accept = 0
-
-            nsamp = 1000
-            for i in range(nsamp):
-
-                #t0 = time.time()
-                print("Evaluating MH iteration:", i, end='\r')
-
-                rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
-                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
-
-                rsn = np.array([rsn0, rsn1])
-
-                #print("Proposed parameter vector:", rsn)
-
-                logpn = logpost_sn(rsn, sn_wav, sn_flam_noisy, sn_ferr)
-                #print("Proposed parameter vector probability:", logpn)
-                dlogL = logpn - logp
-
-                a = np.exp(dlogL)
-
-                if a >= 1:
-                    #print("Probability increased. Will keep point.")
-                    logp = logpn
-                    rsn_init = rsn
-                    accept += 1
-
-                else:
-                    #print("Probability increased. Need to decide whether to keep point.")
-                    u = np.random.rand()
-                    if u < a:
-                        logp = logpn
-                        rsn_init = rsn
-                        accept += 1
-                        #print("Point kept.")
-
-                #te = time.time()
-                #print("Time for this iteration:", "{:.3f}".format(te - t0), "seconds.")
-
-                samples.append(rsn_init)
-
-            samples = np.array(samples)
-
-            print(samples)
-            print(samples[:, 0])
-            print(samples.shape)
-            print("Acceptance rate:", accept/nsamp)
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(samples[:, 0], label='z')
-            ax.plot(samples[:, 1], label='Day')
-            ax.legend(loc=0)
-
-            corner.corner(samples)
-            plt.show()
-
-            sys.exit(0)
-
-            #sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr])
-            #sampler_sn.run_mcmc(pos_sn, 100, progress=True)
-
-            with Pool() as pool:
-
-                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
-                sampler_sn.run_mcmc(pos_sn, 100, progress=True)
-
-            print("Done with SN fitting.")
-
-            #with Pool() as pool:            
-            #    sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
-            #    sampler_host.run_mcmc(pos_host, 100, progress=True)
-
-            print("Done with host galaxy fitting.")
-
-            chains_host = sampler_host.chain
-            chains_sn = sampler_sn.chain
-            print("Finished running emcee.")
-
-            # plot trace
-            fig1 = plt.figure()
-            ax1 = fig1.add_subplot(111)
-
-            for i in range(nwalkers):
-                for j in range(ndim_host):
-                    ax1.plot(chains_host[i,:,j], label=label_list_host[j], alpha=0.2)
-
-            fig1.savefig(roman_slitless_dir + 'mcmc_trace_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            fig2 = plt.figure()
-            ax2 = fig2.add_subplot(111)
-
-            for i in range(nwalkers):
-                for j in range(ndim_sn):
-                    ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
-
-            fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            plt.clf()
-            plt.cla()
-            plt.close()
-
-            # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            burn_in = 10
-            samples_host = sampler_host.chain[:, burn_in:, :].reshape((-1, ndim_host))
-            samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
-
-            # plot corner plot
-            fig_host = corner.corner(samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
-                show_titles='True', title_kwargs={"fontsize": 12})
-            fig_host.savefig(roman_slitless_dir + 'mcmc_fitres_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
-                show_titles='True', title_kwargs={"fontsize": 12})
-            fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            plt.show()
-
-    return None
+# Read in SALT2 SN IA file from Lou
+salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
+    dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 
 def get_template(age, tau, tauv, metallicity, \
@@ -600,6 +316,332 @@ def add_noise(sig_arr, noise_level):
 
     return spec_noise, err_arr
 
+def main():
+
+    print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * * \n")
+    print("\n * * * *    [WARNING]: check vertical scaling.    * * * * \n")
+
+    ext_root = "romansim1"
+    img_suffix = 'Y106_11_1'
+
+    # Read in sed.lst
+    sedlst_header = ['segid', 'sed_path']
+    sedlst = np.genfromtxt(roman_slitless_dir + 'sed_' + img_suffix + '.lst', \
+        dtype=None, names=sedlst_header, encoding='ascii')
+
+    # Read in the extracted spectra
+    ext_spec_filename = ext_spectra_dir + ext_root + '_ext_x1d.fits'
+    ext_hdu = fits.open(ext_spec_filename)
+    print("Read in extracted spectra from:", ext_spec_filename)
+
+    # Set pylinear f_lambda scaling factor
+    pylinear_flam_scale_fac = 1e-17
+
+    # This will come from detection on the direct image
+    # For now this comes from the sedlst generation code
+    # For Y106_11_1
+    host_segids = np.array([475, 755, 548, 207])
+    sn_segids = np.array([481, 753, 547, 241])
+
+    for i in range(len(sedlst)):
+
+        # Get info
+        segid = sedlst['segid'][i]
+
+        # Read in the dummy template passed to pyLINEAR
+        template_name = os.path.basename(sedlst['sed_path'][i])
+
+        if 'salt' not in template_name:
+            continue
+        else:
+            print("Segmentation ID:", segid, "is a SN. Will begin fitting.")
+
+            # Get corresponding host ID
+            hostid = int(host_segids[np.where(sn_segids == segid)[0]])
+            print("I have the following SN and HOST IDs:", segid, hostid)
+
+            # Read in template
+            template = np.genfromtxt(template_dir + template_name, dtype=None, names=True, encoding='ascii')
+
+            # ---------------------------- Set up input params dict ---------------------------- #
+            input_dict = {}
+
+            print("INPUTS:")
+            # ---- SN
+            t = template_name.split('.txt')[0].split('_')
+
+            sn_z = float(t[-1].replace('p', '.').replace('z',''))
+            sn_day = int(t[-2].replace('day',''))
+            print("Supernova input z:", sn_z)
+            print("Supernova day:", sn_day, "\n")
+
+            # ---- HOST
+            h_idx = int(np.where(sedlst['segid'] == hostid)[0])
+            h_path = sedlst['sed_path'][h_idx]
+            th = os.path.basename(h_path)
+
+            th = th.split('.txt')[0].split('_')
+
+            host_z = float(th[-1].replace('p', '.').replace('z',''))
+            host_ms = float(th[-2].replace('p', '.').replace('ms',''))
+
+            host_age_u = th[-3]
+            if host_age_u == 'gyr':
+                host_age = float(th[2])
+            elif host_age_u == 'myr':
+                host_age = float(th[2])/1e3
+
+            print("Host input z:", host_z)
+            print("Host input stellar mass [log(Ms/Msol)]:", host_ms)
+            print("Host input age [Gyr]:", host_age)
+
+            input_dict['host_z'] = host_z
+            input_dict['host_ms'] = host_ms
+            input_dict['host_age'] = host_age
+
+            input_dict['sn_z'] = sn_z
+            input_dict['sn_day'] = sn_day
+
+            # ---------------------------- FITTING ---------------------------- #
+            # ---------- Get spectrum for host and sn
+            host_wav = ext_hdu[hostid].data['wavelength']
+            host_flam = ext_hdu[hostid].data['flam'] * pylinear_flam_scale_fac
+        
+            sn_wav = ext_hdu[segid].data['wavelength']
+            sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
+
+            # ---- Fit template to HOST and SN
+            noise_level = 0.01  # relative to signal
+            # First assign noise to each point
+            host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
+            sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
+
+            # Test figure
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(sn_wav, sn_flam_noisy, color='k')
+            ax.plot()
+
+            # ----------------------- Using MCMC to fit ----------------------- #
+            print("\nRunning emcee...")
+
+            # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
+            jump_size_z = 0.01  
+            jump_size_age = 0.1  # in gyr
+            jump_size_tau = 0.1  # in gyr
+            jump_size_av = 0.2  # magnitudes
+            jump_size_lsf = 5.0  # angstroms
+
+            jump_size_day = 1  # days
+
+            # Labels for corner and trace plots
+            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
+            label_list_sn = [r'$z$', r'$Day$']
+
+            # Define initial position
+            # The parameter vector is (redshift, age, tau, av, lsf_sigma)
+            # age in gyr and tau in gyr
+            # dust parameter is av not tauv
+            # lsf_sigma in angstroms
+            rhost_init = np.array([0.4, 1.0, 1.0, 1.0, 10.0])
+            rsn_init = np.array([0.01, 1])  # redshift and day relative to peak
+
+            # Setup dims and walkers
+            ndim_host, nwalkers = 5, 100  # setting up emcee params--number of params and number of walkers
+            ndim_sn, nwalkers   = 2, 100  # setting up emcee params--number of params and number of walkers
+
+            # generating ball of walkers about initial position defined above
+            pos_host = np.zeros(shape=(nwalkers, ndim_host))
+            pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
+
+            for i in range(nwalkers):
+
+                # ---------- For HOST
+                rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
+                rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
+                rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
+                rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+                rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
+
+                rh = np.array([rh0, rh1, rh2, rh3, rh4])
+
+                pos_host[i] = rh
+
+                # ---------- For SN
+                rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
+                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
+
+                rsn = np.array([rsn0, rsn1])
+
+                pos_sn[i] = rsn
+
+
+            with Pool() as pool:
+
+                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
+                sampler_sn.run_mcmc(pos_sn, 1000, progress=True)
+
+            print("Done with SN fitting.")
+
+
+            chains_sn = sampler_sn.chain
+
+
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(111)
+
+            for i in range(nwalkers):
+                for j in range(ndim_sn):
+                    ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
+
+
+            # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
+            burn_in = 400
+            samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
+
+            # plot corner plot
+            fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
+                show_titles='True', title_kwargs={"fontsize": 12})
+            
+
+            plt.show()
+
+
+
+            sys.exit(0)
+
+
+            # Explicit Metropolis-Hastings
+            logp = logpost_sn(rsn_init, sn_wav, sn_flam_noisy, sn_ferr)
+            print("Initial parameter vector probability:", logp)
+
+            samples = []
+            accept = 0
+
+            nsamp = 1000
+            for i in range(nsamp):
+
+                #t0 = time.time()
+                print("Evaluating MH iteration:", i, end='\r')
+
+                rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
+                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
+
+                rsn = np.array([rsn0, rsn1])
+
+                #print("Proposed parameter vector:", rsn)
+
+                logpn = logpost_sn(rsn, sn_wav, sn_flam_noisy, sn_ferr)
+                #print("Proposed parameter vector probability:", logpn)
+                dlogL = logpn - logp
+
+                a = np.exp(dlogL)
+
+                if a >= 1:
+                    #print("Probability increased. Will keep point.")
+                    logp = logpn
+                    rsn_init = rsn
+                    accept += 1
+
+                else:
+                    #print("Probability increased. Need to decide whether to keep point.")
+                    u = np.random.rand()
+                    if u < a:
+                        logp = logpn
+                        rsn_init = rsn
+                        accept += 1
+                        #print("Point kept.")
+
+                #te = time.time()
+                #print("Time for this iteration:", "{:.3f}".format(te - t0), "seconds.")
+
+                samples.append(rsn_init)
+
+            samples = np.array(samples)
+
+            print(samples)
+            print(samples[:, 0])
+            print(samples.shape)
+            print("Acceptance rate:", accept/nsamp)
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(samples[:, 0], label='z')
+            ax.plot(samples[:, 1], label='Day')
+            ax.legend(loc=0)
+
+            corner.corner(samples)
+            plt.show()
+
+            sys.exit(0)
+
+
+
+
+
+            with Pool() as pool:
+
+                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
+                sampler_sn.run_mcmc(pos_sn, 100, progress=True)
+
+            print("Done with SN fitting.")
+
+            #with Pool() as pool:            
+            #    sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
+            #    sampler_host.run_mcmc(pos_host, 100, progress=True)
+
+            print("Done with host galaxy fitting.")
+
+            chains_host = sampler_host.chain
+            chains_sn = sampler_sn.chain
+            print("Finished running emcee.")
+
+            # plot trace
+            fig1 = plt.figure()
+            ax1 = fig1.add_subplot(111)
+
+            for i in range(nwalkers):
+                for j in range(ndim_host):
+                    ax1.plot(chains_host[i,:,j], label=label_list_host[j], alpha=0.2)
+
+            fig1.savefig(roman_slitless_dir + 'mcmc_trace_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(111)
+
+            for i in range(nwalkers):
+                for j in range(ndim_sn):
+                    ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
+
+            fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            plt.clf()
+            plt.cla()
+            plt.close()
+
+            # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
+            burn_in = 10
+            samples_host = sampler_host.chain[:, burn_in:, :].reshape((-1, ndim_host))
+            samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
+
+            # plot corner plot
+            fig_host = corner.corner(samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
+                show_titles='True', title_kwargs={"fontsize": 12})
+            fig_host.savefig(roman_slitless_dir + 'mcmc_fitres_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
+                show_titles='True', title_kwargs={"fontsize": 12})
+            fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            plt.show()
+
+    return None
+
 if __name__ == '__main__':
     main()
     sys.exit(0)
+
