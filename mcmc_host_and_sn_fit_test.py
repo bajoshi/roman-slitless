@@ -4,6 +4,7 @@ import emcee
 import corner
 import scipy
 from astropy.cosmology import Planck15
+from multiprocessing import Pool
 
 import os
 import sys
@@ -35,6 +36,10 @@ log_age_arr = np.load(pears_figs_dir + 'log_age_arr_chab.npy', mmap_mode='r')
 metal_arr = np.load(pears_figs_dir + 'metal_arr_chab.npy', mmap_mode='r')
 tau_gyr_arr = np.load(pears_figs_dir + 'tau_gyr_arr_chab.npy', mmap_mode='r')
 tauv_arr = np.load(pears_figs_dir + 'tauv_arr_chab.npy', mmap_mode='r')
+
+# Read in SALT2 SN IA file from Lou
+salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
+    dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 """
 Array ranges are:
@@ -144,7 +149,7 @@ def main():
             host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
 
-            # ----------------------- Using emcee ----------------------- #
+            # ----------------------- Using MCMC to fit ----------------------- #
             print("\nRunning emcee...")
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
@@ -160,6 +165,15 @@ def main():
             label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
             label_list_sn = [r'$z$', r'$Day$']
 
+            # Define initial position
+            # The parameter vector is (redshift, age, tau, av, lsf_sigma)
+            # age in gyr and tau in gyr
+            # dust parameter is av not tauv
+            # lsf_sigma in angstroms
+            rhost_init = np.array([0.4, 1.0, 1.0, 1.0, 10.0])
+            rsn_init = np.array([0.01, 1])  # redshift and day relative to peak
+
+            """
             # Setup dims and walkers
             ndim_host, nwalkers = 5, 100  # setting up emcee params--number of params and number of walkers
             ndim_sn, nwalkers   = 2, 100  # setting up emcee params--number of params and number of walkers
@@ -168,39 +182,94 @@ def main():
             pos_host = np.zeros(shape=(nwalkers, ndim_host))
             pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
 
-            # Define initial position
-            # The parameter vector is (redshift, age, tau, av, lsf_sigma)
-            # age in gyr and tau in gyr
-            # dust parameter is av not tauv
-            # lsf_sigma in angstroms
-            r_host = np.array([0.4, 1.0, 1.0, 1.0, 10.0])
-            r_sn = np.array([0.2, 1])  # redshift and day relative to peak
-
             for i in range(nwalkers):
 
                 # ---------- For HOST
-                rn0 = float(r_host[0] + jump_size_z * np.random.normal(size=1))
-                rn1 = float(r_host[1] + jump_size_age * np.random.normal(size=1))
-                rn2 = float(r_host[2] + jump_size_tau * np.random.normal(size=1))
-                rn3 = float(r_host[3] + jump_size_av * np.random.normal(size=1))
-                rn4 = float(r_host[4] + jump_size_lsf * np.random.normal(size=1))
+                rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
+                rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
+                rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
+                rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+                rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
 
-                rn = np.array([rn0, rn1, rn2, rn3, rn4])
+                rh = np.array([rh0, rh1, rh2, rh3, rh4])
 
-                pos_host[i] = rn
+                pos_host[i] = rh
 
                 # ---------- For SN
-                rsn0 = float(r_sn[0] + jump_size_z * np.random.normal(size=1))
-                rsn1 = int(r_sn[1] + jump_size_day * np.random.normal(size=1))
+                rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
+                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
 
                 rsn = np.array([rsn0, rsn1])
 
                 pos_sn[i] = rsn
+            """
+
+            logp = logpost_sn(rsn_init, sn_wav, sn_flam_noisy, sn_ferr)
+            print("Initial parameter vector probability:", logp)
+
+            # Explicit Metropolis-Hastings
+            samples = []
+            accept = 0
+
+            nsamp = 1000
+            for i in range(nsamp):
+
+                #t0 = time.time()
+                print("Evaluating MH iteration:", i, end='\r')
+
+                rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
+                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
+
+                rsn = np.array([rsn0, rsn1])
+
+                #print("Proposed parameter vector:", rsn)
+
+                logpn = logpost_sn(rsn, sn_wav, sn_flam_noisy, sn_ferr)
+                #print("Proposed parameter vector probability:", logpn)
+                dlogL = logpn - logp
+
+                a = np.exp(dlogL)
+
+                if a >= 1:
+                    #print("Probability increased. Will keep point.")
+                    logp = logpn
+                    rsn_init = rsn
+                    accept += 1
+
+                else:
+                    #print("Probability increased. Need to decide whether to keep point.")
+                    u = np.random.rand()
+                    if u < a:
+                        logp = logpn
+                        rsn_init = rsn
+                        accept += 1
+                        #print("Point kept.")
+
+                #te = time.time()
+                #print("Time for this iteration:", "{:.3f}".format(te - t0), "seconds.")
+
+                samples.append(rsn_init)
+
+            samples = np.array(samples)
+
+            print(samples)
+            print(samples[:, 0])
+            print(samples.shape)
+            print("Acceptance rate:", accept/nsamp)
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(samples[:, 0], label='z')
+            ax.plot(samples[:, 1], label='Day')
+            ax.legend(loc=0)
+
+            corner.corner(samples)
+            plt.show()
+
+            sys.exit(0)
 
             #sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr])
             #sampler_sn.run_mcmc(pos_sn, 100, progress=True)
-
-            from multiprocessing import Pool
 
             with Pool() as pool:
 
@@ -209,9 +278,9 @@ def main():
 
             print("Done with SN fitting.")
 
-            with Pool() as pool:            
-                sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
-                sampler_host.run_mcmc(pos_host, 100, progress=True)
+            #with Pool() as pool:            
+            #    sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
+            #    sampler_host.run_mcmc(pos_host, 100, progress=True)
 
             print("Done with host galaxy fitting.")
 
@@ -403,12 +472,6 @@ def logpost_sn(theta, x, data, err):
     return lp + lnL
 
 def model_sn(x, z, day):
-
-    day = int(day)
-
-    # Read in SALT2 SN IA file from Lou
-    salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
-        dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
     # Set up days array
     days_arr = np.arange(-19, 51, 1, dtype=np.int)
