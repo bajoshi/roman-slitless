@@ -189,9 +189,6 @@ def logpost_sn(theta, x, data, err):
 
 def model_sn(x, z, day):
 
-    # Set up days array
-    days_arr = np.arange(-19, 51, 1, dtype=np.int)
-
     # pull out spectrum for the chosen day
     day_idx = np.where(salt2_spec['day'] == day)[0]
 
@@ -417,10 +414,24 @@ def main():
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
 
             # Test figure
+            # pull out spectrum for the chosen day
+            day_idx = np.where(salt2_spec['day'] == sn_day)[0]
+            sn_flam_true = salt2_spec['flam'][day_idx]
+            sn_wav_true = salt2_spec['lam'][day_idx]
+
+            sn_wav_true_z, sn_flam_true_z = apply_redshift(sn_wav_true, sn_flam_true, sn_z)
+
+            print(np.mean(sn_flam_true_z))
+            print(np.mean(sn_flam_noisy))
+
             fig = plt.figure()
             ax = fig.add_subplot(111)
             ax.plot(sn_wav, sn_flam_noisy, color='k')
-            ax.plot()
+            ax.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
+
+            plt.show()
+
+            sys.exit(0)
 
             # ----------------------- Using MCMC to fit ----------------------- #
             print("\nRunning emcee...")
@@ -433,6 +444,7 @@ def main():
             jump_size_lsf = 5.0  # angstroms
 
             jump_size_day = 1  # days
+            jump_size_alpha = 1.0  
 
             # Labels for corner and trace plots
             label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
