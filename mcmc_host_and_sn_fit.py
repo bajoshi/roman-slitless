@@ -414,12 +414,16 @@ def main():
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
 
             # Test figure
+            """
             # pull out spectrum for the chosen day
             day_idx = np.where(salt2_spec['day'] == sn_day)[0]
             sn_flam_true = salt2_spec['flam'][day_idx]
             sn_wav_true = salt2_spec['lam'][day_idx]
 
             sn_wav_true_z, sn_flam_true_z = apply_redshift(sn_wav_true, sn_flam_true, sn_z)
+
+            scalefac = 2e42
+            sn_flam_true_z *= scalefac
 
             print(np.mean(sn_flam_true_z))
             print(np.mean(sn_flam_noisy))
@@ -429,9 +433,12 @@ def main():
             ax.plot(sn_wav, sn_flam_noisy, color='k')
             ax.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
 
+            ax.set_xlim(9000, 20000)
+
             plt.show()
 
             sys.exit(0)
+            """
 
             # ----------------------- Using MCMC to fit ----------------------- #
             print("\nRunning emcee...")
@@ -444,11 +451,10 @@ def main():
             jump_size_lsf = 5.0  # angstroms
 
             jump_size_day = 1  # days
-            jump_size_alpha = 1.0  
 
             # Labels for corner and trace plots
             label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
-            label_list_sn = [r'$z$', r'$Day$']
+            label_list_sn = [r'$z$', r'$Day$', r'$\alpha$']
 
             # Define initial position
             # The parameter vector is (redshift, age, tau, av, lsf_sigma)
@@ -459,6 +465,7 @@ def main():
             rsn_init = np.array([0.01, 1])  # redshift and day relative to peak
 
             # Setup dims and walkers
+            """
             ndim_host, nwalkers = 5, 100  # setting up emcee params--number of params and number of walkers
             ndim_sn, nwalkers   = 2, 100  # setting up emcee params--number of params and number of walkers
 
@@ -486,68 +493,36 @@ def main():
                 rsn = np.array([rsn0, rsn1])
 
                 pos_sn[i] = rsn
+            """
 
-
-            with Pool() as pool:
-
-                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
-                sampler_sn.run_mcmc(pos_sn, 1000, progress=True)
-
-            print("Done with SN fitting.")
-
-
-            chains_sn = sampler_sn.chain
-
-
-            fig2 = plt.figure()
-            ax2 = fig2.add_subplot(111)
-
-            for i in range(nwalkers):
-                for j in range(ndim_sn):
-                    ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
-
-
-            # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            burn_in = 400
-            samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
-
-            # plot corner plot
-            fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
-                show_titles='True', title_kwargs={"fontsize": 12})
-            
-
-            plt.show()
-
-
-
-            sys.exit(0)
-
-
-            # Explicit Metropolis-Hastings
+            """
+            # Explicit Metropolis-Hastings for SN
             logp = logpost_sn(rsn_init, sn_wav, sn_flam_noisy, sn_ferr)
             print("Initial parameter vector probability:", logp)
 
             samples = []
             accept = 0
 
-            nsamp = 1000
+            nsamp = 100
             for i in range(nsamp):
 
                 #t0 = time.time()
-                print("Evaluating MH iteration:", i, end='\r')
+                #print("Evaluating MH iteration:", i, end='\r')
 
                 rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
                 rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
 
                 rsn = np.array([rsn0, rsn1])
 
-                #print("Proposed parameter vector:", rsn)
+                print("\nProposed parameter vector:", rsn)
 
                 logpn = logpost_sn(rsn, sn_wav, sn_flam_noisy, sn_ferr)
-                #print("Proposed parameter vector probability:", logpn)
+                print("Proposed parameter vector probability:", logpn)
                 dlogL = logpn - logp
 
                 a = np.exp(dlogL)
+
+                print("Ratio of proposed to current vector probability:", a)
 
                 if a >= 1:
                     #print("Probability increased. Will keep point.")
@@ -571,15 +546,85 @@ def main():
 
             samples = np.array(samples)
 
-            print(samples)
-            print(samples[:, 0])
-            print(samples.shape)
             print("Acceptance rate:", accept/nsamp)
 
             fig = plt.figure()
             ax = fig.add_subplot(111)
             ax.plot(samples[:, 0], label='z')
             ax.plot(samples[:, 1], label='Day')
+            ax.legend(loc=0)
+
+            corner.corner(samples)
+            plt.show()
+
+            sys.exit(0)
+            """
+
+
+            
+            # Explicit Metropolis-Hastings for SN
+            logp = logpost_host(rhost_init, host_wav, host_flam_noisy, host_ferr)
+            print("Initial parameter vector probability:", logp)
+
+            samples = []
+            accept = 0
+
+            nsamp = 100
+            for i in range(nsamp):
+
+                #t0 = time.time()
+                #print("Evaluating MH iteration:", i, end='\r')
+
+                rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
+                rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
+                rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
+                rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+                rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
+
+                rh = np.array([rh0, rh1, rh2, rh3, rh4])
+
+                print("\nProposed parameter vector:", rh)
+
+                logpn = logpost_host(rh, host_wav, host_flam_noisy, host_ferr)
+                print("Proposed parameter vector probability:", logpn)
+                dlogL = logpn - logp
+
+                a = np.exp(dlogL)
+
+                print("Ratio of proposed to current vector probability:", a)
+
+                if a >= 1:
+                    #print("Probability increased. Will keep point.")
+                    logp = logpn
+                    rhost_init = rh
+                    accept += 1
+
+                else:
+                    #print("Probability increased. Need to decide whether to keep point.")
+                    u = np.random.rand()
+                    if u < a:
+                        logp = logpn
+                        rhost_init = rh
+                        accept += 1
+                        #print("Point kept.")
+
+                #te = time.time()
+                #print("Time for this iteration:", "{:.3f}".format(te - t0), "seconds.")
+
+                samples.append(rhost_init)
+
+            samples = np.array(samples)
+
+            print("Acceptance rate:", accept/nsamp)
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(samples[:, 0], label='z')
+            ax.plot(samples[:, 1], label='Age')
+            ax.plot(samples[:, 2], label='tau')
+            ax.plot(samples[:, 3], label='Av')
+            ax.plot(samples[:, 4], label='lsf')
+
             ax.legend(loc=0)
 
             corner.corner(samples)
@@ -598,9 +643,9 @@ def main():
 
             print("Done with SN fitting.")
 
-            #with Pool() as pool:            
-            #    sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
-            #    sampler_host.run_mcmc(pos_host, 100, progress=True)
+            with Pool() as pool:            
+                sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
+                sampler_host.run_mcmc(pos_host, 100, progress=True)
 
             print("Done with host galaxy fitting.")
 
@@ -634,7 +679,7 @@ def main():
             plt.close()
 
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            burn_in = 10
+            burn_in = 50
             samples_host = sampler_host.chain[:, burn_in:, :].reshape((-1, ndim_host))
             samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
 
