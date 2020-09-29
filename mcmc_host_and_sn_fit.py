@@ -136,7 +136,8 @@ def loglike_host(theta, x, data, err):
 
     y = y * alpha
 
-    lnLike = -0.5 * np.nansum( ((y - data)**2 / err**2)  +  np.log(2 * np.pi * err**2)  )
+    #lnLike = -0.5 * np.nansum( (y - data)**2 / err**2  +  np.log(2 * np.pi * err**2)  )
+    lnLike = -0.5 * np.nansum( (y - data)**2 / err**2 )
     #print(np.nansum((y-data)**2 / err**2))
     return lnLike
 
@@ -164,6 +165,19 @@ def logprior_host(theta):
     
     return -np.inf
 
+def logpost_sn(theta, x, data, err):
+
+    lp = logprior_sn(theta)
+    
+    if not np.isfinite(lp):
+        return -np.inf
+    
+    lnL = loglike_sn(theta, x, data, err)
+
+    #print("Likelihood:", lnL)
+    
+    return lp + lnL
+
 def logpost_host(theta, x, data, err):
 
     lp = logprior_host(theta)
@@ -175,19 +189,6 @@ def logpost_host(theta, x, data, err):
     lnL = loglike_host(theta, x, data, err)
 
     #print("Likelihood HOST:", lnL)
-    
-    return lp + lnL
-
-def logpost_sn(theta, x, data, err):
-
-    lp = logprior_sn(theta)
-    
-    if not np.isfinite(lp):
-        return -np.inf
-    
-    lnL = loglike_sn(theta, x, data, err)
-
-    #print("Likelihood:", lnL)
     
     return lp + lnL
 
@@ -573,7 +574,6 @@ def main():
             plt.show()
 
             sys.exit(0)
-            """
             
             # Explicit Metropolis-Hastings for HOST
             print("Starting at HOST initial position:", rhost_init)
@@ -645,64 +645,120 @@ def main():
             plt.show()
 
             sys.exit(0)
+            """
 
             #with Pool() as pool:
 
             #    sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
-            #    sampler_sn.run_mcmc(pos_sn, 100, progress=True)
+            #    sampler_sn.run_mcmc(pos_sn, 5000, progress=True)
 
             #print("Done with SN fitting.")
 
             with Pool() as pool:            
                 sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
-                sampler_host.run_mcmc(pos_host, 1000, progress=True)
+                sampler_host.run_mcmc(pos_host, 2000, progress=True)
 
             print("Done with host galaxy fitting.")
-
-            chains_host = sampler_host.chain
-            #chains_sn = sampler_sn.chain
             print("Finished running emcee.")
 
-            # plot trace
-            fig1 = plt.figure()
-            ax1 = fig1.add_subplot(111)
+            samples_host = sampler_host.get_chain()
+            print("Samples HOST shape:", samples_host.shape)
+            #samples_sn = sampler_sn.get_chain()
+            #print("Samples SN shape:", samples_sn.shape)
 
-            for i in range(nwalkers):
-                for j in range(ndim_host):
-                    ax1.plot(chains_host[i,:,j], label=label_list_host[j], alpha=0.2)
+            # plot trace HOST
+            fig1, axes1 = plt.subplots(ndim_host, figsize=(10, 6), sharex=True)
+
+            for i in range(ndim_host):
+                ax1 = axes1[i]
+                ax1.plot(samples_host[:, :, i], "k", alpha=0.1)
+                ax1.set_xlim(0, len(samples_host))
+                ax1.set_ylabel(label_list_host[i])
+                ax1.yaxis.set_label_coords(-0.1, 0.5)
+
+            axes1[-1].set_xlabel("Step number")
 
             fig1.savefig(roman_slitless_dir + 'mcmc_trace_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
 
-            #fig2 = plt.figure()
-            #ax2 = fig2.add_subplot(111)
+            # plot trace SN
+            """
+            fig2, axes2 = plt.subplots(ndim_sn, figsize=(10, 6), sharex=True)
 
-            #for i in range(nwalkers):
-            #    for j in range(ndim_sn):
-            #        ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
+            for i in range(ndim_sn):
+                ax2 = axes2[i]
+                ax2.plot(samples_sn[:, :, i], "k", alpha=0.1)
+                ax2.set_xlim(0, len(samples_sn))
+                ax2.set_ylabel(label_list_sn[i])
+                ax2.yaxis.set_label_coords(-0.1, 0.5)
 
-            #fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-            #    dpi=200, bbox_inches='tight')
+            axes2[-1].set_xlabel("Step number")
 
+            fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+            """
+
+            plt.show()
             plt.clf()
             plt.cla()
             plt.close()
 
+            # Get autocorrelation time
+            try:
+                tau_host = sampler_host.get_autocorr_time()
+            except AutocorrError as errmsg:
+                print(errmsg)
+                print("\n")
+                print("Emcee AutocorrError occured.")
+                print("The chain is shorter than 50 times the integrated autocorrelation time for 5 parameter(s).")
+                print("Use this estimate with caution and run a longer chain!")
+            print("Autocorrelation time (i.e., steps that walkers take in each dimension before they forget where they started):", tau)
+
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            burn_in = 400
-            samples_host = sampler_host.chain[:, burn_in:, :].reshape((-1, ndim_host))
-            #samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
+            burn_in_host = int(3 * tau_host[0])
+            print("Burn-in HOST:", burn_in_host)
+
+            thinning_steps_host = int(0.5 * tau_host[0])
+            print("Thinning steps HOST:", thinning_steps_host)
+
+            flat_samples_host = sampler_host.get_chain(discard=burn_in_host, thin=thinning_steps_host, flat=True)
+            print("Flat samples HOST shape:", flat_samples_host.shape)
+
+            """
+            burn_in_sn = int(3 * tau_sn[0])
+            print("Burn-in HOST:", burn_in_sn)
+
+            thinning_steps_sn = int(0.5 * tau_sn[0])
+            print("Thinning steps HOST:", thinning_steps_sn)
+
+            flat_samples_sn = sampler_sn.get_chain(discard=burn_in_sn, thin=thinning_steps_sn, flat=True)
+            print("Flat samples HOST shape:", flat_samples_sn.shape)
+            """
 
             # plot corner plot
-            fig_host = corner.corner(samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
+            fig_host = corner.corner(flat_samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
                 show_titles='True', title_kwargs={"fontsize": 12})
             fig_host.savefig(roman_slitless_dir + 'mcmc_fitres_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
 
-            #fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
+            #fig_sn = corner.corner(flat_samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
             #    show_titles='True', title_kwargs={"fontsize": 12})
             #fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
             #    dpi=200, bbox_inches='tight')
+
+            # Plot 100 random models from the parameter space
+            inds_host = np.random.randint(len(flat_samples_host), size=100)
+
+            fig3 = plt.figure()
+            ax3 = fig3.add_subplot(111)
+
+            ax3.plot(host_wav, host_flam_noisy, color='k')
+            ax3.fill_between(host_wav, host_flam_noisy - host_ferr, host_flam_noisy + host_ferr, color='gray', alpha=0.5, zorder=3)
+
+            for ind in inds_host:
+                sample = flat_samples_host[ind]
+                m = model_host(wav, sample[0], sample[1], sample[2], sample[3]) 
+                ax3.plot(wav, m, color='tab:red', alpha=0.2, zorder=2)
 
             plt.show()
 
