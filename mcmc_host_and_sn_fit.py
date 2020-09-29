@@ -123,19 +123,21 @@ def loglike_sn(theta, x, data, err):
 
 def loglike_host(theta, x, data, err):
     
-    z, age, tau, av, lsf_sigma = theta
+    z, age, tau, av = theta
 
-    y = model_host(x, z, age, tau, av, lsf_sigma)
+    y = model_host(x, z, age, tau, av)
     #print("Model func result:", y)
 
     # ------- Vertical scaling factor
+    #print(np.nansum(data * y / err**2))
+    #print(np.nansum(y**2 / err**2))
     alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
-    #print("Alpha:", "{:.2e}".format(alpha))
+    #print("Alpha HOST:", "{:.2e}".format(alpha))
 
     y = y * alpha
 
-    lnLike = -0.5 * np.nansum((y-data)**2/err**2)
-    
+    lnLike = -0.5 * np.nansum( ((y - data)**2 / err**2)  +  np.log(2 * np.pi * err**2)  )
+    #print(np.nansum((y-data)**2 / err**2))
     return lnLike
 
 def logprior_sn(theta):
@@ -149,14 +151,15 @@ def logprior_sn(theta):
 
 def logprior_host(theta):
 
-    z, age, tau, av, lsf_sigma = theta
+    z, age, tau, av = theta
     
     # Make sure model is not older than the Universe
     # Allowing at least 100 Myr for the first galaxies to form after Big Bang
     age_at_z = Planck15.age(z).value  # in Gyr
     age_lim = age_at_z - 0.1  # in Gyr
 
-    if ( 0.01 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0  and  10.0 <= lsf_sigma <= 300.0  ):
+    #if ( 0.01 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0  and  0.0 <= lsf_sigma <= 300.0  ):
+    if ( 0.01 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0 ):
         return 0.0
     
     return -np.inf
@@ -164,13 +167,14 @@ def logprior_host(theta):
 def logpost_host(theta, x, data, err):
 
     lp = logprior_host(theta)
+    #print("Prior HOST:", lp)
     
     if not np.isfinite(lp):
         return -np.inf
     
     lnL = loglike_host(theta, x, data, err)
 
-    #print("Likelihood:", lnL)
+    #print("Likelihood HOST:", lnL)
     
     return lp + lnL
 
@@ -217,7 +221,7 @@ def model_sn(x, z, day):
 
     return sn_mod
 
-def model_host(x, z, age_gyr, tau_gyr, av, lsf_sigma):
+def model_host(x, z, age_gyr, tau_gyr, av):
     """
     This function will return the closest BC03 template 
     from a large grid of pre-generated templates.
@@ -244,7 +248,7 @@ def model_host(x, z, age_gyr, tau_gyr, av, lsf_sigma):
     model_lam_z, model_flam_z = apply_redshift(model_lam_grid, model_llam, z)
 
     # ------ Apply LSF
-    model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
+    #model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
 
     # ------ Downgrade to grism resolution
     model_mod = np.zeros(len(x))
@@ -252,17 +256,17 @@ def model_host(x, z, age_gyr, tau_gyr, av, lsf_sigma):
     ### Zeroth element
     lam_step = x[1] - x[0]
     idx = np.where((model_lam_z >= x[0] - lam_step) & (model_lam_z < x[0] + lam_step))[0]
-    model_mod[0] = np.mean(model_lsfconv[idx])
+    model_mod[0] = np.mean(model_flam_z[idx])
 
     ### all elements in between
     for j in range(1, len(x) - 1):
         idx = np.where((model_lam_z >= x[j-1]) & (model_lam_z < x[j+1]))[0]
-        model_mod[j] = np.mean(model_lsfconv[idx])
+        model_mod[j] = np.mean(model_flam_z[idx])
     
     ### Last element
     lam_step = x[-1] - x[-2]
     idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
-    model_mod[-1] = np.mean(model_lsfconv[idx])
+    model_mod[-1] = np.mean(model_flam_z[idx])
 
     return model_mod
 
@@ -408,10 +412,25 @@ def main():
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Fit template to HOST and SN
-            noise_level = 0.01  # relative to signal
+            noise_level = 0.02  # relative to signal
             # First assign noise to each point
             host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
+
+            """
+            fig = plt.figure()
+            ax = fig.add_subplot()
+            ax.plot(host_wav, host_flam_noisy, color='tab:brown', lw=1.5)
+            ax.fill_between(host_wav, host_flam_noisy - host_ferr, host_flam_noisy + host_ferr, \
+                color='grey', alpha=0.5)
+
+            model_flam_toplot = model_host(host_wav, 0.527, 4.0, 0.5, 0.0)
+            alpha = 6e13
+            ax.plot(host_wav, model_flam_toplot * alpha, color='tab:red')
+
+            plt.show()
+            sys.exit(0)
+            """
 
             # Test figure
             """
@@ -444,11 +463,10 @@ def main():
             print("\nRunning emcee...")
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-            jump_size_z = 0.01  
-            jump_size_age = 0.1  # in gyr
-            jump_size_tau = 0.1  # in gyr
-            jump_size_av = 0.2  # magnitudes
-            jump_size_lsf = 5.0  # angstroms
+            jump_size_z = 0.05  
+            jump_size_age = 0.5  # in gyr
+            jump_size_tau = 0.2  # in gyr
+            jump_size_av = 0.5  # magnitudes
 
             jump_size_day = 1  # days
 
@@ -461,12 +479,11 @@ def main():
             # age in gyr and tau in gyr
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
-            rhost_init = np.array([0.4, 1.0, 1.0, 1.0, 10.0])
+            rhost_init = np.array([0.02, 0.4, 2.0, 0.0])
             rsn_init = np.array([0.01, 1])  # redshift and day relative to peak
 
             # Setup dims and walkers
-            """
-            ndim_host, nwalkers = 5, 100  # setting up emcee params--number of params and number of walkers
+            ndim_host, nwalkers = 4, 100  # setting up emcee params--number of params and number of walkers
             ndim_sn, nwalkers   = 2, 100  # setting up emcee params--number of params and number of walkers
 
             # generating ball of walkers about initial position defined above
@@ -480,9 +497,8 @@ def main():
                 rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
                 rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
                 rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
-                rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
 
-                rh = np.array([rh0, rh1, rh2, rh3, rh4])
+                rh = np.array([rh0, rh1, rh2, rh3])
 
                 pos_host[i] = rh
 
@@ -493,7 +509,6 @@ def main():
                 rsn = np.array([rsn0, rsn1])
 
                 pos_sn[i] = rsn
-            """
 
             """
             # Explicit Metropolis-Hastings for SN
@@ -559,34 +574,33 @@ def main():
 
             sys.exit(0)
             """
-
-
             
-            # Explicit Metropolis-Hastings for SN
+            # Explicit Metropolis-Hastings for HOST
+            print("Starting at HOST initial position:", rhost_init)
             logp = logpost_host(rhost_init, host_wav, host_flam_noisy, host_ferr)
-            print("Initial parameter vector probability:", logp)
+            print("Initial parameter vector log(likelihood):", logp)
 
             samples = []
             accept = 0
 
-            nsamp = 100
+            nsamp = 10000
             for i in range(nsamp):
 
                 #t0 = time.time()
-                #print("Evaluating MH iteration:", i, end='\r')
+                print("Evaluating MH iteration:", i, end='\r')
 
                 rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
                 rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
                 rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
                 rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
-                rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
+                #rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
 
-                rh = np.array([rh0, rh1, rh2, rh3, rh4])
+                rh = np.array([rh0, rh1, rh2, rh3])
 
                 print("\nProposed parameter vector:", rh)
 
                 logpn = logpost_host(rh, host_wav, host_flam_noisy, host_ferr)
-                print("Proposed parameter vector probability:", logpn)
+                print("Proposed parameter vector log(likelihood):", logpn)
                 dlogL = logpn - logp
 
                 a = np.exp(dlogL)
@@ -594,7 +608,7 @@ def main():
                 print("Ratio of proposed to current vector probability:", a)
 
                 if a >= 1:
-                    #print("Probability increased. Will keep point.")
+                    print("Probability increased. Will keep point.")
                     logp = logpn
                     rhost_init = rh
                     accept += 1
@@ -623,7 +637,7 @@ def main():
             ax.plot(samples[:, 1], label='Age')
             ax.plot(samples[:, 2], label='tau')
             ax.plot(samples[:, 3], label='Av')
-            ax.plot(samples[:, 4], label='lsf')
+            #ax.plot(samples[:, 4], label='lsf')
 
             ax.legend(loc=0)
 
@@ -632,25 +646,21 @@ def main():
 
             sys.exit(0)
 
+            #with Pool() as pool:
 
+            #    sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
+            #    sampler_sn.run_mcmc(pos_sn, 100, progress=True)
 
-
-
-            with Pool() as pool:
-
-                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
-                sampler_sn.run_mcmc(pos_sn, 100, progress=True)
-
-            print("Done with SN fitting.")
+            #print("Done with SN fitting.")
 
             with Pool() as pool:            
                 sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
-                sampler_host.run_mcmc(pos_host, 100, progress=True)
+                sampler_host.run_mcmc(pos_host, 1000, progress=True)
 
             print("Done with host galaxy fitting.")
 
             chains_host = sampler_host.chain
-            chains_sn = sampler_sn.chain
+            #chains_sn = sampler_sn.chain
             print("Finished running emcee.")
 
             # plot trace
@@ -664,24 +674,24 @@ def main():
             fig1.savefig(roman_slitless_dir + 'mcmc_trace_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
 
-            fig2 = plt.figure()
-            ax2 = fig2.add_subplot(111)
+            #fig2 = plt.figure()
+            #ax2 = fig2.add_subplot(111)
 
-            for i in range(nwalkers):
-                for j in range(ndim_sn):
-                    ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
+            #for i in range(nwalkers):
+            #    for j in range(ndim_sn):
+            #        ax2.plot(chains_sn[i,:,j], label=label_list_sn[j], alpha=0.2)
 
-            fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
+            #fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+            #    dpi=200, bbox_inches='tight')
 
             plt.clf()
             plt.cla()
             plt.close()
 
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            burn_in = 50
+            burn_in = 400
             samples_host = sampler_host.chain[:, burn_in:, :].reshape((-1, ndim_host))
-            samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
+            #samples_sn = sampler_sn.chain[:, burn_in:, :].reshape((-1, ndim_sn))
 
             # plot corner plot
             fig_host = corner.corner(samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
@@ -689,12 +699,14 @@ def main():
             fig_host.savefig(roman_slitless_dir + 'mcmc_fitres_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
 
-            fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
-                show_titles='True', title_kwargs={"fontsize": 12})
-            fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
+            #fig_sn = corner.corner(samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
+            #    show_titles='True', title_kwargs={"fontsize": 12})
+            #fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+            #    dpi=200, bbox_inches='tight')
 
             plt.show()
+
+            sys.exit(0)
 
     return None
 
