@@ -706,13 +706,27 @@ def main():
             # Get autocorrelation time
             try:
                 tau_host = sampler_host.get_autocorr_time()
-            except AutocorrError as errmsg:
+            except emcee.autocorr.AutocorrError as errmsg:
                 print(errmsg)
                 print("\n")
                 print("Emcee AutocorrError occured.")
                 print("The chain is shorter than 50 times the integrated autocorrelation time for 5 parameter(s).")
                 print("Use this estimate with caution and run a longer chain!")
-            print("Autocorrelation time (i.e., steps that walkers take in each dimension before they forget where they started):", tau)
+                print("\n")
+
+                tau_list_str = str(errmsg).split('tau:')[-1]
+                tau_list = tau_list_str.split(' ')
+
+                tau_host = []
+                for j in range(ndim_host):
+                    if tau_list[j+1][0] == '[':
+                        tau_host.append(float(tau_list[j+1].lstrip('[')))
+                    elif tau_list[j+1][-1] == ']':
+                        tau_host.append(float(tau_list[j+1].rstrip(']')))
+                    else:
+                        tau_host.append(float(tau_list[j+1]))
+
+            print("Autocorrelation time HOST (i.e., steps that walkers take in each dimension before they forget where they started):", tau_host)
 
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
             burn_in_host = int(3 * tau_host[0])
@@ -757,8 +771,8 @@ def main():
 
             for ind in inds_host:
                 sample = flat_samples_host[ind]
-                m = model_host(wav, sample[0], sample[1], sample[2], sample[3]) 
-                ax3.plot(wav, m, color='tab:red', alpha=0.2, zorder=2)
+                m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3]) 
+                ax3.plot(host_wav, m, color='tab:red', alpha=0.2, zorder=2)
 
             plt.show()
 
