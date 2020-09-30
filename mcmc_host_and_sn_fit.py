@@ -346,6 +346,8 @@ def get_autocorr_time(sampler):
             elif len(curr_elem) > 1:
                 tau.append(float(tau_list[j]))
 
+    print("Tau:", tau)
+
     return tau
 
 def main():
@@ -449,7 +451,6 @@ def main():
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
 
             # Test figure
-            """
             fig = plt.figure()
             ax = fig.add_subplot()
             ax.plot(host_wav, host_flam_noisy, color='tab:brown', lw=1.0)
@@ -467,7 +468,6 @@ def main():
 
             plt.show()
             sys.exit(0)
-            """
 
             
             """
@@ -606,10 +606,13 @@ def main():
             #tau_sn = get_autocorr_time(sampler_sn)
 
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            burn_in_host = int(3 * tau_host[0])
+            if not np.isnan(tau_host[0]):
+                burn_in_host = int(3 * tau_host[0])
+                thinning_steps_host = int(0.5 * tau_host[0])
+            else:
+                burn_in_host = 400
+                thinning_steps_host = 67
             print("Burn-in HOST:", burn_in_host)
-
-            thinning_steps_host = int(0.5 * tau_host[0])
             print("Thinning steps HOST:", thinning_steps_host)
 
             flat_samples_host = sampler_host.get_chain(discard=burn_in_host, thin=thinning_steps_host, flat=True)
