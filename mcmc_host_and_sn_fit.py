@@ -3,6 +3,7 @@ from astropy.io import fits
 import emcee
 import corner
 import scipy
+from scipy.interpolate import griddata
 from astropy.cosmology import Planck15
 from multiprocessing import Pool
 
@@ -118,6 +119,7 @@ def loglike_sn(theta, x, data, err):
     y = y * alpha
 
     lnLike = -0.5 * np.nansum((y-data)**2/err**2)
+    #print("ln(likelihood) SN", lnLike)
     
     return lnLike
 
@@ -145,7 +147,7 @@ def logprior_sn(theta):
 
     z, day = theta
 
-    if ( 0.01 <= z <= 6.0  and  -19 <= day <= 50):
+    if ( 0.01 <= z <= 6.0  and  -19 <= day <= 50 ):
         return 0.0
     
     return -np.inf
@@ -318,6 +320,34 @@ def add_noise(sig_arr, noise_level):
 
     return spec_noise, err_arr
 
+def get_autocorr_time(sampler):
+
+    try:
+        tau = sampler.get_autocorr_time()
+    except emcee.autocorr.AutocorrError as errmsg:
+        print(errmsg)
+        print("\n")
+        print("Emcee AutocorrError occured.")
+        print("The chain is shorter than 50 times the integrated autocorrelation time for 5 parameter(s).")
+        print("Use this estimate with caution and run a longer chain!")
+        print("\n")
+
+        tau_list_str = str(errmsg).split('tau:')[-1]
+        tau_list = tau_list_str.split()
+        print("Tau list:", tau_list)
+
+        tau = []
+        for j in range(len(tau_list)):
+            curr_elem = tau_list[j]
+            if ('[' in curr_elem) and (len(curr_elem) > 1):
+                tau.append(float(curr_elem.lstrip('[')))
+            elif (']' in curr_elem) and (len(curr_elem) > 1):
+                tau.append(float(curr_elem.rstrip(']')))
+            elif len(curr_elem) > 1:
+                tau.append(float(tau_list[j]))
+
+    return tau
+
 def main():
 
     print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * * \n")
@@ -342,10 +372,10 @@ def main():
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
     # For Y106_11_1
-    host_segids = np.array([475, 755, 548, 207])
-    sn_segids = np.array([481, 753, 547, 241])
+    host_segids = np.array([755])  # ([475, 755, 548, 207])
+    sn_segids = np.array([753])  # ([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(700, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -418,22 +448,28 @@ def main():
             host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
 
+            # Test figure
             """
             fig = plt.figure()
             ax = fig.add_subplot()
-            ax.plot(host_wav, host_flam_noisy, color='tab:brown', lw=1.5)
+            ax.plot(host_wav, host_flam_noisy, color='tab:brown', lw=1.0)
             ax.fill_between(host_wav, host_flam_noisy - host_ferr, host_flam_noisy + host_ferr, \
                 color='grey', alpha=0.5)
 
-            model_flam_toplot = model_host(host_wav, 0.527, 4.0, 0.5, 0.0)
-            alpha = 6e13
-            ax.plot(host_wav, model_flam_toplot * alpha, color='tab:red')
+            # overplot rebinned spectrum
+            rebin_grid = np.arange(9500, 20000, 30)
+            host_flam_binned = scipy.interpolate.griddata(points=host_wav, values=host_flam_noisy, xi=rebin_grid)
+            ax.plot(rebin_grid, host_flam_binned, color='tab:blue', lw=1.5)
+
+            m = model_host(host_wav, host_z, host_age, 1.0, 0.0)
+            a = np.nansum(host_flam_noisy * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
+            #ax.plot(host_wav, m * a, color='tab:red')
 
             plt.show()
             sys.exit(0)
             """
 
-            # Test figure
+            
             """
             # pull out spectrum for the chosen day
             day_idx = np.where(salt2_spec['day'] == sn_day)[0]
@@ -445,12 +481,14 @@ def main():
             scalefac = 2e42
             sn_flam_true_z *= scalefac
 
-            print(np.mean(sn_flam_true_z))
-            print(np.mean(sn_flam_noisy))
-
             fig = plt.figure()
             ax = fig.add_subplot(111)
             ax.plot(sn_wav, sn_flam_noisy, color='k')
+            ax.fill_between(sn_wav, sn_flam_noisy - sn_ferr, sn_flam_noisy + sn_ferr, \
+                color='grey', alpha=0.5)
+
+            ax.plot(sn_wav_true_z, sn_flam_true_z, color='tab:blue')
+            sn_flam_true_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_true_z, sigma=15.0)
             ax.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
 
             ax.set_xlim(9000, 20000)
@@ -464,16 +502,17 @@ def main():
             print("\nRunning emcee...")
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-            jump_size_z = 0.05  
-            jump_size_age = 0.5  # in gyr
-            jump_size_tau = 0.2  # in gyr
+            jump_size_z = 0.02  
+            jump_size_age = 0.1  # in gyr
+            jump_size_tau = 0.1  # in gyr
             jump_size_av = 0.5  # magnitudes
 
-            jump_size_day = 1  # days
+            jump_size_day = 2  # days
+            jump_size_lsf = 1.0  # angstroms
 
             # Labels for corner and trace plots
-            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', r'$LSF [\AA]$']
-            label_list_sn = [r'$z$', r'$Day$', r'$\alpha$']
+            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']
+            label_list_sn = [r'$z$', r'$Day$']
 
             # Define initial position
             # The parameter vector is (redshift, age, tau, av, lsf_sigma)
@@ -511,144 +550,8 @@ def main():
 
                 pos_sn[i] = rsn
 
-            """
-            # Explicit Metropolis-Hastings for SN
-            logp = logpost_sn(rsn_init, sn_wav, sn_flam_noisy, sn_ferr)
-            print("Initial parameter vector probability:", logp)
-
-            samples = []
-            accept = 0
-
-            nsamp = 100
-            for i in range(nsamp):
-
-                #t0 = time.time()
-                #print("Evaluating MH iteration:", i, end='\r')
-
-                rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
-                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
-
-                rsn = np.array([rsn0, rsn1])
-
-                print("\nProposed parameter vector:", rsn)
-
-                logpn = logpost_sn(rsn, sn_wav, sn_flam_noisy, sn_ferr)
-                print("Proposed parameter vector probability:", logpn)
-                dlogL = logpn - logp
-
-                a = np.exp(dlogL)
-
-                print("Ratio of proposed to current vector probability:", a)
-
-                if a >= 1:
-                    #print("Probability increased. Will keep point.")
-                    logp = logpn
-                    rsn_init = rsn
-                    accept += 1
-
-                else:
-                    #print("Probability increased. Need to decide whether to keep point.")
-                    u = np.random.rand()
-                    if u < a:
-                        logp = logpn
-                        rsn_init = rsn
-                        accept += 1
-                        #print("Point kept.")
-
-                #te = time.time()
-                #print("Time for this iteration:", "{:.3f}".format(te - t0), "seconds.")
-
-                samples.append(rsn_init)
-
-            samples = np.array(samples)
-
-            print("Acceptance rate:", accept/nsamp)
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(samples[:, 0], label='z')
-            ax.plot(samples[:, 1], label='Day')
-            ax.legend(loc=0)
-
-            corner.corner(samples)
-            plt.show()
-
-            sys.exit(0)
-            
-            # Explicit Metropolis-Hastings for HOST
-            print("Starting at HOST initial position:", rhost_init)
-            logp = logpost_host(rhost_init, host_wav, host_flam_noisy, host_ferr)
-            print("Initial parameter vector log(likelihood):", logp)
-
-            samples = []
-            accept = 0
-
-            nsamp = 10000
-            for i in range(nsamp):
-
-                #t0 = time.time()
-                print("Evaluating MH iteration:", i, end='\r')
-
-                rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
-                rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
-                rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
-                rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
-                #rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
-
-                rh = np.array([rh0, rh1, rh2, rh3])
-
-                print("\nProposed parameter vector:", rh)
-
-                logpn = logpost_host(rh, host_wav, host_flam_noisy, host_ferr)
-                print("Proposed parameter vector log(likelihood):", logpn)
-                dlogL = logpn - logp
-
-                a = np.exp(dlogL)
-
-                print("Ratio of proposed to current vector probability:", a)
-
-                if a >= 1:
-                    print("Probability increased. Will keep point.")
-                    logp = logpn
-                    rhost_init = rh
-                    accept += 1
-
-                else:
-                    #print("Probability increased. Need to decide whether to keep point.")
-                    u = np.random.rand()
-                    if u < a:
-                        logp = logpn
-                        rhost_init = rh
-                        accept += 1
-                        #print("Point kept.")
-
-                #te = time.time()
-                #print("Time for this iteration:", "{:.3f}".format(te - t0), "seconds.")
-
-                samples.append(rhost_init)
-
-            samples = np.array(samples)
-
-            print("Acceptance rate:", accept/nsamp)
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(samples[:, 0], label='z')
-            ax.plot(samples[:, 1], label='Age')
-            ax.plot(samples[:, 2], label='tau')
-            ax.plot(samples[:, 3], label='Av')
-            #ax.plot(samples[:, 4], label='lsf')
-
-            ax.legend(loc=0)
-
-            corner.corner(samples)
-            plt.show()
-
-            sys.exit(0)
-            """
-
+            # ----------- Emcee 
             #with Pool() as pool:
-
             #    sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
             #    sampler_sn.run_mcmc(pos_sn, 5000, progress=True)
 
@@ -656,7 +559,7 @@ def main():
 
             with Pool() as pool:            
                 sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
-                sampler_host.run_mcmc(pos_host, 2000, progress=True)
+                sampler_host.run_mcmc(pos_host, 5000, progress=True)
 
             print("Done with host galaxy fitting.")
             print("Finished running emcee.")
@@ -698,35 +601,9 @@ def main():
                 dpi=200, bbox_inches='tight')
             """
 
-            plt.show()
-            plt.clf()
-            plt.cla()
-            plt.close()
-
             # Get autocorrelation time
-            try:
-                tau_host = sampler_host.get_autocorr_time()
-            except emcee.autocorr.AutocorrError as errmsg:
-                print(errmsg)
-                print("\n")
-                print("Emcee AutocorrError occured.")
-                print("The chain is shorter than 50 times the integrated autocorrelation time for 5 parameter(s).")
-                print("Use this estimate with caution and run a longer chain!")
-                print("\n")
-
-                tau_list_str = str(errmsg).split('tau:')[-1]
-                tau_list = tau_list_str.split(' ')
-
-                tau_host = []
-                for j in range(ndim_host):
-                    if tau_list[j+1][0] == '[':
-                        tau_host.append(float(tau_list[j+1].lstrip('[')))
-                    elif tau_list[j+1][-1] == ']':
-                        tau_host.append(float(tau_list[j+1].rstrip(']')))
-                    else:
-                        tau_host.append(float(tau_list[j+1]))
-
-            print("Autocorrelation time HOST (i.e., steps that walkers take in each dimension before they forget where they started):", tau_host)
+            tau_host = get_autocorr_time(sampler_host)
+            #tau_sn = get_autocorr_time(sampler_sn)
 
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
             burn_in_host = int(3 * tau_host[0])
@@ -740,13 +617,13 @@ def main():
 
             """
             burn_in_sn = int(3 * tau_sn[0])
-            print("Burn-in HOST:", burn_in_sn)
+            print("Burn-in SN:", burn_in_sn)
 
             thinning_steps_sn = int(0.5 * tau_sn[0])
-            print("Thinning steps HOST:", thinning_steps_sn)
+            print("Thinning steps SN:", thinning_steps_sn)
 
             flat_samples_sn = sampler_sn.get_chain(discard=burn_in_sn, thin=thinning_steps_sn, flat=True)
-            print("Flat samples HOST shape:", flat_samples_sn.shape)
+            print("Flat samples SN shape:", flat_samples_sn.shape)
             """
 
             # plot corner plot
@@ -760,7 +637,7 @@ def main():
             #fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
             #    dpi=200, bbox_inches='tight')
 
-            # Plot 100 random models from the parameter space
+            # ------------ Plot 100 random models from the parameter space
             inds_host = np.random.randint(len(flat_samples_host), size=100)
 
             fig3 = plt.figure()
@@ -771,10 +648,32 @@ def main():
 
             for ind in inds_host:
                 sample = flat_samples_host[ind]
-                m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3]) 
-                ax3.plot(host_wav, m, color='tab:red', alpha=0.2, zorder=2)
+                m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3])
+                a = np.nansum(host_flam_noisy * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
+                ax3.plot(host_wav, a * m, color='tab:red', alpha=0.2, zorder=2)
 
-            plt.show()
+            fig3.savefig(roman_slitless_dir + 'mcmc_fitres_host_overplot_' + str(hostid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+
+            # ----------- Plot 100 random models from the parameter space
+            """
+            inds_sn = np.random.randint(len(flat_samples_sn), size=100)
+
+            fig4 = plt.figure()
+            ax4 = fig4.add_subplot(111)
+
+            ax4.plot(sn_wav, sn_flam_noisy, color='k')
+            ax4.fill_between(sn_wav, sn_flam_noisy - sn_ferr, sn_flam_noisy + sn_ferr, color='gray', alpha=0.5, zorder=3)
+
+            for ind in inds_sn:
+                sample = flat_samples_sn[ind]
+                m = model_sn(sn_wav, sample[0], sample[1])
+                a = np.nansum(sn_flam_noisy * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
+                ax4.plot(sn_wav, a * m, color='tab:red', alpha=0.2, zorder=2)
+
+            fig4.savefig(roman_slitless_dir + 'mcmc_fitres_sn_overplot_' + str(segid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
+            """
 
             sys.exit(0)
 
