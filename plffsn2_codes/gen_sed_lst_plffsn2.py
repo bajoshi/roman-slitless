@@ -40,6 +40,10 @@ def get_sn_spec_path(redshift):
     sn_spec_lam = salt2_spec['lam'][day_idx]
     sn_spec_flam = salt2_spec['flam'][day_idx]
 
+    # Apply sn scaling factor
+    sn_scalefac = 2.0842526537870818e+48
+    sn_spec_flam *= sn_scalefac
+
     # Apply redshift
     redshifted_wav, redshifted_flux = apply_redshift(sn_spec_lam, sn_spec_flam, redshift)
 
@@ -83,9 +87,13 @@ def get_gal_spec_path(redshift):
     bc03_spec_chosen = np.random.choice(all_bc03_spec)
 
     # Choose one of the BC03 spectra and multiply flux by stellar mass
+    # Also apply solar luminosity factor since BC03 spectra are in units of L_sol / A
+    solar_lum = 3.839e33  # erg/s
     bc03_template = np.genfromtxt(roman_sims_seds + bc03_spec_chosen, dtype=None, names=True, encoding='ascii')
     bc03_lam = bc03_template['wav']
-    bc03_llam = bc03_template['llam'] * 10**log_stellar_mass_chosen
+    bc03_llam = bc03_template['llam'] * solar_lum * 10**log_stellar_mass_chosen
+    # the BC03 luminosity should now be in correct physical units
+    # i.e., erg/s/A
 
     # Apply redshift
     redshifted_wav, redshifted_flux = apply_redshift(bc03_lam, bc03_llam, redshift)
