@@ -118,7 +118,7 @@ def loglike_sn(theta, x, data, err):
 
     y = y * alpha
 
-    lnLike = -0.5 * np.nansum((y-data)**2/err**2)
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
     #print("ln(likelihood) SN", lnLike)
     
     return lnLike
@@ -131,16 +131,12 @@ def loglike_host(theta, x, data, err):
     #print("Model func result:", y)
 
     # ------- Vertical scaling factor
-    #print(np.nansum(data * y / err**2))
-    #print(np.nansum(y**2 / err**2))
     alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
     #print("Alpha HOST:", "{:.2e}".format(alpha))
 
     y = y * alpha
 
-    #lnLike = -0.5 * np.nansum( (y - data)**2 / err**2  +  np.log(2 * np.pi * err**2)  )
-    lnLike = -0.5 * np.nansum( (y - data)**2 / err**2 )
-    #print(np.nansum((y-data)**2 / err**2))
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
     return lnLike
 
 def logprior_sn(theta):
@@ -316,7 +312,7 @@ def add_noise(sig_arr, noise_level):
                 spec_noise[k] = sig_arr[k]
 
         # err_arr[k] = np.sqrt(spec_noise[k])
-        err_arr[k] = noise_level * spec_noise[k]
+        err_arr[k] = 4 * noise_level * spec_noise[k]
 
     return spec_noise, err_arr
 
@@ -374,10 +370,10 @@ def main():
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
     # For Y106_11_1
-    host_segids = np.array([755])  # ([475, 755, 548, 207])
-    sn_segids = np.array([753])  # ([481, 753, 547, 241])
+    host_segids = np.array([207])  # ([475, 755, 548, 207])
+    sn_segids = np.array([241])  # ([481, 753, 547, 241])
 
-    for i in range(700, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -445,12 +441,20 @@ def main():
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Fit template to HOST and SN
-            noise_level = 0.02  # relative to signal
+            noise_level = 0.05  # relative to signal
             # First assign noise to each point
-            host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
-            sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
+            #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
+            #sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
+
+            host_ferr = noise_level * host_flam
+            sn_ferr = noise_level * host_flam
 
             # Test figure
+            """
+            snr_host = host_flam_noisy / host_ferr
+            print("Signal to noise array:", snr_host)
+            print("Mean of signal to noise array:", np.mean(snr_host))
+
             fig = plt.figure()
             ax = fig.add_subplot()
             ax.plot(host_wav, host_flam_noisy, color='tab:brown', lw=1.0)
@@ -468,7 +472,7 @@ def main():
 
             plt.show()
             sys.exit(0)
-
+            """
             
             """
             # pull out spectrum for the chosen day
@@ -551,14 +555,14 @@ def main():
                 pos_sn[i] = rsn
 
             # ----------- Emcee 
-            #with Pool() as pool:
-            #    sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam_noisy, sn_ferr], pool=pool)
-            #    sampler_sn.run_mcmc(pos_sn, 5000, progress=True)
+            with Pool() as pool:
+                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam, sn_ferr], pool=pool)
+                sampler_sn.run_mcmc(pos_sn, 5000, progress=True)
 
-            #print("Done with SN fitting.")
+            print("Done with SN fitting.")
 
             with Pool() as pool:            
-                sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam_noisy, host_ferr], pool=pool)
+                sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam, host_ferr], pool=pool)
                 sampler_host.run_mcmc(pos_host, 5000, progress=True)
 
             print("Done with host galaxy fitting.")
@@ -566,8 +570,8 @@ def main():
 
             samples_host = sampler_host.get_chain()
             print("Samples HOST shape:", samples_host.shape)
-            #samples_sn = sampler_sn.get_chain()
-            #print("Samples SN shape:", samples_sn.shape)
+            samples_sn = sampler_sn.get_chain()
+            print("Samples SN shape:", samples_sn.shape)
 
             # plot trace HOST
             fig1, axes1 = plt.subplots(ndim_host, figsize=(10, 6), sharex=True)
@@ -585,7 +589,6 @@ def main():
                 dpi=200, bbox_inches='tight')
 
             # plot trace SN
-            """
             fig2, axes2 = plt.subplots(ndim_sn, figsize=(10, 6), sharex=True)
 
             for i in range(ndim_sn):
@@ -599,11 +602,10 @@ def main():
 
             fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
-            """
 
             # Get autocorrelation time
             tau_host = get_autocorr_time(sampler_host)
-            #tau_sn = get_autocorr_time(sampler_sn)
+            tau_sn = get_autocorr_time(sampler_sn)
 
             # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
             if not np.isnan(tau_host[0]):
@@ -618,27 +620,28 @@ def main():
             flat_samples_host = sampler_host.get_chain(discard=burn_in_host, thin=thinning_steps_host, flat=True)
             print("Flat samples HOST shape:", flat_samples_host.shape)
 
-            """
-            burn_in_sn = int(3 * tau_sn[0])
+            if not np.isnan(tau_sn[0]):
+                burn_in_sn = int(3 * tau_sn[0])
+                thinning_steps_sn = int(0.5 * tau_sn[0])
+            else:
+                burn_in_sn = 400
+                thinning_steps_sn = 67
             print("Burn-in SN:", burn_in_sn)
-
-            thinning_steps_sn = int(0.5 * tau_sn[0])
             print("Thinning steps SN:", thinning_steps_sn)
 
             flat_samples_sn = sampler_sn.get_chain(discard=burn_in_sn, thin=thinning_steps_sn, flat=True)
             print("Flat samples SN shape:", flat_samples_sn.shape)
-            """
 
             # plot corner plot
             fig_host = corner.corner(flat_samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
-                show_titles='True', title_kwargs={"fontsize": 12})
+                show_titles='True', title_kwargs={"fontsize": 12}, truths=np.array([host_z, host_age, 1.0, 0.0]))
             fig_host.savefig(roman_slitless_dir + 'mcmc_fitres_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
 
-            #fig_sn = corner.corner(flat_samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
-            #    show_titles='True', title_kwargs={"fontsize": 12})
-            #fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-            #    dpi=200, bbox_inches='tight')
+            fig_sn = corner.corner(flat_samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
+                show_titles='True', title_kwargs={"fontsize": 12})
+            fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
+                dpi=200, bbox_inches='tight')
 
             # ------------ Plot 100 random models from the parameter space
             inds_host = np.random.randint(len(flat_samples_host), size=100)
@@ -646,37 +649,35 @@ def main():
             fig3 = plt.figure()
             ax3 = fig3.add_subplot(111)
 
-            ax3.plot(host_wav, host_flam_noisy, color='k')
-            ax3.fill_between(host_wav, host_flam_noisy - host_ferr, host_flam_noisy + host_ferr, color='gray', alpha=0.5, zorder=3)
+            ax3.plot(host_wav, host_flam, color='k')
+            ax3.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, color='gray', alpha=0.5, zorder=3)
 
             for ind in inds_host:
                 sample = flat_samples_host[ind]
                 m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3])
-                a = np.nansum(host_flam_noisy * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
+                a = np.nansum(host_flam * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
                 ax3.plot(host_wav, a * m, color='tab:red', alpha=0.2, zorder=2)
 
             fig3.savefig(roman_slitless_dir + 'mcmc_fitres_host_overplot_' + str(hostid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
 
             # ----------- Plot 100 random models from the parameter space
-            """
             inds_sn = np.random.randint(len(flat_samples_sn), size=100)
 
             fig4 = plt.figure()
             ax4 = fig4.add_subplot(111)
 
-            ax4.plot(sn_wav, sn_flam_noisy, color='k')
-            ax4.fill_between(sn_wav, sn_flam_noisy - sn_ferr, sn_flam_noisy + sn_ferr, color='gray', alpha=0.5, zorder=3)
+            ax4.plot(sn_wav, sn_flam, color='k')
+            ax4.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, color='gray', alpha=0.5, zorder=3)
 
             for ind in inds_sn:
                 sample = flat_samples_sn[ind]
                 m = model_sn(sn_wav, sample[0], sample[1])
-                a = np.nansum(sn_flam_noisy * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
+                a = np.nansum(sn_flam * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
                 ax4.plot(sn_wav, a * m, color='tab:red', alpha=0.2, zorder=2)
 
             fig4.savefig(roman_slitless_dir + 'mcmc_fitres_sn_overplot_' + str(segid) + '_' + img_suffix + '.pdf', \
                 dpi=200, bbox_inches='tight')
-            """
 
             sys.exit(0)
 

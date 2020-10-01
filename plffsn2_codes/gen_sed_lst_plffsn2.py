@@ -143,7 +143,7 @@ def main():
         dtype=None, names=cat_header, skip_header=11, encoding='ascii')
 
     # Redshift array to choose redshift from
-    redshift_arr = np.arange(0.001, 1.0, 0.001)
+    redshift_arr = np.arange(0.001, 3.0, 0.001)
 
     # Read in SN truth file
     #sn_truth = fits.open(img_truth_dir + img_basename + 'index_' + img_suffix + '_sn.fits')
