@@ -42,7 +42,7 @@ fltnames = simulate.run(grisms, sources, beam)
 print("Simulation done.")
 
 # Extraction
-fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
+fltlst = home + '/Documents/GitHub/roman-slitless/plffsn2_codes/flt_' + img_suffix + '.lst'
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
 tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
