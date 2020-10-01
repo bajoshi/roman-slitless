@@ -346,6 +346,82 @@ def get_autocorr_time(sampler):
 
     return tau
 
+def run_emcee_make_plots(object_type, nwalkers, ndim, logpost, \
+    pos, wav, flam, ferr, truth_arr, label_list, objid, img_suffix):
+
+    print("Running on:", object_type)
+
+    # ----------- Emcee 
+    with Pool() as pool:
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=[wav, flam, ferr], pool=pool)
+        sampler.run_mcmc(pos, 5000, progress=True)
+
+    print("Done with fitting.")
+
+    samples = sampler.get_chain()
+    print("Samples shape:", samples.shape)
+
+    # plot trace
+    fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
+
+    for i in range(ndim):
+        ax1 = axes1[i]
+        ax1.plot(samples[:, :, i], "k", alpha=0.1)
+        ax1.set_xlim(0, len(samples))
+        ax1.set_ylabel(label_list[i])
+        ax1.yaxis.set_label_coords(-0.1, 0.5)
+
+    axes1[-1].set_xlabel("Step number")
+
+    fig1.savefig(roman_slitless_dir + 'mcmc_trace_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+        dpi=200, bbox_inches='tight')
+
+    # Get autocorrelation time
+    # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
+    tau = get_autocorr_time(sampler)
+    if not np.isnan(tau[0]):
+        burn_in = int(3 * tau[0])
+        thinning_steps = int(0.5 * tau[0])
+    else:
+        burn_in = 400
+        thinning_steps = 67
+    print("Burn-in:", burn_in)
+    print("Thinning steps:", thinning_steps)
+
+    flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
+    print("Flat samples shape:", flat_samples.shape)
+
+    # plot corner plot
+    fig = corner.corner(flat_samples, plot_contours='True', labels=label_list, label_kwargs={"fontsize": 12}, \
+        show_titles='True', title_kwargs={"fontsize": 12}, truths=truth_arr)
+    fig.savefig(roman_slitless_dir + 'mcmc_fitres_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+        dpi=200, bbox_inches='tight')
+
+    # ------------ Plot 100 random models from the parameter space
+    inds = np.random.randint(len(flat_samples), size=100)
+
+    fig3 = plt.figure()
+    ax3 = fig3.add_subplot(111)
+
+    ax3.plot(wav, flam, color='k')
+    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
+
+    for ind in inds:
+        sample = flat_samples[ind]
+
+        if object_type == 'host':
+            m = model_host(wav, sample[0], sample[1], sample[2], sample[3])
+        elif object_type == 'sn':
+            m = model_sn(wav, sample[0], sample[1])
+
+        a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
+        ax3.plot(wav, a * m, color='tab:red', alpha=0.2, zorder=2)
+
+    fig3.savefig(roman_slitless_dir + 'mcmc_fitres_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+        dpi=200, bbox_inches='tight')
+
+    return None
+
 def main():
 
     print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * * \n")
@@ -471,10 +547,7 @@ def main():
             #ax.plot(host_wav, m * a, color='tab:red')
 
             plt.show()
-            sys.exit(0)
-            """
-            
-            """
+
             # pull out spectrum for the chosen day
             day_idx = np.where(salt2_spec['day'] == sn_day)[0]
             sn_flam_true = salt2_spec['flam'][day_idx]
@@ -514,10 +587,6 @@ def main():
             jump_size_day = 2  # days
             jump_size_lsf = 1.0  # angstroms
 
-            # Labels for corner and trace plots
-            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']
-            label_list_sn = [r'$z$', r'$Day$']
-
             # Define initial position
             # The parameter vector is (redshift, age, tau, av, lsf_sigma)
             # age in gyr and tau in gyr
@@ -527,8 +596,9 @@ def main():
             rsn_init = np.array([0.01, 1])  # redshift and day relative to peak
 
             # Setup dims and walkers
-            ndim_host, nwalkers = 4, 100  # setting up emcee params--number of params and number of walkers
-            ndim_sn, nwalkers   = 2, 100  # setting up emcee params--number of params and number of walkers
+            nwalkers = 100
+            ndim_host = 4
+            ndim_sn  = 2
 
             # generating ball of walkers about initial position defined above
             pos_host = np.zeros(shape=(nwalkers, ndim_host))
@@ -553,131 +623,23 @@ def main():
                 rsn = np.array([rsn0, rsn1])
 
                 pos_sn[i] = rsn
+            
+            # Set up truth arrays
+            # tau and av are here temporarily until I can pull them from the spectra filenames
+            host_tau = 1.0
+            host_av = 0.0
+            truth_arr_host = np.array([host_z, host_age, host_tau, host_av])
+            truth_arr_sn = np.array([sn_z, sn_day])
 
-            # ----------- Emcee 
-            with Pool() as pool:
-                sampler_sn = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn, args=[sn_wav, sn_flam, sn_ferr], pool=pool)
-                sampler_sn.run_mcmc(pos_sn, 5000, progress=True)
+            # Labels for corner and trace plots
+            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']
+            label_list_sn = [r'$z$', r'$Day$']
 
-            print("Done with SN fitting.")
-
-            with Pool() as pool:            
-                sampler_host = emcee.EnsembleSampler(nwalkers, ndim_host, logpost_host, args=[host_wav, host_flam, host_ferr], pool=pool)
-                sampler_host.run_mcmc(pos_host, 5000, progress=True)
-
-            print("Done with host galaxy fitting.")
-            print("Finished running emcee.")
-
-            samples_host = sampler_host.get_chain()
-            print("Samples HOST shape:", samples_host.shape)
-            samples_sn = sampler_sn.get_chain()
-            print("Samples SN shape:", samples_sn.shape)
-
-            # plot trace HOST
-            fig1, axes1 = plt.subplots(ndim_host, figsize=(10, 6), sharex=True)
-
-            for i in range(ndim_host):
-                ax1 = axes1[i]
-                ax1.plot(samples_host[:, :, i], "k", alpha=0.1)
-                ax1.set_xlim(0, len(samples_host))
-                ax1.set_ylabel(label_list_host[i])
-                ax1.yaxis.set_label_coords(-0.1, 0.5)
-
-            axes1[-1].set_xlabel("Step number")
-
-            fig1.savefig(roman_slitless_dir + 'mcmc_trace_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            # plot trace SN
-            fig2, axes2 = plt.subplots(ndim_sn, figsize=(10, 6), sharex=True)
-
-            for i in range(ndim_sn):
-                ax2 = axes2[i]
-                ax2.plot(samples_sn[:, :, i], "k", alpha=0.1)
-                ax2.set_xlim(0, len(samples_sn))
-                ax2.set_ylabel(label_list_sn[i])
-                ax2.yaxis.set_label_coords(-0.1, 0.5)
-
-            axes2[-1].set_xlabel("Step number")
-
-            fig2.savefig(roman_slitless_dir + 'mcmc_trace_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            # Get autocorrelation time
-            tau_host = get_autocorr_time(sampler_host)
-            tau_sn = get_autocorr_time(sampler_sn)
-
-            # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-            if not np.isnan(tau_host[0]):
-                burn_in_host = int(3 * tau_host[0])
-                thinning_steps_host = int(0.5 * tau_host[0])
-            else:
-                burn_in_host = 400
-                thinning_steps_host = 67
-            print("Burn-in HOST:", burn_in_host)
-            print("Thinning steps HOST:", thinning_steps_host)
-
-            flat_samples_host = sampler_host.get_chain(discard=burn_in_host, thin=thinning_steps_host, flat=True)
-            print("Flat samples HOST shape:", flat_samples_host.shape)
-
-            if not np.isnan(tau_sn[0]):
-                burn_in_sn = int(3 * tau_sn[0])
-                thinning_steps_sn = int(0.5 * tau_sn[0])
-            else:
-                burn_in_sn = 400
-                thinning_steps_sn = 67
-            print("Burn-in SN:", burn_in_sn)
-            print("Thinning steps SN:", thinning_steps_sn)
-
-            flat_samples_sn = sampler_sn.get_chain(discard=burn_in_sn, thin=thinning_steps_sn, flat=True)
-            print("Flat samples SN shape:", flat_samples_sn.shape)
-
-            # plot corner plot
-            fig_host = corner.corner(flat_samples_host, plot_contours='True', labels=label_list_host, label_kwargs={"fontsize": 12}, \
-                show_titles='True', title_kwargs={"fontsize": 12}, truths=np.array([host_z, host_age, 1.0, 0.0]))
-            fig_host.savefig(roman_slitless_dir + 'mcmc_fitres_host_' + str(hostid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            fig_sn = corner.corner(flat_samples_sn, plot_contours='True', labels=label_list_sn, label_kwargs={"fontsize": 12}, \
-                show_titles='True', title_kwargs={"fontsize": 12})
-            fig_sn.savefig(roman_slitless_dir + 'mcmc_fitres_sn_' + str(segid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            # ------------ Plot 100 random models from the parameter space
-            inds_host = np.random.randint(len(flat_samples_host), size=100)
-
-            fig3 = plt.figure()
-            ax3 = fig3.add_subplot(111)
-
-            ax3.plot(host_wav, host_flam, color='k')
-            ax3.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, color='gray', alpha=0.5, zorder=3)
-
-            for ind in inds_host:
-                sample = flat_samples_host[ind]
-                m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3])
-                a = np.nansum(host_flam * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
-                ax3.plot(host_wav, a * m, color='tab:red', alpha=0.2, zorder=2)
-
-            fig3.savefig(roman_slitless_dir + 'mcmc_fitres_host_overplot_' + str(hostid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
-
-            # ----------- Plot 100 random models from the parameter space
-            inds_sn = np.random.randint(len(flat_samples_sn), size=100)
-
-            fig4 = plt.figure()
-            ax4 = fig4.add_subplot(111)
-
-            ax4.plot(sn_wav, sn_flam, color='k')
-            ax4.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, color='gray', alpha=0.5, zorder=3)
-
-            for ind in inds_sn:
-                sample = flat_samples_sn[ind]
-                m = model_sn(sn_wav, sample[0], sample[1])
-                a = np.nansum(sn_flam * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
-                ax4.plot(sn_wav, a * m, color='tab:red', alpha=0.2, zorder=2)
-
-            fig4.savefig(roman_slitless_dir + 'mcmc_fitres_sn_overplot_' + str(segid) + '_' + img_suffix + '.pdf', \
-                dpi=200, bbox_inches='tight')
+            # Call emcee
+            run_emcee_make_plots('host', nwalkers, ndim_host, logpost_host, \
+                pos_host, host_wav, host_flam, host_ferr, truth_arr_host, label_list_host, hostid, img_suffix) 
+            run_emcee_make_plots('sn', nwalkers, ndim_sn, logpost_sn, \
+                pos_sn, sn_wav, sn_flam, sn_ferr, truth_arr_sn, label_list_sn, segid, img_suffix)
 
             sys.exit(0)
 
