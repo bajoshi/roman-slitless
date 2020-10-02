@@ -240,7 +240,7 @@ def model_sn(x, z, day, host_frac, host_flam):
     # This fraction is a free parameter
     sn_flam_hostsub = sn_mod - host_frac * host_flam
 
-    return sn_mod
+    return sn_flam_hostsub
 
 def model_host(x, z, age_gyr, tau_gyr, av):
     """
@@ -544,7 +544,7 @@ def main():
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.05  # relative to signal
+            noise_level = 0.1  # relative to signal
             # First assign noise to each point
             #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
@@ -574,6 +574,7 @@ def main():
             ax.plot(host_wav, m * a, color='tab:red')
 
             #plt.show()
+            """
 
             # test figure for SN
             fig1 = plt.figure()
@@ -584,52 +585,50 @@ def main():
 
             # plot spectrum without host subtraction
             # pull out spectrum for the chosen day
-            day_idx = np.where(salt2_spec['day'] == sn_day)[0]
-            sn_flam_true = salt2_spec['flam'][day_idx]
-            sn_wav_true = salt2_spec['lam'][day_idx]
+            #day_idx = np.where(salt2_spec['day'] == sn_day)[0]
+            #sn_flam_true = salt2_spec['flam'][day_idx]
+            #sn_wav_true = salt2_spec['lam'][day_idx]
 
-            sn_wav_true_z, sn_flam_true_z = apply_redshift(sn_wav_true, sn_flam_true, sn_z)
-
-            scalefac = 1e31
-            sn_flam_true_z *= scalefac
-
-            a = np.nansum(sn_flam * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
-
-            ax1.plot(sn_wav_true_z, a * sn_flam_true_z, color='tab:blue')
+            #sn_wav_true_z, sn_flam_true_z = apply_redshift(sn_wav_true, sn_flam_true, sn_z)
 
             # Rebinning
             #sn_flam_true_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_true_z, sigma=15.0)
             #ax1.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
 
             # subtract host light
-            host_frac = 0.005  # some fraction to account for host contamination
+            host_frac = 0.00028  # some fraction to account for host contamination
             sn_flam_hostsub = sn_flam - host_frac * host_flam
             ax1.plot(sn_wav, sn_flam_hostsub, color='tab:red')
 
             ax1.set_xlim(9500, 20000)
 
-            #plt.show()
-            """
+            chi2_manual = np.nansum( (sn_flam_hostsub-sn_flam)**2 / sn_ferr**2 )
+            print("\nChi2 manual:", chi2_manual)
+            dof = len(sn_flam_hostsub)
+            print("Number of points in model:", dof)
+            print("Reduced chi2 manual:", chi2_manual/dof)
 
             # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
             print("\nRunning explicit Metropolis-Hastings...")
             N = 10000   #number of "timesteps"
 
             host_frac_init = 0.005
-            r = np.array([sn_z, sn_day, host_frac_init])  # initial position
+            r = np.array([0.527, 13, host_frac_init])  # initial position
             print("Initial parameter vector:", r)
 
             logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
-            jump_size_z = 0.01
-            jump_size_day = 2  # days
+            jump_size_z = 0.1
+            jump_size_day = 1  # days
             jump_size_host_frac = 1e-4
     
             print("Initial guess log(probability):", logp)
 
             samples = []  #creating array to hold parameter vector with time
             accept = 0.
+            logl_list = []
+            chi2_list = []
 
-            for i in range(20): #beginning the iteratitive loop
+            for i in range(N): #beginning the iteratitive loop
 
                 print("\nMH Iteration", i)
 
@@ -644,6 +643,8 @@ def main():
                 logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)  #evaluating probability of proposal vector
                 print("Proposed parameter vector log(probability):", logpn)
                 dlogL = logpn - logp
+                print("dlogL:", dlogL)
+
                 a = np.exp(dlogL)
 
                 print("Ratio of probabilities at proposed to current position:", a)
@@ -664,6 +665,7 @@ def main():
                         print("Point kept.")
 
                 samples.append(r)  #update
+                logl_list.append(logp)
 
                 # -------
                 fig = plt.figure()
@@ -675,24 +677,34 @@ def main():
                 m = model_sn(sn_wav, rn0, rn1, rn2, host_flam)
                 a = np.nansum(sn_flam * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
 
-                m *= a
+                chi2 = np.nansum( (m-sn_flam)**2 / sn_ferr**2 )
+                lnLike = -0.5 * np.nansum( (m-sn_flam)**2 / sn_ferr**2 )
+                print("Chi2 for this position:", chi2)
 
-                chi2 = np.nansum( (m-sn_flam)**2/sn_ferr**2 )
-                lnLike = -0.5 * np.nansum( (m-sn_flam)**2/sn_ferr**2 )
+                ax.text(x=0.65, y=0.95, s=r"$\chi^2 \,=\, $" + "{:.2e}".format(chi2), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='k', size=12)
+                ax.text(x=0.65, y=0.87, s=r"$ln(L) \,=\, $"  + "{:.2e}".format(lnLike), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='k', size=12)
 
-                ax.text()
-
-                ax.plot(sn_wav, m, color='tab:red')
+                ax.plot(sn_wav, a * m, color='tab:red')
 
                 plt.show()
                 plt.clf()
                 plt.cla()
                 plt.close()
 
+
+                chi2_list.append(chi2)
+
+                sys.exit(0)
+
             print("Finished explicit Metropolis-Hastings.")
 
             # Plotting results from explicit MH
             samples = np.array(samples)
+
+            for i in range(len(samples)):
+                print(samples[i], logl_list[i])
 
             # plot trace
             fig = plt.figure()
