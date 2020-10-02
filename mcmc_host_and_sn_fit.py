@@ -17,6 +17,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.gridspec as gridspec
 
+
+import matplotlib
+print(matplotlib.matplotlib_fname())
+
 home = os.getenv('HOME')
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
 pears_figs_dir = home + '/Documents/pears_figs_data/'
@@ -105,11 +109,11 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     return redshifted_wav, redshifted_flux
 
-def loglike_sn(theta, x, data, err):
+def loglike_sn(theta, x, data, err, host_flam):
     
-    z, day = theta
+    z, day, host_frac = theta
 
-    y = model_sn(x, z, day)
+    y = model_sn(x, z, day, host_frac, host_flam)
     #print("Model SN func result:", y)
 
     # ------- Vertical scaling factor
@@ -118,8 +122,12 @@ def loglike_sn(theta, x, data, err):
 
     y = y * alpha
 
-    lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) #  +  np.log(2 * np.pi * err**2))
     #print("ln(likelihood) SN", lnLike)
+
+    #print("Chi2 array:", (y-data)**2/err**2)
+    #print("Chi2 array sum:", np.sum((y-data)**2/err**2))
+    #print("Second loglikelihood term:", np.log(2 * np.pi * err**2))
     
     return lnLike
 
@@ -137,13 +145,14 @@ def loglike_host(theta, x, data, err):
     y = y * alpha
 
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
+
     return lnLike
 
 def logprior_sn(theta):
 
-    z, day = theta
+    z, day, host_frac = theta
 
-    if ( 0.01 <= z <= 6.0  and  -19 <= day <= 50 ):
+    if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.00001 <= host_frac <= 0.2):
         return 0.0
     
     return -np.inf
@@ -157,22 +166,24 @@ def logprior_host(theta):
     age_at_z = Planck15.age(z).value  # in Gyr
     age_lim = age_at_z - 0.1  # in Gyr
 
-    #if ( 0.01 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0  and  0.0 <= lsf_sigma <= 300.0  ):
-    if ( 0.01 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0 ):
+    #if ( 0.0001 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0  and  0.0 <= lsf_sigma <= 300.0  ):
+    if ( 0.0001 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0 ):
         return 0.0
     
     return -np.inf
 
-def logpost_sn(theta, x, data, err):
+def logpost_sn(theta, x, data, err, host_flam):
 
     lp = logprior_sn(theta)
+
+    #print("SN prior:", lp)
     
     if not np.isfinite(lp):
         return -np.inf
     
-    lnL = loglike_sn(theta, x, data, err)
+    lnL = loglike_sn(theta, x, data, err, host_flam)
 
-    #print("Likelihood:", lnL)
+    #print("SN log(likelihood):", lnL)
     
     return lp + lnL
 
@@ -190,7 +201,7 @@ def logpost_host(theta, x, data, err):
     
     return lp + lnL
 
-def model_sn(x, z, day):
+def model_sn(x, z, day, host_frac, host_flam):
 
     # pull out spectrum for the chosen day
     day_idx = np.where(salt2_spec['day'] == day)[0]
@@ -199,6 +210,12 @@ def model_sn(x, z, day):
 
     # ------ Apply redshift
     sn_lam_z, sn_flam_z = apply_redshift(salt2_spec['lam'][day_idx], sn_spec_flam, z)
+
+    # ------ Apply some LSF. 
+    # This is a NUISANCE FACTOR ONLY FOR NOW
+    # When we use actual SNe they will be point sources.
+    #lsf_sigma = 15.0
+    #sn_flam_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_z, sigma=lsf_sigma)
 
     # ------ Downgrade to grism resolution
     sn_mod = np.zeros(len(x))
@@ -217,6 +234,11 @@ def model_sn(x, z, day):
     lam_step = x[-1] - x[-2]
     idx = np.where((sn_lam_z >= x[-1] - lam_step) & (sn_lam_z < x[-1] + lam_step))[0]
     sn_mod[-1] = np.mean(sn_flam_z[idx])
+
+    # ------ subtract host light
+    # some fraction to account for host contamination
+    # This fraction is a free parameter
+    sn_flam_hostsub = sn_mod - host_frac * host_flam
 
     return sn_mod
 
@@ -347,13 +369,13 @@ def get_autocorr_time(sampler):
     return tau
 
 def run_emcee_make_plots(object_type, nwalkers, ndim, logpost, \
-    pos, wav, flam, ferr, truth_arr, label_list, objid, img_suffix):
+    pos, args_obj, truth_arr, label_list, objid, img_suffix):
 
     print("Running on:", object_type)
 
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=[wav, flam, ferr], pool=pool)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool)
         sampler.run_mcmc(pos, 5000, progress=True)
 
     print("Done with fitting.")
@@ -399,6 +421,11 @@ def run_emcee_make_plots(object_type, nwalkers, ndim, logpost, \
 
     # ------------ Plot 100 random models from the parameter space
     inds = np.random.randint(len(flat_samples), size=100)
+
+    # first pull out required stuff from args
+    wav = args_obj[0]
+    flam = args_obj[1]
+    ferr = args_obj[2]
 
     fig3 = plt.figure()
     ax3 = fig3.add_subplot(111)
@@ -516,38 +543,46 @@ def main():
             sn_wav = ext_hdu[segid].data['wavelength']
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
-            # ---- Fit template to HOST and SN
+            # ---- Apply noise and get dummy noisy spectra
             noise_level = 0.05  # relative to signal
             # First assign noise to each point
             #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
 
             host_ferr = noise_level * host_flam
-            sn_ferr = noise_level * host_flam
+            sn_ferr = noise_level * sn_flam
 
-            # Test figure
+            # -------- Test figure
             """
-            snr_host = host_flam_noisy / host_ferr
-            print("Signal to noise array:", snr_host)
+            snr_host = host_flam / host_ferr
+            #print("Signal to noise array:", snr_host)
             print("Mean of signal to noise array:", np.mean(snr_host))
 
             fig = plt.figure()
             ax = fig.add_subplot()
-            ax.plot(host_wav, host_flam_noisy, color='tab:brown', lw=1.0)
-            ax.fill_between(host_wav, host_flam_noisy - host_ferr, host_flam_noisy + host_ferr, \
+            ax.plot(host_wav, host_flam, color='tab:brown', lw=1.0)
+            ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5)
 
             # overplot rebinned spectrum
-            rebin_grid = np.arange(9500, 20000, 30)
-            host_flam_binned = scipy.interpolate.griddata(points=host_wav, values=host_flam_noisy, xi=rebin_grid)
-            ax.plot(rebin_grid, host_flam_binned, color='tab:blue', lw=1.5)
+            #rebin_grid = np.arange(9500, 20000, 30)
+            #host_flam_binned = scipy.interpolate.griddata(points=host_wav, values=host_flam, xi=rebin_grid)
+            #ax.plot(rebin_grid, host_flam_binned, color='tab:blue', lw=1.5)
 
-            m = model_host(host_wav, host_z, host_age, 1.0, 0.0)
-            a = np.nansum(host_flam_noisy * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
-            #ax.plot(host_wav, m * a, color='tab:red')
+            m = model_host(host_wav, host_z, host_age, 0.5, 0.0)
+            a = np.nansum(host_flam * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
+            ax.plot(host_wav, m * a, color='tab:red')
 
-            plt.show()
+            #plt.show()
 
+            # test figure for SN
+            fig1 = plt.figure()
+            ax1 = fig1.add_subplot(111)
+            ax1.plot(sn_wav, sn_flam, color='k')
+            ax1.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
+                color='grey', alpha=0.5)
+
+            # plot spectrum without host subtraction
             # pull out spectrum for the chosen day
             day_idx = np.where(salt2_spec['day'] == sn_day)[0]
             sn_flam_true = salt2_spec['flam'][day_idx]
@@ -555,36 +590,139 @@ def main():
 
             sn_wav_true_z, sn_flam_true_z = apply_redshift(sn_wav_true, sn_flam_true, sn_z)
 
-            scalefac = 2e42
+            scalefac = 1e31
             sn_flam_true_z *= scalefac
 
+            a = np.nansum(sn_flam * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
+
+            ax1.plot(sn_wav_true_z, a * sn_flam_true_z, color='tab:blue')
+
+            # Rebinning
+            #sn_flam_true_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_true_z, sigma=15.0)
+            #ax1.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
+
+            # subtract host light
+            host_frac = 0.005  # some fraction to account for host contamination
+            sn_flam_hostsub = sn_flam - host_frac * host_flam
+            ax1.plot(sn_wav, sn_flam_hostsub, color='tab:red')
+
+            ax1.set_xlim(9500, 20000)
+
+            #plt.show()
+            """
+
+            # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
+            print("\nRunning explicit Metropolis-Hastings...")
+            N = 10000   #number of "timesteps"
+
+            host_frac_init = 0.005
+            r = np.array([sn_z, sn_day, host_frac_init])  # initial position
+            print("Initial parameter vector:", r)
+
+            logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
+            jump_size_z = 0.01
+            jump_size_day = 2  # days
+            jump_size_host_frac = 1e-4
+    
+            print("Initial guess log(probability):", logp)
+
+            samples = []  #creating array to hold parameter vector with time
+            accept = 0.
+
+            for i in range(20): #beginning the iteratitive loop
+
+                print("\nMH Iteration", i)
+
+                rn0 = float(r[0] + jump_size_z * np.random.normal(size=1))
+                rn1 = int(r[1] + jump_size_day * np.random.choice([-1, 1]))
+                rn2 = float(r[2] + jump_size_host_frac * np.random.normal(size=1))
+
+                rn = np.array([rn0, rn1, rn2])
+
+                print("Proposal parameter vector", rn)
+                
+                logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)  #evaluating probability of proposal vector
+                print("Proposed parameter vector log(probability):", logpn)
+                dlogL = logpn - logp
+                a = np.exp(dlogL)
+
+                print("Ratio of probabilities at proposed to current position:", a)
+
+                if a >= 1:   #always keep it if probability got higher
+                    print("Will accept point since probability increased.")
+                    logp = logpn
+                    r = rn
+                    accept+=1
+        
+                else:  #only keep it based on acceptance probability
+                    print("Probability decreased. Will decide whether to keep point or not.")
+                    u = np.random.rand()  #random number between 0 and 1
+                    if u < a:  #only if proposal prob / previous prob is greater than u, then keep new proposed step
+                        logp = logpn
+                        r = rn
+                        accept+=1
+                        print("Point kept.")
+
+                samples.append(r)  #update
+
+                # -------
+                fig = plt.figure()
+                ax = fig.add_subplot(111)
+                ax.plot(sn_wav, sn_flam, color='k')
+                ax.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
+                    color='grey', alpha=0.5)
+
+                m = model_sn(sn_wav, rn0, rn1, rn2, host_flam)
+                a = np.nansum(sn_flam * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
+
+                m *= a
+
+                chi2 = np.nansum( (m-sn_flam)**2/sn_ferr**2 )
+                lnLike = -0.5 * np.nansum( (m-sn_flam)**2/sn_ferr**2 )
+
+                ax.text()
+
+                ax.plot(sn_wav, m, color='tab:red')
+
+                plt.show()
+                plt.clf()
+                plt.cla()
+                plt.close()
+
+            print("Finished explicit Metropolis-Hastings.")
+
+            # Plotting results from explicit MH
+            samples = np.array(samples)
+
+            # plot trace
             fig = plt.figure()
             ax = fig.add_subplot(111)
-            ax.plot(sn_wav, sn_flam_noisy, color='k')
-            ax.fill_between(sn_wav, sn_flam_noisy - sn_ferr, sn_flam_noisy + sn_ferr, \
-                color='grey', alpha=0.5)
-
-            ax.plot(sn_wav_true_z, sn_flam_true_z, color='tab:blue')
-            sn_flam_true_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_true_z, sigma=15.0)
-            ax.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
-
-            ax.set_xlim(9000, 20000)
-
+            ax.plot(samples[:,0], color='tab:red', label=r'$z$')
+            ax.plot(samples[:,1], color='tab:blue', label=r'$\mathrm{Day}$')
+            ax.plot(samples[:,2], color='tab:brown', label=r'$\mathrm{Host\ frac}$')
+            ax.legend(loc=0)
             plt.show()
 
+            # using corner
+            corner.corner(samples, bins=30, labels=[r'$z$', r'$\mathrm{Day}$', r'$\mathrm{Host\ frac}$'], \
+                show_titles='True', plot_contours='True', truths=np.array([sn_z, sn_day, 0.0005]))
+            plt.show()
+
+            print("Acceptance Rate:", accept/N)
+
             sys.exit(0)
-            """
 
             # ----------------------- Using MCMC to fit ----------------------- #
             print("\nRunning emcee...")
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-            jump_size_z = 0.02  
+            jump_size_z = 0.02
             jump_size_age = 0.1  # in gyr
             jump_size_tau = 0.1  # in gyr
             jump_size_av = 0.5  # magnitudes
 
             jump_size_day = 2  # days
+            jump_size_host_frac = 1e-4
             jump_size_lsf = 1.0  # angstroms
 
             # Define initial position
@@ -593,12 +731,13 @@ def main():
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
             rhost_init = np.array([0.02, 0.4, 2.0, 0.0])
-            rsn_init = np.array([0.01, 1])  # redshift and day relative to peak
+            host_frac_init = 0.005
+            rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
 
             # Setup dims and walkers
             nwalkers = 100
             ndim_host = 4
-            ndim_sn  = 2
+            ndim_sn  = 3
 
             # generating ball of walkers about initial position defined above
             pos_host = np.zeros(shape=(nwalkers, ndim_host))
@@ -619,8 +758,9 @@ def main():
                 # ---------- For SN
                 rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
                 rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
+                rsn2 = float(rsn_init[2] + jump_size_host_frac * np.random.normal(size=1))
 
-                rsn = np.array([rsn0, rsn1])
+                rsn = np.array([rsn0, rsn1, rsn2])
 
                 pos_sn[i] = rsn
             
@@ -629,17 +769,19 @@ def main():
             host_tau = 1.0
             host_av = 0.0
             truth_arr_host = np.array([host_z, host_age, host_tau, host_av])
-            truth_arr_sn = np.array([sn_z, sn_day])
+            truth_arr_sn = np.array([sn_z, sn_day, host_frac_init])
 
             # Labels for corner and trace plots
             label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']
-            label_list_sn = [r'$z$', r'$Day$']
+            label_list_sn = [r'$z$', r'$Day$', r'$Host frac$']
 
             # Call emcee
-            run_emcee_make_plots('host', nwalkers, ndim_host, logpost_host, \
-                pos_host, host_wav, host_flam, host_ferr, truth_arr_host, label_list_host, hostid, img_suffix) 
+            args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
+            args_host = [host_wav, host_flam, host_ferr]
             run_emcee_make_plots('sn', nwalkers, ndim_sn, logpost_sn, \
-                pos_sn, sn_wav, sn_flam, sn_ferr, truth_arr_sn, label_list_sn, segid, img_suffix)
+                pos_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+            run_emcee_make_plots('host', nwalkers, ndim_host, logpost_host, \
+                pos_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix) 
 
             sys.exit(0)
 
