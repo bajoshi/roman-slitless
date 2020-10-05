@@ -111,9 +111,9 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
 def loglike_sn(theta, x, data, err, host_flam):
     
-    z, day, host_frac = theta
+    z, day, host_frac, snscale = theta
 
-    y = model_sn(x, z, day, host_frac, host_flam)
+    y = model_sn(x, z, day, host_frac, snscale, host_flam)
     #print("Model SN func result:", y)
 
     # ------- Vertical scaling factor
@@ -150,9 +150,9 @@ def loglike_host(theta, x, data, err):
 
 def logprior_sn(theta):
 
-    z, day, host_frac = theta
+    z, day, host_frac, snscale = theta
 
-    if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.00001 <= host_frac <= 0.2):
+    if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.00001 <= host_frac <= 0.5  and  1e41 <= snscale <= 1e45):
         return 0.0
     
     return -np.inf
@@ -201,7 +201,7 @@ def logpost_host(theta, x, data, err):
     
     return lp + lnL
 
-def model_sn(x, z, day, host_frac, host_flam):
+def model_sn(x, z, day, host_frac, snscale, host_flam):
 
     # pull out spectrum for the chosen day
     day_idx = np.where(salt2_spec['day'] == day)[0]
@@ -235,12 +235,12 @@ def model_sn(x, z, day, host_frac, host_flam):
     idx = np.where((sn_lam_z >= x[-1] - lam_step) & (sn_lam_z < x[-1] + lam_step))[0]
     sn_mod[-1] = np.mean(sn_flam_z[idx])
 
-    # ------ subtract host light
+    # ------ combine host light
     # some fraction to account for host contamination
     # This fraction is a free parameter
-    sn_flam_hostsub = sn_mod - host_frac * host_flam
+    sn_flam_hostcomb = snscale * sn_mod  +  host_frac * host_flam
 
-    return sn_flam_hostsub
+    return sn_flam_hostcomb, sn_mod
 
 def model_host(x, z, age_gyr, tau_gyr, av):
     """
@@ -579,7 +579,7 @@ def main():
             # test figure for SN
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
-            ax1.plot(sn_wav, sn_flam, color='k')
+            ax1.plot(sn_wav, sn_flam, color='k', label='Obs SN data')
             ax1.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
                 color='grey', alpha=0.5)
 
@@ -595,31 +595,48 @@ def main():
             #sn_flam_true_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_true_z, sigma=15.0)
             #ax1.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
 
-            # subtract host light
-            host_frac = 0.00028  # some fraction to account for host contamination
-            sn_flam_hostsub = sn_flam - host_frac * host_flam
-            ax1.plot(sn_wav, sn_flam_hostsub, color='tab:red')
+            # Add host light
+            host_frac = 0.2  # some fraction to account for host contamination
+            sf = 2.52e42
 
-            ax1.set_xlim(9500, 20000)
+            m, mm = model_sn(sn_wav, sn_z, sn_day, host_frac, sf, host_flam)
+            print("\nSN downgraded model spectrum mean:", np.mean(mm))
+            print("Obs host galaxy spectrum mean:", np.mean(host_flam))
+            print("Obs SN spectrum mean:", np.mean(sn_flam))
+            print("Host fraction manual:", host_frac)
+            print("Scaling factor:", sf)
+            print("SN downgraded scaled model spectrum mean:", sf * np.mean(mm))
+            #ax1.plot(sn_wav, sf * mm, color='tab:green', label='Manually scaled SN model')
 
-            chi2_manual = np.nansum( (sn_flam_hostsub-sn_flam)**2 / sn_ferr**2 )
-            print("\nChi2 manual:", chi2_manual)
-            dof = len(sn_flam_hostsub)
-            print("Number of points in model:", dof)
-            print("Reduced chi2 manual:", chi2_manual/dof)
+            # ADD host light in
+            # The observed spectrum has the supernova light COMBINED with the host galaxy light
+            new_mm = sf * mm + host_frac * host_flam
+            an = np.nansum(sn_flam * new_mm / sn_ferr**2) / np.nansum(new_mm**2 / sn_ferr**2)
+            print("Vertical factor for manually scaled host light added SN model:", an)
+            ax1.plot(sn_wav, an * new_mm, color='tab:cyan', label='Manually scaled host light added SN model')
+
+            ax1.legend(loc=0)
+
+            ax1.set_xlim(9000, 20000)
+
+            plt.show()
+
+            sys.exit(0)
 
             # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
             print("\nRunning explicit Metropolis-Hastings...")
-            N = 10000   #number of "timesteps"
+            N = 5000   #number of "timesteps"
 
-            host_frac_init = 0.005
-            r = np.array([0.527, 13, host_frac_init])  # initial position
+            host_frac_init = 0.05
+            snscale_init = 5e43
+            r = np.array([0.527, 13, host_frac_init, snscale_init])  # initial position
             print("Initial parameter vector:", r)
 
             logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
             jump_size_z = 0.1
             jump_size_day = 1  # days
-            jump_size_host_frac = 1e-4
+            jump_size_host_frac = 0.01
+            jump_size_snscale = 1e41
     
             print("Initial guess log(probability):", logp)
 
@@ -635,8 +652,9 @@ def main():
                 rn0 = float(r[0] + jump_size_z * np.random.normal(size=1))
                 rn1 = int(r[1] + jump_size_day * np.random.choice([-1, 1]))
                 rn2 = float(r[2] + jump_size_host_frac * np.random.normal(size=1))
+                rn3 = float(r[3] + jump_size_snscale * np.random.normal(size=1))
 
-                rn = np.array([rn0, rn1, rn2])
+                rn = np.array([rn0, rn1, rn2, rn3])
 
                 print("Proposal parameter vector", rn)
                 
@@ -665,6 +683,7 @@ def main():
                         print("Point kept.")
 
                 samples.append(r)  #update
+                """
                 logl_list.append(logp)
 
                 # -------
@@ -674,7 +693,8 @@ def main():
                 ax.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
                     color='grey', alpha=0.5)
 
-                m = model_sn(sn_wav, rn0, rn1, rn2, host_flam)
+                m = model_sn(sn_wav, rn0, rn1, rn2, rn3, host_flam)
+                print("Meam model:", np.mean(m))
                 a = np.nansum(sn_flam * m / sn_ferr**2) / np.nansum(m**2 / sn_ferr**2)
 
                 chi2 = np.nansum( (m-sn_flam)**2 / sn_ferr**2 )
@@ -693,18 +713,18 @@ def main():
                 plt.cla()
                 plt.close()
 
-
                 chi2_list.append(chi2)
 
                 sys.exit(0)
+                """
 
             print("Finished explicit Metropolis-Hastings.")
 
             # Plotting results from explicit MH
             samples = np.array(samples)
 
-            for i in range(len(samples)):
-                print(samples[i], logl_list[i])
+            #for i in range(len(samples)):
+            #    print(samples[i], logl_list[i])
 
             # plot trace
             fig = plt.figure()
@@ -712,12 +732,13 @@ def main():
             ax.plot(samples[:,0], color='tab:red', label=r'$z$')
             ax.plot(samples[:,1], color='tab:blue', label=r'$\mathrm{Day}$')
             ax.plot(samples[:,2], color='tab:brown', label=r'$\mathrm{Host\ frac}$')
+            #ax.plot(samples[:,3], color='tab:brown', label=r'$\mathrm{SN\ scale}$')
             ax.legend(loc=0)
             plt.show()
 
             # using corner
-            corner.corner(samples, bins=30, labels=[r'$z$', r'$\mathrm{Day}$', r'$\mathrm{Host\ frac}$'], \
-                show_titles='True', plot_contours='True', truths=np.array([sn_z, sn_day, 0.0005]))
+            corner.corner(samples, bins=30, labels=[r'$z$', r'$\mathrm{Day}$', r'$\mathrm{Host\ frac}$', r'$\mathrm{SN\ scale}$'], \
+                show_titles='True', plot_contours='True')#, truths=np.array([sn_z, sn_day, 0.0005]))
             plt.show()
 
             print("Acceptance Rate:", accept/N)
