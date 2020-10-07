@@ -6,6 +6,7 @@ import scipy
 from scipy.interpolate import griddata
 from astropy.cosmology import Planck15
 from multiprocessing import Pool
+import pickle
 
 import os
 import sys
@@ -16,10 +17,6 @@ import datetime
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.gridspec as gridspec
-
-
-import matplotlib
-print(matplotlib.matplotlib_fname())
 
 home = os.getenv('HOME')
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
@@ -111,9 +108,9 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
 def loglike_sn(theta, x, data, err, host_flam):
     
-    z, day, host_frac, snscale = theta
+    z, day, host_frac = theta
 
-    y = model_sn(x, z, day, host_frac, snscale, host_flam)
+    y = model_sn(x, z, day, host_frac, host_flam)
     #print("Model SN func result:", y)
 
     # ------- Vertical scaling factor
@@ -150,9 +147,9 @@ def loglike_host(theta, x, data, err):
 
 def logprior_sn(theta):
 
-    z, day, host_frac, snscale = theta
+    z, day, host_frac = theta
 
-    if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.00001 <= host_frac <= 0.5  and  1e41 <= snscale <= 1e45):
+    if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.0 <= host_frac <= 0.5):
         return 0.0
     
     return -np.inf
@@ -201,15 +198,20 @@ def logpost_host(theta, x, data, err):
     
     return lp + lnL
 
-def model_sn(x, z, day, host_frac, snscale, host_flam):
+def model_sn(x, z, day, host_frac, host_flam):
 
     # pull out spectrum for the chosen day
     day_idx = np.where(salt2_spec['day'] == day)[0]
 
     sn_spec_flam = salt2_spec['flam'][day_idx]
 
+    # Apply scaling to convert to correct physical units
+    sf = 2.0842526537870818e+48
+    sn_spec_flam *= sf
+    sn_spec_lam = salt2_spec['lam'][day_idx]
+
     # ------ Apply redshift
-    sn_lam_z, sn_flam_z = apply_redshift(salt2_spec['lam'][day_idx], sn_spec_flam, z)
+    sn_lam_z, sn_flam_z = apply_redshift(sn_spec_lam, sn_spec_flam, z)
 
     # ------ Apply some LSF. 
     # This is a NUISANCE FACTOR ONLY FOR NOW
@@ -238,9 +240,9 @@ def model_sn(x, z, day, host_frac, snscale, host_flam):
     # ------ combine host light
     # some fraction to account for host contamination
     # This fraction is a free parameter
-    sn_flam_hostcomb = snscale * sn_mod  +  host_frac * host_flam
+    sn_flam_hostcomb = sn_mod  +  host_frac * host_flam
 
-    return sn_flam_hostcomb, sn_mod
+    return sn_flam_hostcomb
 
 def model_host(x, z, age_gyr, tau_gyr, av):
     """
@@ -368,17 +370,25 @@ def get_autocorr_time(sampler):
 
     return tau
 
-def run_emcee_make_plots(object_type, nwalkers, ndim, logpost, \
-    pos, args_obj, truth_arr, label_list, objid, img_suffix):
+def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     print("Running on:", object_type)
 
     # ----------- Emcee 
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool)
-        sampler.run_mcmc(pos, 5000, progress=True)
+        sampler.run_mcmc(pos, 1000, progress=True)
+
+    pickle.dump(sampler.chain, open(object_type + '_' + str(objid) + '_emcee_chains.pkl', 'wb'))
+    pickle.dump(sampler, open(object_type + '_' + str(objid) + '_emcee_sampler.pkl', 'wb'))
 
     print("Done with fitting.")
+
+    return None
+
+def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, label_list, objid, img_suffix):
+
+    sampler = pickle.load(open(object_type + '_' + str(objid) + '_emcee_sampler.pkl', 'rb'))
 
     samples = sampler.get_chain()
     print("Samples shape:", samples.shape)
@@ -407,8 +417,8 @@ def run_emcee_make_plots(object_type, nwalkers, ndim, logpost, \
     else:
         burn_in = 400
         thinning_steps = 67
-    print("Burn-in:", burn_in)
-    print("Thinning steps:", thinning_steps)
+        print("Burn-in:", burn_in)
+        print("Thinning steps:", thinning_steps)
 
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("Flat samples shape:", flat_samples.shape)
@@ -439,7 +449,7 @@ def run_emcee_make_plots(object_type, nwalkers, ndim, logpost, \
         if object_type == 'host':
             m = model_host(wav, sample[0], sample[1], sample[2], sample[3])
         elif object_type == 'sn':
-            m = model_sn(wav, sample[0], sample[1])
+            m = model_sn(wav, sample[0], sample[1], sample[2], args_obj[-1])
 
         a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
         ax3.plot(wav, a * m, color='tab:red', alpha=0.2, zorder=2)
@@ -473,10 +483,10 @@ def main():
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
     # For Y106_11_1
-    host_segids = np.array([207])  # ([475, 755, 548, 207])
-    sn_segids = np.array([241])  # ([481, 753, 547, 241])
+    host_segids = np.array([548])  # ([475, 755, 548, 207])
+    sn_segids = np.array([547])  # ([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(500, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -544,7 +554,7 @@ def main():
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.1  # relative to signal
+            noise_level = 0.05  # relative to signal
             # First assign noise to each point
             #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
@@ -564,56 +574,112 @@ def main():
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5)
 
-            # overplot rebinned spectrum
-            #rebin_grid = np.arange(9500, 20000, 30)
-            #host_flam_binned = scipy.interpolate.griddata(points=host_wav, values=host_flam, xi=rebin_grid)
-            #ax.plot(rebin_grid, host_flam_binned, color='tab:blue', lw=1.5)
-
-            m = model_host(host_wav, host_z, host_age, 0.5, 0.0)
+            m = model_host(host_wav, host_z, host_age, 4.0, 0.0)
             a = np.nansum(host_flam * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
             ax.plot(host_wav, m * a, color='tab:red')
 
-            #plt.show()
+            plt.show()
+            sys.exit(0)
             """
 
             # test figure for SN
+            """
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
-            ax1.plot(sn_wav, sn_flam, color='k', label='Obs SN data')
+
+            ax1.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=14)
+            ax1.set_ylabel(r'$\mathrm{f_\lambda\ [normalized]}$', fontsize=14)
+
+            #sn_flam_norm = sn_flam / np.max(sn_flam)
+            #sn_ferr_norm = noise_level * sn_flam_norm
+
+            ax1.plot(sn_wav, sn_flam, color='k', label='Obs SN data', zorder=2)
             ax1.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
-                color='grey', alpha=0.5)
-
-            # plot spectrum without host subtraction
-            # pull out spectrum for the chosen day
-            #day_idx = np.where(salt2_spec['day'] == sn_day)[0]
-            #sn_flam_true = salt2_spec['flam'][day_idx]
-            #sn_wav_true = salt2_spec['lam'][day_idx]
-
-            #sn_wav_true_z, sn_flam_true_z = apply_redshift(sn_wav_true, sn_flam_true, sn_z)
-
-            # Rebinning
-            #sn_flam_true_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_true_z, sigma=15.0)
-            #ax1.plot(sn_wav_true_z, sn_flam_true_z, color='tab:red')
+                color='grey', alpha=0.5, zorder=2)
 
             # Add host light
-            host_frac = 0.2  # some fraction to account for host contamination
-            sf = 2.52e42
+            host_frac = 0.4  # some fraction to account for host contamination
 
-            m, mm = model_sn(sn_wav, sn_z, sn_day, host_frac, sf, host_flam)
+            m, mm = model_sn(sn_wav, sn_z, sn_day, host_frac, host_flam)
+
+            #mm_norm = mm / np.max(mm)
+            #host_flam_norm = host_flam / np.max(host_flam)
+
+            # plot spectrum without host light addition
+            #ax1.plot(sn_wav, mm, color='tab:green', label='SN template only', zorder=2)
+
             print("\nSN downgraded model spectrum mean:", np.mean(mm))
             print("Obs host galaxy spectrum mean:", np.mean(host_flam))
             print("Obs SN spectrum mean:", np.mean(sn_flam))
             print("Host fraction manual:", host_frac)
-            print("Scaling factor:", sf)
-            print("SN downgraded scaled model spectrum mean:", sf * np.mean(mm))
-            #ax1.plot(sn_wav, sf * mm, color='tab:green', label='Manually scaled SN model')
 
             # ADD host light in
             # The observed spectrum has the supernova light COMBINED with the host galaxy light
-            new_mm = sf * mm + host_frac * host_flam
+            new_mm = mm + host_frac * host_flam
             an = np.nansum(sn_flam * new_mm / sn_ferr**2) / np.nansum(new_mm**2 / sn_ferr**2)
             print("Vertical factor for manually scaled host light added SN model:", an)
-            ax1.plot(sn_wav, an * new_mm, color='tab:cyan', label='Manually scaled host light added SN model')
+            ax1.plot(sn_wav, an * new_mm, color='tab:cyan', label='Scaled host light added SN model', zorder=2)
+
+            # Accomodate some shift in the host light
+            # This is implemented by by giving a range of wavelengths 
+            # within the SN spectrum that the host galaxy's light can 
+            # contaminate. 
+            # First plot observed host light
+            ax1.plot(host_wav, host_flam_norm, color='darkblue', label='Obs host galaxy', alpha=0.8, zorder=1)
+
+            # Shift is proportional to the "impact parameter" between the 
+            # host and SN projected along the dispersion direction.
+            # Define the shift as a fraction
+            shift = -0.23  # this number is between -1.0 to approx +1.0
+            # Now find initial and end wavelengths for shift
+            shift_init_wav = sn_wav[0]  * (1 + shift)
+            shift_end_wav  = sn_wav[-1] * (1 + shift)
+            print("\nInitial and end wavelengths of shift:", shift_init_wav, shift_end_wav)
+            print("Shift factor:", shift)
+            print("These are the starting and ending SN spectrum wavelengths", end='\n')
+            print("that are affected by the host light. If either wavelength is", end='\n')
+            print("outside the grism/prism wavelength coverage then those wavelengths", end='\n')
+            print("are, of course, superceded by the grism/prism wavelength coverage.", end='\n')
+            shift_idx = np.where((sn_wav >= shift_init_wav) & (sn_wav <= shift_end_wav))[0]
+
+            print("\nShift indices (i.e., host light contaminated indices in SN spectrum):", shift_idx)
+
+            if shift > 0.0:
+                host_end_wav = sn_wav[-1] / (1 + shift)
+                print("Host end wav:", host_end_wav)
+                host_shift_idx = np.where(host_wav <= host_end_wav)[0]
+            elif shift < 0.0:
+                host_init_wav = sn_wav[0] / (1 + shift)
+                print("Host start wav:", host_init_wav)
+                host_shift_idx = np.where(host_wav >= host_init_wav)[0]
+            elif shift == 0.0:
+                host_shift_idx = np.arange(len(host_wav))
+
+            print("Host shift indices:", host_shift_idx)
+
+            sn_fin = np.zeros(len(sn_wav))
+
+            #mm_norm *= 5.0
+
+            count = 0
+            for v in range(len(sn_wav)):
+
+                if v in shift_idx:
+                    if shift > 0.0:
+                    #if (sn_wav[v] >= shift_init_wav) and (sn_wav[v] <= shift_end_wav):
+                        sn_fin[v] = mm_norm[v] + host_frac * host_flam_norm[count]
+                    elif shift < 0.0:
+                        sn_fin[v] = mm_norm[v] + host_frac * host_flam_norm[host_shift_idx[count]]
+                else:
+                    sn_fin[v] = mm_norm[v]
+
+                count += 1
+
+            print("Final SN spectrum", sn_fin)
+            print("len final sn spec:", len(sn_fin))
+
+            a_fin = np.nansum(sn_flam_norm * sn_fin / sn_ferr_norm**2) / np.nansum(sn_fin**2 / sn_ferr_norm**2)
+            ax1.plot(sn_wav, a_fin * sn_fin, color='tab:red', label='Shifted host light added SN model', zorder=3)
 
             ax1.legend(loc=0)
 
@@ -622,21 +688,21 @@ def main():
             plt.show()
 
             sys.exit(0)
+            """
 
             # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
+            """
             print("\nRunning explicit Metropolis-Hastings...")
-            N = 5000   #number of "timesteps"
+            N = 10000   #number of "timesteps"
 
             host_frac_init = 0.05
-            snscale_init = 5e43
-            r = np.array([0.527, 13, host_frac_init, snscale_init])  # initial position
+            r = np.array([0.01, 20, host_frac_init])  # initial position
             print("Initial parameter vector:", r)
 
             logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
-            jump_size_z = 0.1
+            jump_size_z = 0.01
             jump_size_day = 1  # days
             jump_size_host_frac = 0.01
-            jump_size_snscale = 1e41
     
             print("Initial guess log(probability):", logp)
 
@@ -647,43 +713,41 @@ def main():
 
             for i in range(N): #beginning the iteratitive loop
 
-                print("\nMH Iteration", i)
+                print("MH Iteration", i, end='\r')
 
                 rn0 = float(r[0] + jump_size_z * np.random.normal(size=1))
                 rn1 = int(r[1] + jump_size_day * np.random.choice([-1, 1]))
                 rn2 = float(r[2] + jump_size_host_frac * np.random.normal(size=1))
-                rn3 = float(r[3] + jump_size_snscale * np.random.normal(size=1))
 
-                rn = np.array([rn0, rn1, rn2, rn3])
+                rn = np.array([rn0, rn1, rn2])
 
-                print("Proposal parameter vector", rn)
+                #print("Proposal parameter vector", rn)
                 
                 logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)  #evaluating probability of proposal vector
-                print("Proposed parameter vector log(probability):", logpn)
+                #print("Proposed parameter vector log(probability):", logpn)
                 dlogL = logpn - logp
-                print("dlogL:", dlogL)
+                #print("dlogL:", dlogL)
 
                 a = np.exp(dlogL)
 
-                print("Ratio of probabilities at proposed to current position:", a)
+                #print("Ratio of probabilities at proposed to current position:", a)
 
                 if a >= 1:   #always keep it if probability got higher
-                    print("Will accept point since probability increased.")
+                    #print("Will accept point since probability increased.")
                     logp = logpn
                     r = rn
                     accept+=1
         
                 else:  #only keep it based on acceptance probability
-                    print("Probability decreased. Will decide whether to keep point or not.")
+                    #print("Probability decreased. Will decide whether to keep point or not.")
                     u = np.random.rand()  #random number between 0 and 1
                     if u < a:  #only if proposal prob / previous prob is greater than u, then keep new proposed step
                         logp = logpn
                         r = rn
                         accept+=1
-                        print("Point kept.")
+                        #print("Point kept.")
 
                 samples.append(r)  #update
-                """
                 logl_list.append(logp)
 
                 # -------
@@ -715,8 +779,8 @@ def main():
 
                 chi2_list.append(chi2)
 
-                sys.exit(0)
-                """
+                #sys.exit(0)
+            
 
             print("Finished explicit Metropolis-Hastings.")
 
@@ -744,19 +808,20 @@ def main():
             print("Acceptance Rate:", accept/N)
 
             sys.exit(0)
+            """
 
             # ----------------------- Using MCMC to fit ----------------------- #
             print("\nRunning emcee...")
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-            jump_size_z = 0.02
+            jump_size_z = 0.01
             jump_size_age = 0.1  # in gyr
             jump_size_tau = 0.1  # in gyr
             jump_size_av = 0.5  # magnitudes
 
-            jump_size_day = 2  # days
-            jump_size_host_frac = 1e-4
-            jump_size_lsf = 1.0  # angstroms
+            jump_size_day = 1  # days
+            jump_size_host_frac = 0.02
+            jump_size_lsf = 1.0  # angstrom
 
             # Define initial position
             # The parameter vector is (redshift, age, tau, av, lsf_sigma)
@@ -808,13 +873,21 @@ def main():
             label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']
             label_list_sn = [r'$z$', r'$Day$', r'$Host frac$']
 
-            # Call emcee
+            # Read previously run samples using pickle
             args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
             args_host = [host_wav, host_flam, host_ferr]
-            run_emcee_make_plots('sn', nwalkers, ndim_sn, logpost_sn, \
-                pos_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
-            run_emcee_make_plots('host', nwalkers, ndim_host, logpost_host, \
-                pos_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix) 
+ 
+            host_pickle = 'host_' + str(hostid) + '_emcee_sampler.pkl'
+            if os.path.isfile(host_pickle):
+                read_pickle_make_plots('host', nwalkers, ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                #read_pickle_make_plots('sn', nwalkers, ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+            else:
+                # Call emcee
+                #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
+                run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
+
+                read_pickle_make_plots('host', nwalkers, ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                read_pickle_make_plots('sn', nwalkers, ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
             sys.exit(0)
 
