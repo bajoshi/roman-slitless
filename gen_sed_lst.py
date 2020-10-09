@@ -121,14 +121,20 @@ def get_gal_spec_path(redshift):
     # The BC03 generated spectra will always be at redshift=0 and dust free.
     # This code will apply dust extinction and redshift effects manually
     outdir = home + '/Documents/bc03_test_output_dir/'
-    bc03_spec_wav, bc03_spec_llam = get_bc03_spectrum(chosen_age, 1.0, 0.02, outdir)
+    bc03_spec_wav, bc03_spec_llam = get_bc03_spectrum(chosen_age, chosen_tau, metals, outdir)
 
     if plot_tocheck:
+        
         fig = plt.figure()
         ax = fig.add_subplot(111)
+        
         ax.set_xlabel(r'$\lambda\ \mathrm{[\AA]}$', fontsize=14)
         ax.set_ylabel(r'$f_\lambda\ \mathrm{[erg\, s^{-1}\, \AA]}$', fontsize=14)
+        
         ax.plot(bc03_spec_wav, bc03_spec_llam)
+
+        ax.set_xlim(500, 25000)
+
         plt.show()
 
         sys.exit(0)
