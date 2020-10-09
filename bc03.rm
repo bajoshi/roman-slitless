@@ -1,0 +1,15 @@
+# Delete 8lsindx file.
+# Delete 5color file for non SSP's.
+rm -f bc2003_hr_m22_csp_tau2698_chab.5color
+# Delete 8lsindx file.
+# Delete 5color file for non SSP's.
+rm -f /Users/baj/Documents/bc03_test_output_dir/bc2003_hr_m42_csp_tau100890_chab.5color
+# Delete 8lsindx file.
+# Delete 5color file for non SSP's.
+rm -f /Users/baj/Documents/bc03_test_output_dir/bc2003_hr_m22_csp_tau25799_chab.5color
+# Delete 8lsindx file.
+# Delete 5color file for non SSP's.
+rm -f /Users/baj/Documents/bc03_test_output_dir/bc2003_hr_m72_csp_tau57499_chab.5color
+# Delete 8lsindx file.
+# Delete 5color file for non SSP's.
+rm -f /Users/baj/Documents/bc03_test_output_dir/bc2003_hr_m62_csp_tau10000_chab.5color

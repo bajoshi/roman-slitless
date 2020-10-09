@@ -1,8 +1,11 @@
 import numpy as np
 from astropy.io import fits
+from astropy.cosmology import Planck15
 
 import os
 import sys
+
+import matplotlib.pyplot as plt
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
@@ -12,6 +15,8 @@ stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_cod
 
 sys.path.append(stacking_util_codes)
 from proper_and_lum_dist import luminosity_distance
+from dust_utils import get_dust_atten_model
+from bc03_utils import get_bc03_spectrum
 
 def get_sn_spec_path(redshift):
     """
@@ -65,24 +70,82 @@ def get_gal_spec_path(redshift):
     stellar population SEDs from BC03 to the host galaxy.
     """
 
-    # Assume stellar mass of host galaxy
+    plot_tocheck = True
+
+    # ---------- Choosing stellar population parameters ----------- #
+    # Choose stellar pop parameters at random
+    # --------- Stellar mass
     log_stellar_mass_arr = np.linspace(10.0, 11.0, 100)
     log_stellar_mass_chosen = np.random.choice(log_stellar_mass_arr)
 
     log_stellar_mass_str = "{:.2f}".format(log_stellar_mass_chosen).replace('.', 'p')
 
-    # List of possible SEDs
-    all_bc03_spec = np.array(['bc03_template_1_gyr.txt',
-    'bc03_template_2_gyr.txt',
-    'bc03_template_4_gyr.txt',
-    'bc03_template_6_gyr.txt',
-    'bc03_template_100_myr.txt',
-    'bc03_template_300_myr.txt',
-    'bc03_template_500_myr.txt'])
+    # --------- Age
+    age_arr = np.arange(0.1, 13.0, 0.005)  # in Gyr
 
-    bc03_spec_chosen = np.random.choice(all_bc03_spec)
+    # Now choose age consistent with given redshift
+    # i.e., make sure model is not older than the Universe
+    # Allowing at least 100 Myr for the first galaxies to form after Big Bang
+    age_at_z = Planck15.age(redshift).value  # in Gyr
+    age_lim = age_at_z - 0.1  # in Gyr
 
-    # Choose one of the BC03 spectra and multiply flux by stellar mass
+    chosen_age = np.random.choice(age_arr)
+    while chosen_age > age_lim:
+        chosen_age = np.random.choice(age_arr)
+
+    print("Randomly chosen redshift:", redshift)
+    print("Age limit at redshift [Gyr]:", age_lim)
+    print("Chosen age [Gyr]:", chosen_age)
+
+    # --------- SFH
+    # Choose SFH form from a few different models
+    # and then choose params for the chosen SFH form
+    sfh_forms = ['instantaneous', 'constant', 'exponential', 'linearly_declining']
+
+    # choose_sfh(sfh_forms[2])
+
+    tau_arr = np.arange(0.01, 15.0, 0.005)  # in Gyr
+    chosen_tau = np.random.choice(tau_arr)
+
+    print("Chosen tau [exp. decl. timescale, Gyr]:", chosen_tau)
+
+    # --------- Metallicity
+    metals_arr = np.array([0.0001, 0.0004, 0.004, 0.008, 0.02, 0.05])
+    # While the newer 2016 version has an additional metallicity
+    # referred to as "m82", the documentation never specifies the 
+    # actual metallicity associated with it. So I'm ignoring that one.
+    metals = np.random.choice(metals_arr)
+    print("Chosen metallicity (abs. frac.):", metals)
+
+    # ----------- CALL BC03 -----------
+    # The BC03 generated spectra will always be at redshift=0 and dust free.
+    # This code will apply dust extinction and redshift effects manually
+    outdir = home + '/Documents/bc03_test_output_dir/'
+    bc03_spec_wav, bc03_spec_llam = get_bc03_spectrum(chosen_age, 1.0, 0.02, outdir)
+
+    if plot_tocheck:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlabel(r'$\lambda\ \mathrm{[\AA]}$', fontsize=14)
+        ax.set_ylabel(r'$f_\lambda\ \mathrm{[erg\, s^{-1}\, \AA]}$', fontsize=14)
+        ax.plot(bc03_spec_wav, bc03_spec_llam)
+        plt.show()
+
+        sys.exit(0)
+
+    # Apply Calzetti dust extinction depending on av value chosen
+    av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
+
+    get_dust_atten_model()
+    apply_redshift()
+
+    sys.exit(0)
+
+    # Apply IGM depending on boolean flag
+    #if apply_igm:
+    #    pass
+
+    # Multiply flux by stellar mass
     bc03_template = np.genfromtxt(roman_sims_seds + bc03_spec_chosen, dtype=None, names=True, encoding='ascii')
     bc03_lam = bc03_template['wav']
     bc03_llam = bc03_template['llam'] * 10**log_stellar_mass_chosen
@@ -125,7 +188,7 @@ def main():
     img_sim_dir = roman_direct_dir + 'K_akari_rotate_subset/'
     img_truth_dir = roman_direct_dir + 'K_akari_rotate_truth/'
     img_basename = 'akari_match_'
-    img_suffix = 'Y106_11_2'
+    img_suffix = 'Y106_11_1'
 
     # Open empty file for saving sed.lst
     fh = open(roman_slitless_dir + 'sed_' + img_suffix + '.lst', 'w')
@@ -133,8 +196,6 @@ def main():
     # Write header
     fh.write("# 1: SEGMENTATION ID" + "\n")
     fh.write("# 2: SED FILE" + "\n")
-    #fh.write("# 3: REDSHIFT" + "\n")
-    #fh.write("\n")
 
     # Read in catalog from SExtractor
     cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
@@ -143,7 +204,7 @@ def main():
         dtype=None, names=cat_header, skip_header=11, encoding='ascii')
 
     # Redshift array to choose redshift from
-    redshift_arr = np.arange(0.001, 1.0, 0.001)
+    redshift_arr = np.arange(0.001, 3.001, 0.001)
 
     # Read in SN truth file
     #sn_truth = fits.open(img_truth_dir + img_basename + 'index_' + img_suffix + '_sn.fits')
@@ -165,12 +226,12 @@ def main():
     #host_dec = np.array([-53.6038719, ])
 
     # For Y106_11_1
-    #host_segids = np.array([475, 755, 548, 207])
-    #sn_segids = np.array([481, 753, 547, 241])
+    host_segids = np.array([475, 755, 548, 207])
+    sn_segids = np.array([481, 753, 547, 241])
     
     # For Y106_11_2
-    host_segids = np.array([623, 441, 725, 390, 1051])
-    sn_segids = np.array([626, 456, 729, 388, 1040])
+    #host_segids = np.array([623, 441, 725, 390, 1051])
+    #sn_segids = np.array([626, 456, 729, 388, 1040])
 
     # --------- End dummy defs --------- #
 
@@ -216,13 +277,10 @@ def main():
     # Close sed.lst file to save
     fh.close()
 
-    # ------------------ SORT ----------------- #
-    # Now read in the sed.lst file that was just saved 
-    # and make sure that the segmentation ids are in ascending order.
-
-
     return None
 
 if __name__ == '__main__':
     main()
     sys.exit(0)
+
+

@@ -563,9 +563,7 @@ def main():
             sn_ferr = noise_level * sn_flam
 
             # -------- Test figure
-            """
             snr_host = host_flam / host_ferr
-            #print("Signal to noise array:", snr_host)
             print("Mean of signal to noise array:", np.mean(snr_host))
 
             fig = plt.figure()
@@ -574,13 +572,12 @@ def main():
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5)
 
-            m = model_host(host_wav, host_z, host_age, 4.0, 0.0)
+            m = model_host(host_wav, host_z, host_age, 0.0, 3.0)
             a = np.nansum(host_flam * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
             ax.plot(host_wav, m * a, color='tab:red')
 
             plt.show()
             sys.exit(0)
-            """
 
             # test figure for SN
             """
