@@ -127,7 +127,7 @@ def get_gal_spec_path(redshift):
     # ----------- CALL BC03 -----------
     # The BC03 generated spectra will always be at redshift=0 and dust free.
     # This code will apply dust extinction and redshift effects manually
-    outdir = home + '/Documents/bc03_test_output_dir/'
+    outdir = home + '/Documents/bc03_output_dir/'
     bc03_spec_wav, bc03_spec_llam = get_bc03_spectrum(chosen_age, chosen_tau, metals, outdir)
 
     # Apply Calzetti dust extinction depending on av value chosen

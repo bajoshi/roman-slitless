@@ -26,7 +26,6 @@ seddir = 'SEDs_' + img_suffix
 # Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
-"""
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
@@ -37,7 +36,6 @@ print("Simulating...")
 simulate = pylinear.modules.Simulate(sedlst, gzip=False)
 fltnames = simulate.run(grisms, sources, beam)
 print("Simulation done.")
-"""
 
 # Extraction
 fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
@@ -53,7 +51,7 @@ print('Default parameters: range = {},{} A, sampling = {} A'.format(*extraction_
 # Set extraction params
 sources.update_extraction_parameters(*extraction_parameters)
 method = 'grid'
-root = 'romansim2_ext'
+root = 'romansim1_ext'
 logdamp = [-4, -1, 0.1]
 
 print("Extracting...")
