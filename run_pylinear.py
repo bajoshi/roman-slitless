@@ -12,7 +12,7 @@ home = os.getenv('HOME')
 
 os.chdir(home + '/Documents/roman_slitless_sims_results/')
 
-img_suffix = 'Y106_11_2'
+img_suffix = 'Y106_11_1'
 
 # Define list files and other preliminary stuff
 segfile = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/akari_match_' + img_suffix + '_segmap.fits'

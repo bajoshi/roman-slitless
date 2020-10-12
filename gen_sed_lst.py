@@ -30,11 +30,15 @@ def get_sn_spec_path(redshift):
     """
 
     # Create array for days relative to max
-    days_arr = np.arange(-5, 20, 1)
+    days_arr = np.arange(-5, 30, 1)
 
     # Read in SALT2 SN IA file  from Lou
     salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
-        dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
+        dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
+
+    # Define scaling factor
+    # Check sn_scaling.py in same folder as this code
+    sn_scalefac = 2.0842526537870818e+48
 
     # choose a random day relative to max
     day_chosen = np.random.choice(days_arr)
@@ -43,21 +47,32 @@ def get_sn_spec_path(redshift):
     day_idx = np.where(salt2_spec['day'] == day_chosen)[0]
 
     sn_spec_lam = salt2_spec['lam'][day_idx]
-    sn_spec_flam = salt2_spec['flam'][day_idx]
+    sn_spec_llam = salt2_spec['llam'][day_idx] * sn_scalefac
+
+    # Apply dust extinction
+    # Apply Calzetti dust extinction depending on av value chosen
+    av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
+    chosen_av = np.random.choice(av_arr)
+
+    sn_dusty_llam = get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
 
     # Apply redshift
-    redshifted_wav, redshifted_flux = apply_redshift(sn_spec_lam, sn_spec_flam, redshift)
+    sn_wav_z, sn_flux = apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
 
     # Save individual spectrum file if it doesn't already exist
-    sn_spec_path = roman_sims_seds + "salt2_spec_day" + str(day_chosen) + "_z" + "{:.3f}".format(redshift).replace('.', 'p') + ".txt"
+    sn_spec_path = roman_sims_seds + "salt2_spec_day" + str(day_chosen) + \
+    "_z" + "{:.3f}".format(redshift).replace('.', 'p') + \
+    "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') + \
+    ".txt"
+
     if not os.path.isfile(sn_spec_path):
 
         fh_sn = open(sn_spec_path, 'w')
         fh_sn.write("#  lam  flux")
         fh_sn.write("\n")
 
-        for j in range(len(redshifted_wav)):
-            fh_sn.write("{:.2f}".format(redshifted_wav[j]) + " " + str(redshifted_flux[j]))
+        for j in range(len(sn_wav_z)):
+            fh_sn.write("{:.2f}".format(sn_wav_z[j]) + " " + str(sn_flux[j]))
             fh_sn.write("\n")
 
         fh_sn.close()
@@ -66,16 +81,15 @@ def get_sn_spec_path(redshift):
 
 def get_gal_spec_path(redshift):
     """
-    For now this function will randomly assign one of seven composite
-    stellar population SEDs from BC03 to the host galaxy.
+    This function will
     """
 
-    plot_tocheck = True
+    plot_tocheck = False
 
     # ---------- Choosing stellar population parameters ----------- #
     # Choose stellar pop parameters at random
     # --------- Stellar mass
-    log_stellar_mass_arr = np.linspace(10.0, 11.0, 100)
+    log_stellar_mass_arr = np.linspace(10.0, 11.5, 100)
     log_stellar_mass_chosen = np.random.choice(log_stellar_mass_arr)
 
     log_stellar_mass_str = "{:.2f}".format(log_stellar_mass_chosen).replace('.', 'p')
@@ -93,10 +107,6 @@ def get_gal_spec_path(redshift):
     while chosen_age > age_lim:
         chosen_age = np.random.choice(age_arr)
 
-    print("Randomly chosen redshift:", redshift)
-    print("Age limit at redshift [Gyr]:", age_lim)
-    print("Chosen age [Gyr]:", chosen_age)
-
     # --------- SFH
     # Choose SFH form from a few different models
     # and then choose params for the chosen SFH form
@@ -107,15 +117,12 @@ def get_gal_spec_path(redshift):
     tau_arr = np.arange(0.01, 15.0, 0.005)  # in Gyr
     chosen_tau = np.random.choice(tau_arr)
 
-    print("Chosen tau [exp. decl. timescale, Gyr]:", chosen_tau)
-
     # --------- Metallicity
     metals_arr = np.array([0.0001, 0.0004, 0.004, 0.008, 0.02, 0.05])
     # While the newer 2016 version has an additional metallicity
     # referred to as "m82", the documentation never specifies the 
     # actual metallicity associated with it. So I'm ignoring that one.
     metals = np.random.choice(metals_arr)
-    print("Chosen metallicity (abs. frac.):", metals)
 
     # ----------- CALL BC03 -----------
     # The BC03 generated spectra will always be at redshift=0 and dust free.
@@ -123,44 +130,72 @@ def get_gal_spec_path(redshift):
     outdir = home + '/Documents/bc03_test_output_dir/'
     bc03_spec_wav, bc03_spec_llam = get_bc03_spectrum(chosen_age, chosen_tau, metals, outdir)
 
+    # Apply Calzetti dust extinction depending on av value chosen
+    av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
+    chosen_av = np.random.choice(av_arr)
+
+    bc03_dusty_llam = get_dust_atten_model(bc03_spec_wav, bc03_spec_llam, chosen_av)
+
+    # --------------------- CHECK ----------------------
+    # ---------------------- TBD -----------------------
+    # 1.
+    # Given the distribution you have for SFHs here,
+    # can you recover the correct cosmic star formation
+    # history? i.e., if you took the distribution of models
+    # you have and computed the cosmic SFH do you get the 
+    # Madau diagram back?
+    # 2.
+    # Do your model galaxies follow other scaling relations?
+
+    # Apply IGM depending on boolean flag
+    #if apply_igm:
+    #    pass
+
+    bc03_wav_z, bc03_dusty_flux = apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
+
+    # Multiply flux by stellar mass
+    bc03_flux = bc03_dusty_flux * 10**log_stellar_mass_chosen
+
     if plot_tocheck:
         
         fig = plt.figure()
         ax = fig.add_subplot(111)
         
         ax.set_xlabel(r'$\lambda\ \mathrm{[\AA]}$', fontsize=14)
-        ax.set_ylabel(r'$f_\lambda\ \mathrm{[erg\, s^{-1}\, \AA]}$', fontsize=14)
+        ax.set_ylabel(r'$f_\lambda\ \mathrm{[erg\, s^{-1}\, cm^{-2}\, \AA]}$', fontsize=14)
         
-        ax.plot(bc03_spec_wav, bc03_spec_llam)
+        #ax.plot(bc03_spec_wav, bc03_spec_llam, label='Orig model')
+        #ax.plot(bc03_spec_wav, bc03_dusty_llam, label='Dusty model')
+        ax.plot(bc03_wav_z, bc03_flux, label='Redshfited dusty model with chosen Ms')
+
+        ax.legend(loc=0)
 
         ax.set_xlim(500, 25000)
 
         plt.show()
 
-        sys.exit(0)
+    # Save file
+    gal_spec_path = roman_sims_seds + 'bc03_template' + \
+    "_z" + "{:.3f}".format(redshift).replace('.', 'p') + \
+    "_ms" + log_stellar_mass_str + \
+    "_age" + "{:.3f}".format(chosen_age).replace('.', 'p') + \
+    "_tau" + "{:.3f}".format(chosen_tau).replace('.', 'p') + \
+    "_met" + "{:.4f}".format(metals).replace('.', 'p') + \
+    "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') + \
+    ".txt"
 
-    # Apply Calzetti dust extinction depending on av value chosen
-    av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
-
-    get_dust_atten_model()
-    apply_redshift()
-
-    sys.exit(0)
-
-    # Apply IGM depending on boolean flag
-    #if apply_igm:
-    #    pass
-
-    # Multiply flux by stellar mass
-    bc03_template = np.genfromtxt(roman_sims_seds + bc03_spec_chosen, dtype=None, names=True, encoding='ascii')
-    bc03_lam = bc03_template['wav']
-    bc03_llam = bc03_template['llam'] * 10**log_stellar_mass_chosen
-
-    # Apply redshift
-    redshifted_wav, redshifted_flux = apply_redshift(bc03_lam, bc03_llam, redshift)
-
-    gal_spec_path = roman_sims_seds + bc03_spec_chosen.split(".txt")[0] + \
-    "_ms" + log_stellar_mass_str + "_z" + "{:.3f}".format(redshift).replace('.', 'p') + ".txt"
+    # Print info to screen
+    print("\n")
+    print("--------------------------------------------------")
+    print("Randomly chosen redshift:", redshift)
+    print("Age limit at redshift [Gyr]:", age_lim)
+    print("\nRandomly chosen stellar population parameters:")
+    print("Age [Gyr]:", chosen_age)
+    print("log(stellar mass) [log(Ms/M_sol)]:", log_stellar_mass_chosen)
+    print("Tau [exp. decl. timescale, Gyr]:", chosen_tau)
+    print("Metallicity (abs. frac.):", metals)
+    print("Dust extinction in V-band (mag):", chosen_av)
+    print("\nWill save to file:", gal_spec_path)
 
     # Save individual spectrum file if it doesn't already exist
     if not os.path.isfile(gal_spec_path):
@@ -169,9 +204,9 @@ def get_gal_spec_path(redshift):
         fh_gal.write("#  lam  flux")
         fh_gal.write("\n")
 
-        for j in range(len(redshifted_flux)):
+        for j in range(len(bc03_flux)):
 
-            fh_gal.write("{:.2f}".format(redshifted_wav[j]) + " " + str(redshifted_flux[j]))
+            fh_gal.write("{:.2f}".format(bc03_wav_z[j]) + " " + str(bc03_flux[j]))
             fh_gal.write("\n")
 
         fh_gal.close()
