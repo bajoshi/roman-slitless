@@ -29,6 +29,12 @@ roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
 modeldir = home + '/Documents/bc03_output_dir/'
 
+grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
+    dtype=None, names=True, skip_header=3)
+
+grism_sens_wav = grism_sens_cat['Wave'] * 1e4  # the text file has wavelengths in microns # needed in angstroms
+grism_sens = grism_sens_cat['BAOGrism_1st']
+
 sys.path.append(stacking_utils)
 import proper_and_lum_dist as cosmo
 from dust_utils import get_dust_atten_model
@@ -224,6 +230,14 @@ def model_host(x, z, ms, age, tau, met, av):
     lam_step = x[-1] - x[-2]
     idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
     model_mod[-1] = np.mean(model_lsfconv[idx])
+
+    # ------ Apply sensitivity curve of the dispersive element
+    """
+    grism_sens_modelgrid = griddata(points=grism_sens_wav, values=grism_sens, xi=x, method='linear')
+    grism_sens_modelgrid[grism_sens_modelgrid == 0] = np.nan
+
+    model_mod *= grism_sens_modelgrid
+    """
 
     return model_mod
 
@@ -506,33 +520,46 @@ def main():
             host_ferr = noise_level * host_flam
             sn_ferr = noise_level * sn_flam
 
-            # -------- Test figure
+            # -------- Test figure for HOST
             snr_host = host_flam / host_ferr
             print("Mean of signal to noise array:", np.mean(snr_host))
 
             fig = plt.figure()
             ax = fig.add_subplot()
 
+            ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+            ax.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
+
             # plot extracted spectrum
-            ax.plot(host_wav, host_flam, color='tab:brown', lw=1.0)
+            ax.plot(host_wav, host_flam, color='tab:brown', lw=2.5, label='pyLINEAR extraction (no noise added)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=2)
 
             # plot model generated
             m = model_host(host_wav, host_z, host_ms, host_age, host_tau, host_met, host_av)
-            a = np.nansum(host_flam * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
+
+            # Only consider wavelengths where sensitivity is above 20%
+            grism_wav_idx = np.where(grism_sens > 0.25)
+
+            x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                           (host_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+            m = m[x0]
+
+            a = np.nansum(host_flam[x0] * m / host_ferr[x0]**2) / np.nansum(m**2 / host_ferr[x0]**2)
             print("a:", a)
-            print("Base model chi2:", np.nansum( (m-host_flam)**2 / host_ferr**2 ))
-            ax.plot(host_wav, m * a, color='tab:red', zorder=1)
+            print("Base model chi2:", np.nansum( (m - host_flam[x0])**2 / host_ferr[x0]**2 ))
+            ax.plot(host_wav[x0], m * a, color='tab:red', zorder=1, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
-            ax.plot(host_template['lam'], 3e4 * host_template['flux'], color='tab:green', zorder=1)
+            ax.plot(host_template['lam'], 3e4 * host_template['flux'], color='tab:green', zorder=1, label='model given to pyLINEAR')
 
             ax.set_xlim(9000, 20000)
             host_fig_ymin = np.min(host_flam)
             host_fig_ymax = np.max(host_flam)
             ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.5)
+
+            ax.legend(loc=0)
 
             plt.show()
             sys.exit(0)
