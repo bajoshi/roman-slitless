@@ -27,67 +27,18 @@ ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
+modeldir = home + '/Documents/bc03_output_dir/'
+
 sys.path.append(stacking_utils)
 import proper_and_lum_dist as cosmo
+from dust_utils import get_dust_atten_model
+from bc03_utils import get_bc03_spectrum
+
+from gen_sed_lst import apply_redshift
 
 # Read in SALT2 SN IA file from Lou
 salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
-
-
-def get_template(age, tau, tauv, metallicity, \
-    log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
-    model_lam_grid_withlines_mmap, model_comp_spec_withlines_mmap):
-
-    """
-    print("\nFinding closest model to --")
-    print("Age [Gyr]:", 10**age / 1e9)
-    print("Tau [Gyr]:", tau)
-    print("Tau_v:", tauv)
-    print("Metallicity [abs. frac.]:", metallicity)
-    """
-
-    # First find closest values and then indices corresponding to them
-    # It has to be done this way because you typically wont find an exact match
-    closest_age_idx = np.argmin(abs(log_age_arr - age))
-    closest_tau_idx = np.argmin(abs(tau_gyr_arr - tau))
-    closest_tauv_idx = np.argmin(abs(tauv_arr - tauv))
-
-    # Now get indices
-    age_idx = np.where(log_age_arr == log_age_arr[closest_age_idx])[0]
-    tau_idx = np.where(tau_gyr_arr == tau_gyr_arr[closest_tau_idx])[0]
-    tauv_idx = np.where(tauv_arr   ==    tauv_arr[closest_tauv_idx])[0]
-    metal_idx = np.where(metal_arr == metallicity)[0]
-
-    model_idx = int(reduce(np.intersect1d, (age_idx, tau_idx, tauv_idx, metal_idx)))
-
-    model_llam = model_comp_spec_withlines_mmap[model_idx]
-
-    chosen_age = 10**log_age_arr[model_idx] / 1e9
-    chosen_tau = tau_gyr_arr[model_idx]
-    chosen_av = 1.086 * tauv_arr[model_idx]
-    chosen_metallicity = metal_arr[model_idx]
-
-    """
-    print("\nChosen model index:", model_idx)
-    print("Chosen model parameters -- ")
-    print("Age [Gyr]:", chosen_age)
-    print("Tau [Gyr]:", chosen_tau)
-    print("A_v:", chosen_av)
-    print("Metallicity [abs. frac.]:", chosen_metallicity)
-    """
-
-    return model_llam
-
-def apply_redshift(restframe_wav, restframe_lum, redshift):
-
-    dl = cosmo.luminosity_distance(redshift)  # returns dl in Mpc
-    dl = dl * 3.09e24  # convert to cm
-
-    redshifted_wav = restframe_wav * (1 + redshift)
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
-
-    return redshifted_wav, redshifted_flux
 
 def loglike_sn(theta, x, data, err, host_flam):
     
@@ -227,31 +178,34 @@ def model_sn(x, z, day, host_frac, host_flam):
 
     return sn_flam_hostcomb
 
-def model_host(x, z, age_gyr, tau_gyr, av):
+def model_host(x, z, ms, age, tau, met, av):
     """
     Expects to get the following arguments
+    
     x: observed wavelength grid
+    
     z: redshift to apply to template
+    ms: log of the stellar mass
     age: age of SED in Gyr
     tau: exponential SFH timescale in Gyr
+    metallicity: absolute fraction of metals
     av: visual dust extinction
-    lsf_sigma: in angstroms
     """
 
-    current_age = np.log10(age_gyr * 1e9)  # because the saved age parameter is the log(age[yr])
-    current_tau = tau_gyr  # because the saved tau is in Gyr
-    tauv = av / 1.086
-    current_tauv = tauv
-    current_metallicity = 0.02  # Force it to only choose from the solar metallicity CSP models
+    model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
 
-    model_llam = get_template(current_age, current_tau, current_tauv, current_metallicity, \
-        log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, model_lam_grid, model_grid)
+    # ------ Apply dust extinction
+    model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
+
+    # Multiply luminosity by stellar mass
+    model_dusty_llam = model_dusty_llam * 10**ms
 
     # ------ Apply redshift
-    model_lam_z, model_flam_z = apply_redshift(model_lam_grid, model_llam, z)
+    model_lam_z, model_flam_z = apply_redshift(model_lam, model_dusty_llam, z)
 
     # ------ Apply LSF
-    #model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
+    lsf_sigma = 25.0
+    model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
 
     # ------ Downgrade to grism resolution
     model_mod = np.zeros(len(x))
@@ -259,17 +213,17 @@ def model_host(x, z, age_gyr, tau_gyr, av):
     ### Zeroth element
     lam_step = x[1] - x[0]
     idx = np.where((model_lam_z >= x[0] - lam_step) & (model_lam_z < x[0] + lam_step))[0]
-    model_mod[0] = np.mean(model_flam_z[idx])
+    model_mod[0] = np.mean(model_lsfconv[idx])
 
     ### all elements in between
     for j in range(1, len(x) - 1):
         idx = np.where((model_lam_z >= x[j-1]) & (model_lam_z < x[j+1]))[0]
-        model_mod[j] = np.mean(model_flam_z[idx])
+        model_mod[j] = np.mean(model_lsfconv[idx])
     
     ### Last element
     lam_step = x[-1] - x[-2]
     idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
-    model_mod[-1] = np.mean(model_flam_z[idx])
+    model_mod[-1] = np.mean(model_lsfconv[idx])
 
     return model_mod
 
@@ -477,25 +431,27 @@ def main():
         if 'salt' not in template_name:
             continue
         else:
-            print("Segmentation ID:", segid, "is a SN. Will begin fitting.")
+            print("\nSegmentation ID:", segid, "is a SN. Will begin fitting.")
 
             # Get corresponding host ID
             hostid = int(host_segids[np.where(sn_segids == segid)[0]])
             print("I have the following SN and HOST IDs:", segid, hostid)
 
-            # Read in template
-            template = np.genfromtxt(template_dir + template_name, dtype=None, names=True, encoding='ascii')
-            print("Template name SN:", template_name)
-
             # ---------------------------- Set up input params dict ---------------------------- #
+            print("INPUTS:")
+
+            # Read in template file names
+            print("Template name SN:", template_name)
+            
             input_dict = {}
 
-            print("INPUTS:")
             # ---- SN
             t = template_name.split('.txt')[0].split('_')
 
-            sn_z = float(t[-1].replace('p', '.').replace('z',''))
-            sn_day = int(t[-2].replace('day',''))
+            sn_av = float(t[-1].replace('p', '.').replace('av',''))
+            sn_z = float(t[-2].replace('p', '.').replace('z',''))
+            sn_day = int(t[-3].replace('day',''))
+            print("Supernova input Av:", sn_av)
             print("Supernova input z:", sn_z)
             print("Supernova day:", sn_day, "\n")
 
@@ -507,27 +463,31 @@ def main():
 
             th = th.split('.txt')[0].split('_')
 
-            host_z = float(th[-1].replace('p', '.').replace('z',''))
-            host_ms = float(th[-2].replace('p', '.').replace('ms',''))
-
-            host_age_u = th[-3]
-            if host_age_u == 'gyr':
-                host_age = float(th[2])
-            elif host_age_u == 'myr':
-                host_age = float(th[2])/1e3
+            host_av = float(th[-1].replace('p', '.').replace('av',''))
+            host_met = float(th[-2].replace('p', '.').replace('met',''))
+            host_tau = float(th[-3].replace('p', '.').replace('tau',''))
+            host_age = float(th[-4].replace('p', '.').replace('age',''))
+            host_ms = float(th[-5].replace('p', '.').replace('ms',''))
+            host_z = float(th[-6].replace('p', '.').replace('z',''))
 
             print("Host input z:", host_z)
             print("Host input stellar mass [log(Ms/Msol)]:", host_ms)
             print("Host input age [Gyr]:", host_age)
+            print("Host input tau:", host_tau)
+            print("Host input metallicity:", host_met)
+            print("Host input Av:", host_av)
 
+            # Put into input dict
             input_dict['host_z'] = host_z
             input_dict['host_ms'] = host_ms
             input_dict['host_age'] = host_age
+            input_dict['host_tau'] = host_tau
+            input_dict['host_met'] = host_met
+            input_dict['host_av'] = host_av
 
             input_dict['sn_z'] = sn_z
             input_dict['sn_day'] = sn_day
-
-            sys.exit(0)
+            input_dict['sn_av'] = sn_av
 
             # ---------------------------- FITTING ---------------------------- #
             # ---------- Get spectrum for host and sn
@@ -538,7 +498,7 @@ def main():
             sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.05  # relative to signal
+            noise_level = 0.02  # relative to signal
             # First assign noise to each point
             #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
@@ -552,13 +512,27 @@ def main():
 
             fig = plt.figure()
             ax = fig.add_subplot()
+
+            # plot extracted spectrum
             ax.plot(host_wav, host_flam, color='tab:brown', lw=1.0)
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
-                color='grey', alpha=0.5)
+                color='grey', alpha=0.5, zorder=2)
 
-            m = model_host(host_wav, host_z, host_age, 0.0, 3.0)
+            # plot model generated
+            m = model_host(host_wav, host_z, host_ms, host_age, host_tau, host_met, host_av)
             a = np.nansum(host_flam * m / host_ferr**2) / np.nansum(m**2 / host_ferr**2)
-            ax.plot(host_wav, m * a, color='tab:red')
+            print("a:", a)
+            print("Base model chi2:", np.nansum( (m-host_flam)**2 / host_ferr**2 ))
+            ax.plot(host_wav, m * a, color='tab:red', zorder=1)
+
+            # plot actual template passed into pylinear
+            host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
+            ax.plot(host_template['lam'], 3e4 * host_template['flux'], color='tab:green', zorder=1)
+
+            ax.set_xlim(9000, 20000)
+            host_fig_ymin = np.min(host_flam)
+            host_fig_ymax = np.max(host_flam)
+            ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.5)
 
             plt.show()
             sys.exit(0)

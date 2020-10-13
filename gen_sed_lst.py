@@ -136,6 +136,9 @@ def get_gal_spec_path(redshift):
 
     bc03_dusty_llam = get_dust_atten_model(bc03_spec_wav, bc03_spec_llam, chosen_av)
 
+    # Multiply flux by stellar mass
+    bc03_dusty_llam = bc03_dusty_llam * 10**log_stellar_mass_chosen
+
     # --------------------- CHECK ----------------------
     # ---------------------- TBD -----------------------
     # 1.
@@ -151,10 +154,7 @@ def get_gal_spec_path(redshift):
     #if apply_igm:
     #    pass
 
-    bc03_wav_z, bc03_dusty_flux = apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
-
-    # Multiply flux by stellar mass
-    bc03_flux = bc03_dusty_flux * 10**log_stellar_mass_chosen
+    bc03_wav_z, bc03_flux = apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
 
     if plot_tocheck:
         
