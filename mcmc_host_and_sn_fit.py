@@ -30,23 +30,6 @@ roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 sys.path.append(stacking_utils)
 import proper_and_lum_dist as cosmo
 
-# Read in all models and parameters
-model_lam_grid = np.load(pears_figs_dir + 'model_lam_grid_withlines_chabrier.npy', mmap_mode='r')
-model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy', mmap_mode='r')
-
-log_age_arr = np.load(pears_figs_dir + 'log_age_arr_chab.npy', mmap_mode='r')
-metal_arr = np.load(pears_figs_dir + 'metal_arr_chab.npy', mmap_mode='r')
-tau_gyr_arr = np.load(pears_figs_dir + 'tau_gyr_arr_chab.npy', mmap_mode='r')
-tauv_arr = np.load(pears_figs_dir + 'tauv_arr_chab.npy', mmap_mode='r')
-
-"""
-Array ranges are:
-1. Age: 7.02 to 10.114 (this is log of the age in years)
-2. Metals: 0.0001 to 0.05 (absolute fraction of metals. All CSP models although are fixed at solar = 0.02)
-3. Tau: 0.01 to 63.095 (this is in Gyr. SSP models get -99.0)
-4. TauV: 0.0 to 2.8 (Visual dust extinction in magnitudes. SSP models get -99.0)
-"""
-
 # Read in SALT2 SN IA file from Lou
 salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
@@ -246,9 +229,6 @@ def model_sn(x, z, day, host_frac, host_flam):
 
 def model_host(x, z, age_gyr, tau_gyr, av):
     """
-    This function will return the closest BC03 template 
-    from a large grid of pre-generated templates.
-
     Expects to get the following arguments
     x: observed wavelength grid
     z: redshift to apply to template
@@ -483,10 +463,10 @@ def main():
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
     # For Y106_11_1
-    host_segids = np.array([548])  # ([475, 755, 548, 207])
-    sn_segids = np.array([547])  # ([481, 753, 547, 241])
+    host_segids = np.array([475, 755, 548, 207])
+    sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(500, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -505,6 +485,7 @@ def main():
 
             # Read in template
             template = np.genfromtxt(template_dir + template_name, dtype=None, names=True, encoding='ascii')
+            print("Template name SN:", template_name)
 
             # ---------------------------- Set up input params dict ---------------------------- #
             input_dict = {}
@@ -522,6 +503,7 @@ def main():
             h_idx = int(np.where(sedlst['segid'] == hostid)[0])
             h_path = sedlst['sed_path'][h_idx]
             th = os.path.basename(h_path)
+            print("Template name HOST:", th)
 
             th = th.split('.txt')[0].split('_')
 
@@ -544,6 +526,8 @@ def main():
 
             input_dict['sn_z'] = sn_z
             input_dict['sn_day'] = sn_day
+
+            sys.exit(0)
 
             # ---------------------------- FITTING ---------------------------- #
             # ---------- Get spectrum for host and sn
