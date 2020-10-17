@@ -409,8 +409,10 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
 
 def main():
 
-    print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * * \n")
-    print("\n * * * *    [WARNING]: check vertical scaling.    * * * * \n")
+    print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * *")
+    print("\n * * * *    [WARNING]: check vertical scaling.    * * * *")
+    print("\n * * * *    [WARNING]: check flux conservation with resampling.    * * * *")
+
 
     ext_root = "romansim1"
     img_suffix = 'Y106_11_1'
@@ -548,16 +550,37 @@ def main():
             a = np.nansum(host_flam[x0] * m / host_ferr[x0]**2) / np.nansum(m**2 / host_ferr[x0]**2)
             print("a:", a)
             print("Base model chi2:", np.nansum( (m - host_flam[x0])**2 / host_ferr[x0]**2 ))
+
             ax.plot(host_wav[x0], m * a, color='tab:red', zorder=1, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
             ax.plot(host_template['lam'], 3e4 * host_template['flux'], color='tab:green', zorder=1, label='model given to pyLINEAR')
 
+            # plot compounded lsf template
+            epsilon = 2.0  # how much it shifts for a pixel # in wavelength steps
+            total_pix = 5  # how many times to compound the spectrum
+            exten = int(epsilon * total_pix)
+            final_spec = np.zeros(shape=(total_pix, (len(m) + exten)))
+            print("final spec shape:", final_spec.shape)
+            for pix in range(total_pix):
+
+                # Create shifted spectrum
+                i = int(epsilon*(1+pix))  # starting index for shift
+                shifted_spec = np.zeros(len(m) + i)
+                shifted_spec[i:] = m
+
+                final_spec[pix, :len(shifted_spec)] = shifted_spec
+
+            compounded_lsf = np.sum(final_spec, axis=0)
+            print("len of compounded lsf:", len(compounded_lsf))
+
+            ax.plot(np.arange(9000, 9000+len(compounded_lsf)), compounded_lsf, color='cyan', label='Compounded LSF')
+
             ax.set_xlim(9000, 20000)
-            host_fig_ymin = np.min(host_flam)
-            host_fig_ymax = np.max(host_flam)
-            ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.5)
+            #host_fig_ymin = np.min(host_flam)
+            #host_fig_ymax = np.max(host_flam)
+            #ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.5)
 
             ax.legend(loc=0)
 
