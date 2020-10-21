@@ -184,7 +184,7 @@ def model_sn(x, z, day, host_frac, host_flam):
 
     return sn_flam_hostcomb
 
-def model_host(x, z, ms, age, tau, met, av):
+def model_host(x, z, ms, age, tau, met, av, lsf_sigma):
     """
     Expects to get the following arguments
     
@@ -203,14 +203,13 @@ def model_host(x, z, ms, age, tau, met, av):
     # ------ Apply dust extinction
     model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
 
-    # Multiply luminosity by stellar mass
+    # ------ Multiply luminosity by stellar mass
     model_dusty_llam = model_dusty_llam * 10**ms
 
     # ------ Apply redshift
     model_lam_z, model_flam_z = apply_redshift(model_lam, model_dusty_llam, z)
 
     # ------ Apply LSF
-    lsf_sigma = 25.0
     model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
 
     # ------ Downgrade to grism resolution
@@ -232,12 +231,9 @@ def model_host(x, z, ms, age, tau, met, av):
     model_mod[-1] = np.mean(model_lsfconv[idx])
 
     # ------ Apply sensitivity curve of the dispersive element
-    """
-    grism_sens_modelgrid = griddata(points=grism_sens_wav, values=grism_sens, xi=x, method='linear')
-    grism_sens_modelgrid[grism_sens_modelgrid == 0] = np.nan
-
-    model_mod *= grism_sens_modelgrid
-    """
+    #grism_sens_modelgrid = griddata(points=grism_sens_wav, values=grism_sens, xi=x, method='linear')
+    #grism_sens_modelgrid[grism_sens_modelgrid == 0] = np.nan
+    #model_mod /= grism_sens_modelgrid
 
     return model_mod
 
@@ -413,7 +409,6 @@ def main():
     print("\n * * * *    [WARNING]: check vertical scaling.    * * * *")
     print("\n * * * *    [WARNING]: check flux conservation with resampling.    * * * *")
 
-
     ext_root = "romansim1"
     img_suffix = 'Y106_11_1'
 
@@ -533,12 +528,12 @@ def main():
             ax.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
 
             # plot extracted spectrum
-            ax.plot(host_wav, host_flam, color='tab:brown', lw=2.5, label='pyLINEAR extraction (no noise added)')
+            ax.plot(host_wav, host_flam, color='tab:brown', lw=2.5, \
+                label='pyLINEAR extraction (sky noise added; no stat noise)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
-                color='grey', alpha=0.5, zorder=2)
+                color='grey', alpha=0.5, zorder=1)
 
-            # plot model generated
-            m = model_host(host_wav, host_z, host_ms, host_age, host_tau, host_met, host_av)
+            m = model_host(host_wav, 1.953, 11.17, 1.53, 12.38, 0.0001, 0.595)
 
             # Only consider wavelengths where sensitivity is above 20%
             grism_wav_idx = np.where(grism_sens > 0.25)
@@ -549,38 +544,21 @@ def main():
 
             a = np.nansum(host_flam[x0] * m / host_ferr[x0]**2) / np.nansum(m**2 / host_ferr[x0]**2)
             print("a:", a)
+            m = a*m
             print("Base model chi2:", np.nansum( (m - host_flam[x0])**2 / host_ferr[x0]**2 ))
 
-            ax.plot(host_wav[x0], m * a, color='tab:red', zorder=1, label='Downgraded model from mcmc code')
+            ax.plot(host_wav[x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
+            h_path = '/Users/baj/Documents/roman_slitless_sims_seds/bc03_template_z1p953_ms11p17_age1p530_tau12p380_met0p0001_av0p595.txt'
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
-            ax.plot(host_template['lam'], 3e4 * host_template['flux'], color='tab:green', zorder=1, label='model given to pyLINEAR')
-
-            # plot compounded lsf template
-            epsilon = 2.0  # how much it shifts for a pixel # in wavelength steps
-            total_pix = 5  # how many times to compound the spectrum
-            exten = int(epsilon * total_pix)
-            final_spec = np.zeros(shape=(total_pix, (len(m) + exten)))
-            print("final spec shape:", final_spec.shape)
-            for pix in range(total_pix):
-
-                # Create shifted spectrum
-                i = int(epsilon*(1+pix))  # starting index for shift
-                shifted_spec = np.zeros(len(m) + i)
-                shifted_spec[i:] = m
-
-                final_spec[pix, :len(shifted_spec)] = shifted_spec
-
-            compounded_lsf = np.sum(final_spec, axis=0)
-            print("len of compounded lsf:", len(compounded_lsf))
-
-            ax.plot(np.arange(9000, 9000+len(compounded_lsf)), compounded_lsf, color='cyan', label='Compounded LSF')
+            ax.plot(host_template['lam'], 4e4 * host_template['flux'], lw=1.0, \
+                color='tab:green', zorder=1, label='model given to pyLINEAR (+constant)')
 
             ax.set_xlim(9000, 20000)
-            #host_fig_ymin = np.min(host_flam)
-            #host_fig_ymax = np.max(host_flam)
-            #ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.5)
+            host_fig_ymin = np.min(host_flam)
+            host_fig_ymax = np.max(host_flam)
+            ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
 
             ax.legend(loc=0)
 
