@@ -84,7 +84,7 @@ tabnames = tabulate.run(grisms, sources, beam)
 
 extraction_parameters = grisms.get_default_extraction()
 
-print('Default parameters: range = {},{} A, sampling = {} A'.format(**extraction_parameters))
+print('\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'.format(**extraction_parameters))
 
 # Set extraction params
 sources.update_extraction_parameters(**extraction_parameters)

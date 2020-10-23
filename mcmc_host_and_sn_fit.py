@@ -23,7 +23,7 @@ stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
 pears_figs_dir = home + '/Documents/pears_figs_data/'
 
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/prev_run/"
+ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
@@ -69,9 +69,9 @@ def loglike_sn(theta, x, data, err, host_flam):
 
 def loglike_host(theta, x, data, err):
     
-    z, age, tau, av = theta
+    z, ms, age, tau, av, lsf_sigma = theta
 
-    y = model_host(x, z, age, tau, av)
+    y = model_host(x, z, ms, age, tau, av, lsf_sigma)
     #print("Model func result:", y)
 
     # ------- Vertical scaling factor
@@ -95,15 +95,19 @@ def logprior_sn(theta):
 
 def logprior_host(theta):
 
-    z, age, tau, av = theta
+    z, ms, age, tau, av, lsf_sigma = theta
     
     # Make sure model is not older than the Universe
     # Allowing at least 100 Myr for the first galaxies to form after Big Bang
     age_at_z = Planck15.age(z).value  # in Gyr
     age_lim = age_at_z - 0.1  # in Gyr
 
-    #if ( 0.0001 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0  and  0.0 <= lsf_sigma <= 300.0  ):
-    if ( 0.0001 <= z <= 6.0  and  0.01 <= age <= age_lim  and  0.01 <= tau <= 100.0  and  0.0 <= av <= 3.0 ):
+    if ( 0.0001 <= z <= 6.0 and \
+         9.0 <= ms <= 12.0 and \
+         0.01 <= age <= age_lim and \
+         0.01 <= tau <= 100.0 and \
+         0.0 <= av <= 3.0 and \
+         0.5 <= lsf_sigma <= 20.0):
         return 0.0
     
     return -np.inf
@@ -182,7 +186,7 @@ def model_sn(x, z, day, sn_av):
 
     return sn_mod
 
-def model_host(x, z, ms, age, tau, met, av, lsf_sigma):
+def model_host(x, z, ms, age, tau, av, lsf_sigma):
     """
     Expects to get the following arguments
     
@@ -196,6 +200,7 @@ def model_host(x, z, ms, age, tau, met, av, lsf_sigma):
     av: visual dust extinction
     """
 
+    met = 0.02
     model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
 
     # ------ Apply dust extinction
@@ -389,7 +394,7 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
         sample = flat_samples[ind]
 
         if object_type == 'host':
-            m = model_host(wav, sample[0], sample[1], sample[2], sample[3])
+            m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4], sample[5])
         elif object_type == 'sn':
             m = model_sn(wav, sample[0], sample[1], sample[2], args_obj[-1])
 
@@ -564,6 +569,7 @@ def main():
             """
 
             # test figure for SN
+            """
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
 
@@ -591,10 +597,16 @@ def main():
             # plot spectrum without host light addition
             ax1.plot(sn_wav[sn_x0], msn, color='tab:green', label='SN template only', zorder=2)
 
+            # Some dummy line
+            msn_and_line = msn + (sn_wav[sn_x0] * (5e-17 / 2500)  +  1e-17)
+            ax1.plot(sn_wav[sn_x0], msn_and_line, color='tab:red', label='SN template and line', zorder=2)
+
             #print("\nSN downgraded model spectrum mean:", np.nanmean(msn))
             #print("Obs host galaxy spectrum mean:", np.mean(host_flam))
             #print("Obs SN spectrum mean:", np.mean(sn_flam))
             #print("Host fraction manual:", host_frac)
+
+            ax1.legend(loc=0)
 
             plt.show()
             sys.exit(0)
@@ -674,6 +686,7 @@ def main():
             plt.show()
 
             sys.exit(0)
+            """
 
             # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
             """
@@ -800,9 +813,11 @@ def main():
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
             jump_size_z = 0.01
+            jump_size_ms = 0.1  # log(ms)
             jump_size_age = 0.1  # in gyr
             jump_size_tau = 0.1  # in gyr
             jump_size_av = 0.5  # magnitudes
+            jump_size_lsf = 0.2
 
             jump_size_day = 1  # days
             jump_size_host_frac = 0.02
@@ -813,13 +828,13 @@ def main():
             # age in gyr and tau in gyr
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
-            rhost_init = np.array([0.02, 0.4, 2.0, 0.0])
+            rhost_init = np.array([0.01, 10.0, 1.0, 2.0, 0.0, 2.0])
             host_frac_init = 0.005
             rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
 
             # Setup dims and walkers
-            nwalkers = 100
-            ndim_host = 4
+            nwalkers = 50
+            ndim_host = 6
             ndim_sn  = 3
 
             # generating ball of walkers about initial position defined above
@@ -830,11 +845,13 @@ def main():
 
                 # ---------- For HOST
                 rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
-                rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
-                rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
-                rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+                rh1 = float(rhost_init[1] + jump_size_ms * np.random.normal(size=1))
+                rh2 = float(rhost_init[2] + jump_size_age * np.random.normal(size=1))
+                rh3 = float(rhost_init[3] + jump_size_tau * np.random.normal(size=1))
+                rh4 = float(rhost_init[4] + jump_size_av * np.random.normal(size=1))
+                rh5 = float(rhost_init[5] + jump_size_lsf * np.random.normal(size=1))
 
-                rh = np.array([rh0, rh1, rh2, rh3])
+                rh = np.array([rh0, rh1, rh2, rh3, rh4, rh5])
 
                 pos_host[i] = rh
 
@@ -848,14 +865,12 @@ def main():
                 pos_sn[i] = rsn
             
             # Set up truth arrays
-            # tau and av are here temporarily until I can pull them from the spectra filenames
-            host_tau = 1.0
-            host_av = 0.0
-            truth_arr_host = np.array([host_z, host_age, host_tau, host_av])
+            host_lsf = 4.0  # dummy
+            truth_arr_host = np.array([host_z, host_ms, host_age, host_tau, host_av, host_lsf])
             truth_arr_sn = np.array([sn_z, sn_day, host_frac_init])
 
             # Labels for corner and trace plots
-            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']
+            label_list_host = [r'$z$', r'$log(Ms/M_\odot)$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']
             label_list_sn = [r'$z$', r'$Day$', r'$Host frac$']
 
             # Read previously run samples using pickle
@@ -872,7 +887,7 @@ def main():
                 run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
 
                 read_pickle_make_plots('host', nwalkers, ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
-                read_pickle_make_plots('sn', nwalkers, ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                #read_pickle_make_plots('sn', nwalkers, ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
             sys.exit(0)
 
