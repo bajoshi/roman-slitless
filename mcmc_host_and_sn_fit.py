@@ -23,7 +23,7 @@ stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
 pears_figs_dir = home + '/Documents/pears_figs_data/'
 
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
+ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/prev_run/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
@@ -34,13 +34,12 @@ grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_co
 
 grism_sens_wav = grism_sens_cat['Wave'] * 1e4  # the text file has wavelengths in microns # needed in angstroms
 grism_sens = grism_sens_cat['BAOGrism_1st']
+grism_wav_idx = np.where(grism_sens > 0.25)
 
 sys.path.append(stacking_utils)
 import proper_and_lum_dist as cosmo
 from dust_utils import get_dust_atten_model
 from bc03_utils import get_bc03_spectrum
-
-from gen_sed_lst import apply_redshift
 
 # Read in SALT2 SN IA file from Lou
 salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
@@ -138,25 +137,24 @@ def logpost_host(theta, x, data, err):
     
     return lp + lnL
 
-def model_sn(x, z, day, host_frac, host_flam):
+def model_sn(x, z, day, sn_av):
 
     # pull out spectrum for the chosen day
     day_idx = np.where(salt2_spec['day'] == day)[0]
 
-    sn_spec_flam = salt2_spec['flam'][day_idx]
-
-    # Apply scaling to convert to correct physical units
-    sf = 2.0842526537870818e+48
-    sn_spec_flam *= sf
+    sn_spec_llam = salt2_spec['flam'][day_idx]
     sn_spec_lam = salt2_spec['lam'][day_idx]
 
+    # ------ Apply dust extinction
+    sn_dusty_llam = get_dust_atten_model(sn_spec_lam, sn_spec_llam, sn_av)
+
     # ------ Apply redshift
-    sn_lam_z, sn_flam_z = apply_redshift(sn_spec_lam, sn_spec_flam, z)
+    sn_lam_z, sn_flam_z = cosmo.apply_redshift(sn_spec_lam, sn_dusty_llam, z)
 
     # ------ Apply some LSF. 
     # This is a NUISANCE FACTOR ONLY FOR NOW
     # When we use actual SNe they will be point sources.
-    #lsf_sigma = 15.0
+    #lsf_sigma = 0.5
     #sn_flam_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_z, sigma=lsf_sigma)
 
     # ------ Downgrade to grism resolution
@@ -180,9 +178,9 @@ def model_sn(x, z, day, host_frac, host_flam):
     # ------ combine host light
     # some fraction to account for host contamination
     # This fraction is a free parameter
-    sn_flam_hostcomb = sn_mod  +  host_frac * host_flam
+    #sn_flam_hostcomb = sn_mod  +  host_frac * host_flam
 
-    return sn_flam_hostcomb
+    return sn_mod
 
 def model_host(x, z, ms, age, tau, met, av, lsf_sigma):
     """
@@ -207,7 +205,7 @@ def model_host(x, z, ms, age, tau, met, av, lsf_sigma):
     model_dusty_llam = model_dusty_llam * 10**ms
 
     # ------ Apply redshift
-    model_lam_z, model_flam_z = apply_redshift(model_lam, model_dusty_llam, z)
+    model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_dusty_llam, z)
 
     # ------ Apply LSF
     model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
@@ -414,8 +412,9 @@ def main():
 
     # Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
-    sedlst = np.genfromtxt(roman_slitless_dir + 'sed_' + img_suffix + '.lst', \
-        dtype=None, names=sedlst_header, encoding='ascii')
+    sedlst_path = roman_slitless_dir + 'sed_' + img_suffix + '_edit.lst'
+    sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
+    print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
     ext_spec_filename = ext_spectra_dir + ext_root + '_ext_x1d.fits'
@@ -518,6 +517,7 @@ def main():
             sn_ferr = noise_level * sn_flam
 
             # -------- Test figure for HOST
+            """
             snr_host = host_flam / host_ferr
             print("Mean of signal to noise array:", np.mean(snr_host))
 
@@ -533,21 +533,19 @@ def main():
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
 
-            m = model_host(host_wav, 1.953, 11.17, 1.53, 12.38, 0.0001, 0.595)
+            m = model_host(host_wav, 1.953, 11.17, 1.53, 12.38, 0.0001, 0.595, 0.8)
 
             # Only consider wavelengths where sensitivity is above 20%
-            grism_wav_idx = np.where(grism_sens > 0.25)
+            host_x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                                (host_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+            m = m[host_x0]
 
-            x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
-                           (host_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
-            m = m[x0]
-
-            a = np.nansum(host_flam[x0] * m / host_ferr[x0]**2) / np.nansum(m**2 / host_ferr[x0]**2)
-            print("a:", a)
+            a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
+            print("HOST a:", a)
             m = a*m
-            print("Base model chi2:", np.nansum( (m - host_flam[x0])**2 / host_ferr[x0]**2 ))
+            print("HOST base model reduced chi2:", np.nansum( (m - host_flam[host_x0])**2 / host_ferr[host_x0]**2 ) / len(m))
 
-            ax.plot(host_wav[x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
+            ax.plot(host_wav[host_x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
             h_path = '/Users/baj/Documents/roman_slitless_sims_seds/bc03_template_z1p953_ms11p17_age1p530_tau12p380_met0p0001_av0p595.txt'
@@ -563,38 +561,43 @@ def main():
             ax.legend(loc=0)
 
             plt.show()
-            sys.exit(0)
+            """
 
             # test figure for SN
-            """
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
 
-            ax1.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=14)
-            ax1.set_ylabel(r'$\mathrm{f_\lambda\ [normalized]}$', fontsize=14)
+            ax1.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+            ax1.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
 
-            #sn_flam_norm = sn_flam / np.max(sn_flam)
-            #sn_ferr_norm = noise_level * sn_flam_norm
-
-            ax1.plot(sn_wav, sn_flam, color='k', label='Obs SN data', zorder=2)
+            ax1.plot(sn_wav, sn_flam, lw=1.0, color='k', label='Obs SN data', zorder=2)
             ax1.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
                 color='grey', alpha=0.5, zorder=2)
 
             # Add host light
-            host_frac = 0.4  # some fraction to account for host contamination
+            #host_frac = 0.4  # some fraction to account for host contamination
 
-            m, mm = model_sn(sn_wav, sn_z, sn_day, host_frac, host_flam)
+            msn = model_sn(sn_wav, sn_z, sn_day, sn_av)
 
-            #mm_norm = mm / np.max(mm)
-            #host_flam_norm = host_flam / np.max(host_flam)
+            sn_x0 = np.where( (sn_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                              (sn_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+            msn = msn[sn_x0]
+
+            asn = np.nansum(sn_flam[sn_x0] * msn / sn_ferr[sn_x0]**2) / np.nansum(msn**2 / sn_ferr[sn_x0]**2)
+            print("SN a:", asn)
+            msn = asn * msn
+            print("SN base model reduced chi2:", np.nansum( (msn - sn_flam[sn_x0])**2 / sn_ferr[sn_x0]**2 ) / len(msn))
 
             # plot spectrum without host light addition
-            #ax1.plot(sn_wav, mm, color='tab:green', label='SN template only', zorder=2)
+            ax1.plot(sn_wav[sn_x0], msn, color='tab:green', label='SN template only', zorder=2)
 
-            print("\nSN downgraded model spectrum mean:", np.mean(mm))
-            print("Obs host galaxy spectrum mean:", np.mean(host_flam))
-            print("Obs SN spectrum mean:", np.mean(sn_flam))
-            print("Host fraction manual:", host_frac)
+            #print("\nSN downgraded model spectrum mean:", np.nanmean(msn))
+            #print("Obs host galaxy spectrum mean:", np.mean(host_flam))
+            #print("Obs SN spectrum mean:", np.mean(sn_flam))
+            #print("Host fraction manual:", host_frac)
+
+            plt.show()
+            sys.exit(0)
 
             # ADD host light in
             # The observed spectrum has the supernova light COMBINED with the host galaxy light
@@ -671,7 +674,6 @@ def main():
             plt.show()
 
             sys.exit(0)
-            """
 
             # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
             """

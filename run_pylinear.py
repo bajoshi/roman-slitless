@@ -30,6 +30,7 @@ seddir = 'SEDs_' + img_suffix
 # Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
+"""
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
@@ -67,6 +68,7 @@ for oldf in glob.glob('*_flt.fits'):
         hdul.writeto(oldf, overwrite=True)
 
 print("Noise addition done. Check simulated images.")
+"""
 
 # ---------- Extraction
 fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '_edit.lst'
@@ -81,9 +83,9 @@ print('\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'.f
 
 # Set extraction params
 sources.update_extraction_parameters(**extraction_parameters)
-method = 'golden'
+method = 'grid'
 root = 'romansim1_ext'
-logdamp = [-4, -1, 0.1]
+logdamp = [-8, -3, 0.1]
 
 print("Extracting...")
 pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, group=False)

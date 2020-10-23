@@ -14,7 +14,7 @@ roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_codes/"
 
 sys.path.append(stacking_util_codes)
-from proper_and_lum_dist import luminosity_distance
+import proper_and_lum_dist as cosmo
 from dust_utils import get_dust_atten_model
 from bc03_utils import get_bc03_spectrum
 
@@ -57,7 +57,7 @@ def get_sn_spec_path(redshift):
     sn_dusty_llam = get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
 
     # Apply redshift
-    sn_wav_z, sn_flux = apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
+    sn_wav_z, sn_flux = cosmo.apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
 
     # Save individual spectrum file if it doesn't already exist
     sn_spec_path = roman_sims_seds + "salt2_spec_day" + str(day_chosen) + \
@@ -154,7 +154,7 @@ def get_gal_spec_path(redshift):
     #if apply_igm:
     #    pass
 
-    bc03_wav_z, bc03_flux = apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
+    bc03_wav_z, bc03_flux = cosmo.apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
 
     if plot_tocheck:
         
@@ -212,16 +212,6 @@ def get_gal_spec_path(redshift):
         fh_gal.close()
 
     return gal_spec_path
-
-def apply_redshift(restframe_wav, restframe_lum, redshift):
-
-    dl = luminosity_distance(redshift)  # returns dl in Mpc
-    dl = dl * 3.09e24  # convert to cm
-
-    redshifted_wav = restframe_wav * (1 + redshift)
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
-
-    return redshifted_wav, redshifted_flux
 
 def main():
 

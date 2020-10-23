@@ -4033,3 +4033,6 @@ rm -f /Users/baj/Documents/bc03_output_dir/bc2003_hr_m72_csp_tau134690_chab.5col
 # Delete 8lsindx file.
 # Delete 5color file for non SSP's.
 rm -f /Users/baj/Documents/bc03_output_dir/bc2003_hr_m22_csp_tau66949_chab.5color
+# Delete 8lsindx file.
+# Delete 5color file for non SSP's.
+rm -f /Users/baj/Documents/bc03_output_dir/bc2003_hr_m22_csp_tau12p380_chab.5color
