@@ -105,8 +105,8 @@ def logprior_host(theta):
     if ( 0.0001 <= z <= 6.0 and \
          9.0 <= ms <= 12.0 and \
          0.01 <= age <= age_lim and \
-         0.01 <= tau <= 100.0 and \
-         0.0 <= av <= 3.0 and \
+         0.001 <= tau <= 20.0 and \
+         0.0 <= av <= 5.0 and \
          0.5 <= lsf_sigma <= 20.0):
         return 0.0
     
@@ -200,7 +200,7 @@ def model_host(x, z, ms, age, tau, av, lsf_sigma):
     av: visual dust extinction
     """
 
-    met = 0.02
+    met = 0.0001
     model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
 
     # ------ Apply dust extinction
@@ -410,7 +410,7 @@ def main():
 
     print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * *")
     print("\n * * * *    [WARNING]: check vertical scaling.    * * * *")
-    print("\n * * * *    [WARNING]: check flux conservation with resampling.    * * * *")
+    print("\n * * * *    [WARNING]: use FlatLambdaCDM cosmology from astropy consistently.    * * * *")
 
     ext_root = "romansim1"
     img_suffix = 'Y106_11_1'
@@ -506,11 +506,11 @@ def main():
 
             # ---------------------------- FITTING ---------------------------- #
             # ---------- Get spectrum for host and sn
-            host_wav = ext_hdu[hostid].data['wavelength']
-            host_flam = ext_hdu[hostid].data['flam'] * pylinear_flam_scale_fac
+            host_wav = ext_hdu[('SOURCE', hostid)].data['wavelength']
+            host_flam = ext_hdu[('SOURCE', hostid)].data['flam'] * pylinear_flam_scale_fac
         
-            sn_wav = ext_hdu[segid].data['wavelength']
-            sn_flam = ext_hdu[segid].data['flam'] * pylinear_flam_scale_fac
+            sn_wav = ext_hdu[('SOURCE', segid)].data['wavelength']
+            sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
             noise_level = 0.02  # relative to signal
@@ -538,7 +538,7 @@ def main():
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
 
-            m = model_host(host_wav, 1.953, 11.17, 1.53, 12.38, 0.0001, 0.595, 0.8)
+            m = model_host(host_wav, host_z, host_ms, host_age, host_tau, host_av, 0.8)
 
             # Only consider wavelengths where sensitivity is above 20%
             host_x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
@@ -566,10 +566,8 @@ def main():
             ax.legend(loc=0)
 
             plt.show()
-            """
 
             # test figure for SN
-            """
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
 
@@ -598,8 +596,8 @@ def main():
             ax1.plot(sn_wav[sn_x0], msn, color='tab:green', label='SN template only', zorder=2)
 
             # Some dummy line
-            msn_and_line = msn + (sn_wav[sn_x0] * (5e-17 / 2500)  +  1e-17)
-            ax1.plot(sn_wav[sn_x0], msn_and_line, color='tab:red', label='SN template and line', zorder=2)
+            #msn_and_line = msn + (sn_wav[sn_x0] * (5e-17 / 2500)  +  1e-17)
+            #ax1.plot(sn_wav[sn_x0], msn_and_line, color='tab:red', label='SN template and line', zorder=2)
 
             #print("\nSN downgraded model spectrum mean:", np.nanmean(msn))
             #print("Obs host galaxy spectrum mean:", np.mean(host_flam))
@@ -896,4 +894,6 @@ def main():
 if __name__ == '__main__':
     main()
     sys.exit(0)
+
+
 
