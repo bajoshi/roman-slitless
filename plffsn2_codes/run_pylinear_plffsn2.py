@@ -81,8 +81,8 @@ print("Noise addition done. Check simulated images.")
 # Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
-tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
-tabnames = tabulate.run(grisms, sources, beam)
+#tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
+#tabnames = tabulate.run(grisms, sources, beam)
 
 extraction_parameters = grisms.get_default_extraction()
 
@@ -90,9 +90,9 @@ print('\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'.f
 
 # Set extraction params
 sources.update_extraction_parameters(**extraction_parameters)
-method = 'golden'
-root = 'romansim2_ext'
-logdamp = [-8, 1, 0.1]
+method = 'single'
+root = 'romansim1_ext'
+logdamp = -1.0   #[-6, -1, 0.1]
 
 print("Extracting...")
 pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, group=False)
