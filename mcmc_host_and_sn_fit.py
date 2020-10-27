@@ -27,7 +27,7 @@ ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
-modeldir = home + '/Documents/bc03_output_dir/'
+modeldir = "/Volumes/Heather_extdrive/bc03_output_dir/"  # home + '/Documents/bc03_output_dir/'
 
 grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
     dtype=None, names=True, skip_header=3)
@@ -44,6 +44,67 @@ from bc03_utils import get_bc03_spectrum
 # Read in SALT2 SN IA file from Lou
 salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
+
+# Read in all models and parameters
+model_lam_grid = np.load(pears_figs_dir + 'model_lam_grid_withlines_chabrier.npy', mmap_mode='r')
+model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy', mmap_mode='r')
+
+log_age_arr = np.load(pears_figs_dir + 'log_age_arr_chab.npy', mmap_mode='r')
+metal_arr = np.load(pears_figs_dir + 'metal_arr_chab.npy', mmap_mode='r')
+tau_gyr_arr = np.load(pears_figs_dir + 'tau_gyr_arr_chab.npy', mmap_mode='r')
+tauv_arr = np.load(pears_figs_dir + 'tauv_arr_chab.npy', mmap_mode='r')
+
+"""
+Array ranges are:
+1. Age: 7.02 to 10.114 (this is log of the age in years)
+2. Metals: 0.0001 to 0.05 (absolute fraction of metals. All CSP models although are fixed at solar = 0.02)
+3. Tau: 0.01 to 63.095 (this is in Gyr. SSP models get -99.0)
+4. TauV: 0.0 to 2.8 (Visual dust extinction in magnitudes. SSP models get -99.0)
+"""
+
+def get_template(age, tau, tauv, metallicity, \
+    log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
+    model_lam_grid_withlines_mmap, model_comp_spec_withlines_mmap):
+
+    """
+    print("\nFinding closest model to --")
+    print("Age [Gyr]:", 10**age / 1e9)
+    print("Tau [Gyr]:", tau)
+    print("Tau_v:", tauv)
+    print("Metallicity [abs. frac.]:", metallicity)
+    """
+
+    # First find closest values and then indices corresponding to them
+    # It has to be done this way because you typically wont find an exact match
+    closest_age_idx = np.argmin(abs(log_age_arr - age))
+    closest_tau_idx = np.argmin(abs(tau_gyr_arr - tau))
+    closest_tauv_idx = np.argmin(abs(tauv_arr - tauv))
+
+    # Now get indices
+    age_idx = np.where(log_age_arr == log_age_arr[closest_age_idx])[0]
+    tau_idx = np.where(tau_gyr_arr == tau_gyr_arr[closest_tau_idx])[0]
+    tauv_idx = np.where(tauv_arr   ==    tauv_arr[closest_tauv_idx])[0]
+    metal_idx = np.where(metal_arr == metallicity)[0]
+
+    model_idx = int(reduce(np.intersect1d, (age_idx, tau_idx, tauv_idx, metal_idx)))
+
+    model_llam = model_comp_spec_withlines_mmap[model_idx]
+
+    chosen_age = 10**log_age_arr[model_idx] / 1e9
+    chosen_tau = tau_gyr_arr[model_idx]
+    chosen_av = 1.086 * tauv_arr[model_idx]
+    chosen_metallicity = metal_arr[model_idx]
+
+    """
+    print("\nChosen model index:", model_idx)
+    print("Chosen model parameters -- ")
+    print("Age [Gyr]:", chosen_age)
+    print("Tau [Gyr]:", chosen_tau)
+    print("A_v:", chosen_av)
+    print("Metallicity [abs. frac.]:", chosen_metallicity)
+    """
+
+    return model_llam
 
 def loglike_sn(theta, x, data, err, host_flam):
     
@@ -200,8 +261,18 @@ def model_host(x, z, ms, age, tau, av, lsf_sigma):
     av: visual dust extinction
     """
 
-    met = 0.0001
-    model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
+    #met = 0.0001
+    #model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
+
+    tauv = 0.0
+    metallicity = 0.02
+    model_llam = get_template(np.log10(age * 1e9), tau, tauv, metallicity, \
+        log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
+        model_lam_grid, model_grid)
+
+    model_lam = model_lam_grid
+
+    model_lam, model_llam = remove_emission_lines(model_lam, model_llam)
 
     # ------ Apply dust extinction
     model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
@@ -239,6 +310,51 @@ def model_host(x, z, ms, age, tau, av, lsf_sigma):
     #model_mod /= grism_sens_modelgrid
 
     return model_mod
+
+def remove_emission_lines(l, ll):
+    """
+    This function ISN'T trying to detect any lines and then
+    remove then. It is only possible for me to do it this way
+    because I know what lines I added to the models.
+
+    Copy pasted the line wavelengths from function used to 
+    add the lines in. 
+    In >> grismz_pipeline/fullfitting_grism_broadband_emlines.py
+    """
+
+    # ------------------ Line Wavelengths in Vacuum ------------------ #
+    # Hydrogen
+    h_alpha = 6564.61
+    h_beta = 4862.68
+    h_gamma = 4341.68
+    h_delta = 4102.89
+
+    # Metals
+    # I'm defining only the important ones that I want to include here
+    # Not using the wavelengths given in the Anders & Alvensleben 2003 A&A paper
+    # since those are air wavelengths.
+    MgII = 2799.117
+    OII_1 = 3727.092
+    OIII_1 = 4960.295
+    OIII_2 = 5008.240
+    NII_1 = 6549.86
+    NII_2 = 6585.27
+    SII_1 = 6718.29
+    SII_2 = 6732.67
+
+    all_line_wav = np.array([MgII, OII_1, OIII_1, OIII_2, NII_1, NII_2, SII_1, SII_2, h_alpha, h_beta, h_gamma, h_delta])
+    all_line_names = np.array(['MgII', 'OII_1', 'OIII_1', 'OIII_2', 'NII_1', 'NII_2', 'SII_1', 'SII_2', 'h_alpha', 'h_beta', 'h_gamma', 'h_delta'])
+
+    # get list of indices to be deleted in the model wavelength and spectrum arrays
+    lidx = []
+
+    for i in range(len(all_line_wav)):
+        lidx.append(np.where(l == all_line_wav[i])[0])
+
+    l_new = np.delete(arr=l, obj=lidx)
+    ll_new = np.delete(arr=ll, obj=lidx)
+
+    return l_new, ll_new
 
 def add_noise(sig_arr, noise_level):
     """
@@ -326,7 +442,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool)
         sampler.run_mcmc(pos, 1000, progress=True)
 
-    pickle.dump(sampler.chain, open(object_type + '_' + str(objid) + '_emcee_chains.pkl', 'wb'))
+    #pickle.dump(sampler.chain, open(object_type + '_' + str(objid) + '_emcee_chains.pkl', 'wb'))
     pickle.dump(sampler, open(object_type + '_' + str(objid) + '_emcee_sampler.pkl', 'wb'))
 
     print("Done with fitting.")
@@ -352,7 +468,7 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
 
     axes1[-1].set_xlabel("Step number")
 
-    fig1.savefig(roman_slitless_dir + 'mcmc_trace_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig1.savefig(roman_slitless_dir + 'emcee_trace_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     # Get autocorrelation time
@@ -373,7 +489,7 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
     # plot corner plot
     fig = corner.corner(flat_samples, plot_contours='True', labels=label_list, label_kwargs={"fontsize": 12}, \
         show_titles='True', title_kwargs={"fontsize": 12}, truths=truth_arr)
-    fig.savefig(roman_slitless_dir + 'mcmc_fitres_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig.savefig(roman_slitless_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     # ------------ Plot 100 random models from the parameter space
@@ -401,7 +517,7 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
         a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
         ax3.plot(wav, a * m, color='tab:red', alpha=0.2, zorder=2)
 
-    fig3.savefig(roman_slitless_dir + 'mcmc_fitres_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig3.savefig(roman_slitless_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     return None
@@ -538,7 +654,7 @@ def main():
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
 
-            m = model_host(host_wav, host_z, host_ms, host_age, host_tau, host_av, 0.8)
+            m = model_host(host_wav, host_z, host_ms, host_age, host_tau, host_av, 4.0)
 
             # Only consider wavelengths where sensitivity is above 20%
             host_x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
@@ -566,8 +682,11 @@ def main():
             ax.legend(loc=0)
 
             plt.show()
+            sys.exit(0)
+            """
 
             # test figure for SN
+            """
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
 
@@ -689,17 +808,26 @@ def main():
             # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
             """
             print("\nRunning explicit Metropolis-Hastings...")
-            N = 10000   #number of "timesteps"
+            N = 1000   #number of "timesteps"
 
-            host_frac_init = 0.05
-            r = np.array([0.01, 20, host_frac_init])  # initial position
+            #host_frac_init = 0.05
+            #r = np.array([0.01, 20, host_frac_init])  # initial position
+
+            r = np.array([0.01, 10.0, 1.0, 2.0, 0.0, 2.0])
             print("Initial parameter vector:", r)
 
-            logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
+            #logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
             jump_size_z = 0.01
-            jump_size_day = 1  # days
-            jump_size_host_frac = 0.01
-    
+            #jump_size_day = 1  # days
+            #jump_size_host_frac = 0.01
+
+            jump_size_ms = 0.1  # log(ms)
+            jump_size_age = 0.1  # in gyr
+            jump_size_tau = 0.1  # in gyr
+            jump_size_av = 0.1  # magnitudes
+            jump_size_lsf = 0.2
+
+            logp = logpost_host(r, host_wav, host_flam, host_ferr)
             print("Initial guess log(probability):", logp)
 
             samples = []  #creating array to hold parameter vector with time
@@ -709,43 +837,52 @@ def main():
 
             for i in range(N): #beginning the iteratitive loop
 
-                print("MH Iteration", i, end='\r')
+                print("\nMH Iteration", i, end='\n')
+                #print("MH Iteration", i, end='\r')
 
-                rn0 = float(r[0] + jump_size_z * np.random.normal(size=1))
-                rn1 = int(r[1] + jump_size_day * np.random.choice([-1, 1]))
-                rn2 = float(r[2] + jump_size_host_frac * np.random.normal(size=1))
+                #rn0 = float(r[0] + jump_size_z * np.random.normal(size=1))
+                #rn1 = int(r[1] + jump_size_day * np.random.choice([-1, 1]))
+                #rn2 = float(r[2] + jump_size_host_frac * np.random.normal(size=1))
+                #rn = np.array([rn0, rn1, rn2])
 
-                rn = np.array([rn0, rn1, rn2])
+                rh0 = float(r[0] + jump_size_z * np.random.normal(size=1))
+                rh1 = float(r[1] + jump_size_ms * np.random.normal(size=1))
+                rh2 = float(r[2] + jump_size_age * np.random.normal(size=1))
+                rh3 = float(r[3] + jump_size_tau * np.random.normal(size=1))
+                rh4 = float(r[4] + jump_size_av * np.random.normal(size=1))
+                rh5 = float(r[5] + jump_size_lsf * np.random.normal(size=1))
 
-                #print("Proposal parameter vector", rn)
+                rn = np.array([rh0, rh1, rh2, rh3, rh4, rh5])
+
+                print("Proposal parameter vector", rn)
                 
-                logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)  #evaluating probability of proposal vector
-                #print("Proposed parameter vector log(probability):", logpn)
+                #logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)  #evaluating probability of proposal vector
+                logpn = logpost_host(rn, host_wav, host_flam, host_ferr)  #evaluating probability of proposal vector
+                print("Proposed parameter vector log(probability):", logpn)
                 dlogL = logpn - logp
-                #print("dlogL:", dlogL)
+                print("dlogL:", dlogL)
 
                 a = np.exp(dlogL)
 
-                #print("Ratio of probabilities at proposed to current position:", a)
+                print("Ratio of probabilities at proposed to current position:", a)
 
                 if a >= 1:   #always keep it if probability got higher
-                    #print("Will accept point since probability increased.")
+                    print("Will accept point since probability increased.")
                     logp = logpn
                     r = rn
                     accept+=1
         
                 else:  #only keep it based on acceptance probability
-                    #print("Probability decreased. Will decide whether to keep point or not.")
+                    print("Probability decreased. Will decide whether to keep point or not.")
                     u = np.random.rand()  #random number between 0 and 1
                     if u < a:  #only if proposal prob / previous prob is greater than u, then keep new proposed step
                         logp = logpn
                         r = rn
                         accept+=1
-                        #print("Point kept.")
+                        print("Point kept.")
 
                 samples.append(r)  #update
-                logl_list.append(logp)
-
+                
                 # -------
                 fig = plt.figure()
                 ax = fig.add_subplot(111)
@@ -773,31 +910,38 @@ def main():
                 plt.cla()
                 plt.close()
 
+                logl_list.append(logp)
                 chi2_list.append(chi2)
 
-                #sys.exit(0)
-            
-
-            print("Finished explicit Metropolis-Hastings.")
+            print("Finished explicit Metropolis-Hastings.\n")
 
             # Plotting results from explicit MH
             samples = np.array(samples)
 
-            #for i in range(len(samples)):
-            #    print(samples[i], logl_list[i])
+            # plot trace
+            #fig = plt.figure()
+            #ax = fig.add_subplot(111)
+            #ax.plot(samples[:,0], color='tab:red', label=r'$z$')
+            #ax.plot(samples[:,1], color='tab:blue', label=r'$\mathrm{Day}$')
+            #ax.plot(samples[:,2], color='tab:brown', label=r'$\mathrm{Host\ frac}$')
+            #ax.legend(loc=0)
+            #plt.show()
 
             # plot trace
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(samples[:,0], color='tab:red', label=r'$z$')
-            ax.plot(samples[:,1], color='tab:blue', label=r'$\mathrm{Day}$')
-            ax.plot(samples[:,2], color='tab:brown', label=r'$\mathrm{Host\ frac}$')
-            #ax.plot(samples[:,3], color='tab:brown', label=r'$\mathrm{SN\ scale}$')
-            ax.legend(loc=0)
-            plt.show()
+            fig1, axes1 = plt.subplots(6, figsize=(10, 6), sharex=True)
+            label_list_host = [r'$z$', r'$log(Ms/M_\odot)$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']
+
+            for i in range(6):
+                ax1 = axes1[i]
+                ax1.plot(samples[:, i], "k", alpha=0.2)
+                ax1.set_xlim(0, len(samples))
+                ax1.set_ylabel(label_list_host[i])
+                ax1.yaxis.set_label_coords(-0.1, 0.5)
+
+            axes1[-1].set_xlabel("Step number")
 
             # using corner
-            corner.corner(samples, bins=30, labels=[r'$z$', r'$\mathrm{Day}$', r'$\mathrm{Host\ frac}$', r'$\mathrm{SN\ scale}$'], \
+            corner.corner(samples, bins=30, labels=label_list_host, \
                 show_titles='True', plot_contours='True')#, truths=np.array([sn_z, sn_day, 0.0005]))
             plt.show()
 
@@ -810,11 +954,11 @@ def main():
             print("\nRunning emcee...")
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-            jump_size_z = 0.01
+            jump_size_z = 0.002
             jump_size_ms = 0.1  # log(ms)
             jump_size_age = 0.1  # in gyr
             jump_size_tau = 0.1  # in gyr
-            jump_size_av = 0.5  # magnitudes
+            jump_size_av = 0.1  # magnitudes
             jump_size_lsf = 0.2
 
             jump_size_day = 1  # days
@@ -826,18 +970,22 @@ def main():
             # age in gyr and tau in gyr
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
-            rhost_init = np.array([0.01, 10.0, 1.0, 2.0, 0.0, 2.0])
+
+            rhost_init = get_optimal_fit(args_host, object_type='host')
+
             host_frac_init = 0.005
             rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
 
             # Setup dims and walkers
-            nwalkers = 50
+            nwalkers = 100
             ndim_host = 6
             ndim_sn  = 3
 
             # generating ball of walkers about initial position defined above
             pos_host = np.zeros(shape=(nwalkers, ndim_host))
             pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
+
+            z_init = np.linspace(0.001, 3.0, nwalkers)
 
             for i in range(nwalkers):
 
