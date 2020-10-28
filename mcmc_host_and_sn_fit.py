@@ -135,12 +135,22 @@ def loglike_host(theta, x, data, err):
     y = model_host(x, z, ms, age, tau, av, lsf_sigma)
     #print("Model func result:", y)
 
+    # ------- Clip all arrays to where grism sensitivity is >= 25%
+    # then get the log likelihood
+    x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
+                   (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+    y = y[x0]
+    data = data[x0]
+    err = err[x0]
+
     # ------- Vertical scaling factor
     alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
     #print("Alpha HOST:", "{:.2e}".format(alpha))
 
     y = y * alpha
 
+    # ------- log likelihood
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
 
     return lnLike
@@ -157,18 +167,19 @@ def logprior_sn(theta):
 def logprior_host(theta):
 
     z, ms, age, tau, av, lsf_sigma = theta
+    #print("Parameter vector given:", theta)
     
     # Make sure model is not older than the Universe
     # Allowing at least 100 Myr for the first galaxies to form after Big Bang
     age_at_z = Planck15.age(z).value  # in Gyr
     age_lim = age_at_z - 0.1  # in Gyr
 
-    if ( 0.0001 <= z <= 6.0 and \
-         9.0 <= ms <= 12.0 and \
-         0.01 <= age <= age_lim and \
-         0.001 <= tau <= 20.0 and \
-         0.0 <= av <= 5.0 and \
-         0.5 <= lsf_sigma <= 20.0):
+    if ((0.0001 <= z <= 6.0) and \
+        (9.0 <= ms <= 12.0) and \
+        (0.01 <= age <= age_lim) and \
+        (0.001 <= tau <= 20.0) and \
+        (0.0 <= av <= 5.0) and \
+        (0.5 <= lsf_sigma <= 20.0)):
         return 0.0
     
     return -np.inf
@@ -451,7 +462,10 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
 def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, label_list, objid, img_suffix):
 
-    sampler = pickle.load(open(object_type + '_' + str(objid) + '_emcee_sampler.pkl', 'rb'))
+    #pkl_path = roman_slitless_dir + '/emcee_diagnostics/run1/' + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
+    pkl_path = roman_slitless_dir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
+    sampler = pickle.load(open(pkl_path, 'rb'))
+    print("\nRead in pickle:", pkl_path)
 
     samples = sampler.get_chain()
     print("Samples shape:", samples.shape)
@@ -487,8 +501,10 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
     print("Flat samples shape:", flat_samples.shape)
 
     # plot corner plot
-    fig = corner.corner(flat_samples, plot_contours='True', labels=label_list, label_kwargs={"fontsize": 12}, \
-        show_titles='True', title_kwargs={"fontsize": 12}, truths=truth_arr)
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
+        verbose=True, truth_color='tab:red')
+    #range=[(1.9, 2.0), (9.0, 12.0), (0.4, 1.8), (1, 15.0), (0.0, 1.0), (0.0, 5.0)], \
     fig.savefig(roman_slitless_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -503,16 +519,34 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
     fig3 = plt.figure()
     ax3 = fig3.add_subplot(111)
 
+    ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
+
     ax3.plot(wav, flam, color='k')
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
 
     for ind in inds:
         sample = flat_samples[ind]
+        #print("\nAt random index:", ind)
+        #print("With sample:", sample)
+
+        # Check that LSF is not negative
+        if sample[5] < 0.0:
+            sample[5] = 1.0
 
         if object_type == 'host':
             m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4], sample[5])
         elif object_type == 'sn':
             m = model_sn(wav, sample[0], sample[1], sample[2], args_obj[-1])
+
+        # ------- Clip all arrays to where grism sensitivity is >= 25%
+        x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                       (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+        m = m[x0]
+        wav = wav[x0]
+        flam = flam[x0]
+        ferr = ferr[x0]
 
         a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
         ax3.plot(wav, a * m, color='tab:red', alpha=0.2, zorder=2)
@@ -521,6 +555,12 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
         dpi=200, bbox_inches='tight')
 
     return None
+
+def get_optimal_fit(args_obj, object_type):
+
+
+
+    return np.array([best_z, 10.5, best_age, best_tau, best_av, 1.0])
 
 def main():
 
@@ -965,19 +1005,23 @@ def main():
             jump_size_host_frac = 0.02
             jump_size_lsf = 1.0  # angstrom
 
-            # Define initial position
-            # The parameter vector is (redshift, age, tau, av, lsf_sigma)
+            # Define initial position and arguments required for emcee
+            # The parameter vector is (redshift, ms, age, tau, av, lsf_sigma)
+            # ms is actually log(ms/msol)
             # age in gyr and tau in gyr
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
 
-            rhost_init = get_optimal_fit(args_host, object_type='host')
+            args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
+            args_host = [host_wav, host_flam, host_ferr]
+
+            rhost_init = np.array([host_z, 10.5, host_age, host_tau, host_av, 1.0])  #get_optimal_fit(args_host, object_type='host')
 
             host_frac_init = 0.005
             rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
 
             # Setup dims and walkers
-            nwalkers = 100
+            nwalkers = 50
             ndim_host = 6
             ndim_sn  = 3
 
@@ -1019,11 +1063,10 @@ def main():
             label_list_host = [r'$z$', r'$log(Ms/M_\odot)$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']
             label_list_sn = [r'$z$', r'$Day$', r'$Host frac$']
 
-            # Read previously run samples using pickle
-            args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
-            args_host = [host_wav, host_flam, host_ferr]
- 
-            host_pickle = 'host_' + str(hostid) + '_emcee_sampler.pkl'
+            # Read previously run samples using pickle 
+            #host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
+            host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
+
             if os.path.isfile(host_pickle):
                 read_pickle_make_plots('host', nwalkers, ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
                 #read_pickle_make_plots('sn', nwalkers, ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
