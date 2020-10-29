@@ -62,6 +62,20 @@ Array ranges are:
 4. TauV: 0.0 to 2.8 (Visual dust extinction in magnitudes. SSP models get -99.0)
 """
 
+# This class came from stackoverflow
+# SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
+class bcolors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 def get_template(age, tau, tauv, metallicity, \
     log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
     model_lam_grid_withlines_mmap, model_comp_spec_withlines_mmap):
@@ -145,13 +159,14 @@ def loglike_host(theta, x, data, err):
     err = err[x0]
 
     # ------- Vertical scaling factor
-    alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
+    #alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
     #print("Alpha HOST:", "{:.2e}".format(alpha))
-
-    y = y * alpha
+    #y = y * alpha
 
     # ------- log likelihood
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
+    #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
+    #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
 
     return lnLike
 
@@ -460,14 +475,14 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     return None
 
-def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, label_list, objid, img_suffix):
+def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, objid, img_suffix, verbose=False):
 
     #pkl_path = roman_slitless_dir + '/emcee_diagnostics/run1/' + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
     pkl_path = roman_slitless_dir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
     sampler = pickle.load(open(pkl_path, 'rb'))
-    print("\nRead in pickle:", pkl_path)
-
     samples = sampler.get_chain()
+
+    print(f"{bcolors.CYAN}\nRead in pickle:", pkl_path, f"{bcolors.ENDC}")
     print("Samples shape:", samples.shape)
 
     # plot trace
@@ -501,7 +516,72 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
     print("Flat samples shape:", flat_samples.shape)
 
     # plot corner plot
-    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+    # compute weights for the samples first
+    # only doing this because I noticed that 
+    # some LSF values in the samples are negative
+    corner_weights = np.zeros(len(flat_samples))
+
+    for j in range(5):#len(flat_samples)):
+
+        s = flat_samples[j]
+        w = logprior_host(s)
+        if w == 0.0:
+            corner_weights[j] = 1.0
+
+        if verbose:
+            if corner_weights[j] == 1.0:
+                wcol = bcolors.GREEN
+            else:
+                print("\nSkipping invalid sample... negative LSF.")
+                continue
+
+            print("\nSample number:", j)
+            print(f"{wcol}Weight: ", corner_weights[j], f"{bcolors.ENDC}")
+            if object_type == 'host':
+                lnL = logpost_host(s, args_obj[0], args_obj[1], args_obj[2])
+            else:
+                lnL = logpost_sn(s, args_obj[0], args_obj[1], args_obj[2], args_obj[3])
+            print("ln(likelihood): ", lnL)
+
+            # Now plot model and data to compare
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            
+            x = args_obj[0]
+            d = args_obj[1]
+            e = args_obj[2]
+            y = model_host(x, s[0], s[1], s[2], s[3], s[4], s[5])
+
+            # ------- Clip all arrays to where grism sensitivity is >= 25%
+            # then get the log likelihood
+            x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
+                           (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+            x = x[x0]
+            y = y[x0]
+            d = d[x0]
+            e = e[x0]
+
+            # ------- Vertical scaling factor
+            a = np.nansum(d * y / e**2) / np.nansum(y**2 / e**2)
+            print("Alpha HOST recomputed:", "{:.2e}".format(a))
+
+            y = y * a
+
+            print(f"{bcolors.CYAN}Reduced chi2 (pure chi2 NOT ln(likelihood)):", np.nansum( (y-d)**2/e**2 ) / len(y), f"{bcolors.ENDC}")
+            chi2_expl = 0
+            for w in range(len(x)):
+                chi2_expl += (y[w]-d[w])**2/e[w]**2
+            print("Explicitly summed chi2:", chi2_expl)
+
+            ax.plot(x, d)
+            ax.plot(x, y)
+
+            plt.show()
+            plt.clf()
+            plt.close()
+
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, weights=corner_weights, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red')
     #range=[(1.9, 2.0), (9.0, 12.0), (0.4, 1.8), (1, 15.0), (0.0, 1.0), (0.0, 5.0)], \
@@ -557,8 +637,6 @@ def read_pickle_make_plots(object_type, nwalkers, ndim, args_obj, truth_arr, lab
     return None
 
 def get_optimal_fit(args_obj, object_type):
-
-
 
     return np.array([best_z, 10.5, best_age, best_tau, best_av, 1.0])
 
@@ -669,7 +747,7 @@ def main():
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.02  # relative to signal
+            noise_level = 0.03  # relative to signal
             # First assign noise to each point
             #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
@@ -709,15 +787,14 @@ def main():
             ax.plot(host_wav[host_x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
-            h_path = '/Users/baj/Documents/roman_slitless_sims_seds/bc03_template_z1p953_ms11p17_age1p530_tau12p380_met0p0001_av0p595.txt'
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
-            ax.plot(host_template['lam'], 4e4 * host_template['flux'], lw=1.0, \
+            ax.plot(host_template['lam'], 1e2 * host_template['flux'], lw=1.0, \
                 color='tab:green', zorder=1, label='model given to pyLINEAR (+constant)')
 
             ax.set_xlim(9000, 20000)
             host_fig_ymin = np.min(host_flam)
             host_fig_ymax = np.max(host_flam)
-            ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
+            #ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
 
             ax.legend(loc=0)
 
@@ -1068,15 +1145,15 @@ def main():
             host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
 
             if os.path.isfile(host_pickle):
-                read_pickle_make_plots('host', nwalkers, ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
-                #read_pickle_make_plots('sn', nwalkers, ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
             else:
                 # Call emcee
                 #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
                 run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
 
-                read_pickle_make_plots('host', nwalkers, ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
-                #read_pickle_make_plots('sn', nwalkers, ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
             sys.exit(0)
 

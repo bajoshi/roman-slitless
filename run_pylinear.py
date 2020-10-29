@@ -19,10 +19,10 @@ os.chdir(home + '/Documents/roman_slitless_sims_results/')
 img_suffix = 'Y106_11_1'
 
 # Define list files and other preliminary stuff
-segfile = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/akari_match_' + img_suffix + '_segmap_edit.fits'
+segfile = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/akari_match_' + img_suffix + '_segmap.fits'
 obslst = home + '/Documents/GitHub/roman-slitless/obs_' + img_suffix + '.lst'
-wcslst = home + '/Documents/GitHub/roman-slitless/wcs_' + img_suffix + '_edit.lst'
-sedlst = home + '/Documents/GitHub/roman-slitless/sed_' + img_suffix + '_edit.lst'
+wcslst = home + '/Documents/GitHub/roman-slitless/wcs_' + img_suffix + '.lst'
+sedlst = home + '/Documents/GitHub/roman-slitless/sed_' + img_suffix + '.lst'
 beam = '+1'
 maglim = 99.0
 seddir = 'SEDs_' + img_suffix
@@ -32,8 +32,8 @@ sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=m
 
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-#tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
-#tabnames = tabulate.run(grisms, sources, beam)
+tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
+tabnames = tabulate.run(grisms, sources, beam)
 
 # ---------- Simulate
 print("Simulating...")
@@ -43,7 +43,7 @@ print("Simulation done.")
 
 # ---------- Add noise
 print("Adding noise...")
-sig = 0.1    # noise RMS in e-/s (check Russell's notes in pylinear notebooks)
+sig = 0.001    # noise RMS in e-/s (check Russell's notes in pylinear notebooks)
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)
@@ -69,7 +69,7 @@ for oldf in glob.glob('*_flt.fits'):
 print("Noise addition done. Check simulated images.")
 
 # ---------- Extraction
-fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '_edit.lst'
+fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
 #tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
@@ -83,10 +83,10 @@ print('\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'.f
 sources.update_extraction_parameters(**extraction_parameters)
 method = 'golden'  # single
 root = 'romansim1_ext'
-logdamp = [-8, +1, 0.1]  # logdamp = -np.inf
+logdamp = [-7, -1, 0.1]  # logdamp = -np.inf
 
 print("Extracting...")
-pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, inverter='lsmr', group=True)
+pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, inverter='lsqr', group=True)
 
 print("Simulation and extraction done.")
 print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
