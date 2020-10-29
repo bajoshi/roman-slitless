@@ -144,9 +144,9 @@ def loglike_sn(theta, x, data, err, host_flam):
 
 def loglike_host(theta, x, data, err):
     
-    z, ms, age, tau, av, lsf_sigma = theta
+    z, age, tau, av, lsf_sigma = theta
 
-    y = model_host(x, z, ms, age, tau, av, lsf_sigma)
+    y = model_host(x, z, age, tau, av, lsf_sigma)
     #print("Model func result:", y)
 
     # ------- Clip all arrays to where grism sensitivity is >= 25%
@@ -159,9 +159,9 @@ def loglike_host(theta, x, data, err):
     err = err[x0]
 
     # ------- Vertical scaling factor
-    #alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
+    alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
     #print("Alpha HOST:", "{:.2e}".format(alpha))
-    #y = y * alpha
+    y = y * alpha
 
     # ------- log likelihood
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
@@ -181,7 +181,7 @@ def logprior_sn(theta):
 
 def logprior_host(theta):
 
-    z, ms, age, tau, av, lsf_sigma = theta
+    z, age, tau, av, lsf_sigma = theta
     #print("Parameter vector given:", theta)
     
     # Make sure model is not older than the Universe
@@ -189,8 +189,9 @@ def logprior_host(theta):
     age_at_z = Planck15.age(z).value  # in Gyr
     age_lim = age_at_z - 0.1  # in Gyr
 
+    #(9.0 <= ms <= 12.0) and \
+
     if ((0.0001 <= z <= 6.0) and \
-        (9.0 <= ms <= 12.0) and \
         (0.01 <= age <= age_lim) and \
         (0.001 <= tau <= 20.0) and \
         (0.0 <= av <= 5.0) and \
@@ -273,7 +274,7 @@ def model_sn(x, z, day, sn_av):
 
     return sn_mod
 
-def model_host(x, z, ms, age, tau, av, lsf_sigma):
+def model_host(x, z, age, tau, av, lsf_sigma):
     """
     Expects to get the following arguments
     
@@ -304,7 +305,7 @@ def model_host(x, z, ms, age, tau, av, lsf_sigma):
     model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
 
     # ------ Multiply luminosity by stellar mass
-    model_dusty_llam = model_dusty_llam * 10**ms
+    #model_dusty_llam = model_dusty_llam * 10**ms
 
     # ------ Apply redshift
     model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_dusty_llam, z)
@@ -466,7 +467,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     # ----------- Emcee 
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool)
-        sampler.run_mcmc(pos, 1000, progress=True)
+        sampler.run_mcmc(pos, 2000, progress=True)
 
     #pickle.dump(sampler.chain, open(object_type + '_' + str(objid) + '_emcee_chains.pkl', 'wb'))
     pickle.dump(sampler, open(object_type + '_' + str(objid) + '_emcee_sampler.pkl', 'wb'))
@@ -581,7 +582,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             plt.clf()
             plt.close()
 
-    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, weights=corner_weights, \
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red')
     #range=[(1.9, 2.0), (9.0, 12.0), (0.4, 1.8), (1, 15.0), (0.0, 1.0), (0.0, 5.0)], \
@@ -611,11 +612,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         #print("With sample:", sample)
 
         # Check that LSF is not negative
-        if sample[5] < 0.0:
-            sample[5] = 1.0
+        if sample[-1] < 0.0:
+            sample[-1] = 1.0
 
         if object_type == 'host':
-            m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4], sample[5])
+            m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4])
         elif object_type == 'sn':
             m = model_sn(wav, sample[0], sample[1], sample[2], args_obj[-1])
 
@@ -629,7 +630,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         ferr = ferr[x0]
 
         a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
-        ax3.plot(wav, a * m, color='tab:red', alpha=0.2, zorder=2)
+        m *= a
+        ax3.plot(wav, m, color='tab:red', alpha=0.2, zorder=2)
 
     fig3.savefig(roman_slitless_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
@@ -1092,14 +1094,14 @@ def main():
             args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
             args_host = [host_wav, host_flam, host_ferr]
 
-            rhost_init = np.array([host_z, 10.5, host_age, host_tau, host_av, 1.0])  #get_optimal_fit(args_host, object_type='host')
+            rhost_init = np.array([host_z, host_age, host_tau, host_av, 1.0])  #get_optimal_fit(args_host, object_type='host')
 
             host_frac_init = 0.005
             rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
 
             # Setup dims and walkers
-            nwalkers = 50
-            ndim_host = 6
+            nwalkers = 100
+            ndim_host = 5
             ndim_sn  = 3
 
             # generating ball of walkers about initial position defined above
@@ -1112,13 +1114,13 @@ def main():
 
                 # ---------- For HOST
                 rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
-                rh1 = float(rhost_init[1] + jump_size_ms * np.random.normal(size=1))
-                rh2 = float(rhost_init[2] + jump_size_age * np.random.normal(size=1))
-                rh3 = float(rhost_init[3] + jump_size_tau * np.random.normal(size=1))
-                rh4 = float(rhost_init[4] + jump_size_av * np.random.normal(size=1))
-                rh5 = float(rhost_init[5] + jump_size_lsf * np.random.normal(size=1))
+                #rh1 = float(rhost_init[1] + jump_size_ms * np.random.normal(size=1))
+                rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
+                rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
+                rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+                rh4 = float(rhost_init[4] + jump_size_lsf * np.random.normal(size=1))
 
-                rh = np.array([rh0, rh1, rh2, rh3, rh4, rh5])
+                rh = np.array([rh0, rh1, rh2, rh3, rh4])
 
                 pos_host[i] = rh
 
@@ -1133,11 +1135,11 @@ def main():
             
             # Set up truth arrays
             host_lsf = 4.0  # dummy
-            truth_arr_host = np.array([host_z, host_ms, host_age, host_tau, host_av, host_lsf])
+            truth_arr_host = np.array([host_z, host_age, host_tau, host_av, host_lsf])
             truth_arr_sn = np.array([sn_z, sn_day, host_frac_init])
 
             # Labels for corner and trace plots
-            label_list_host = [r'$z$', r'$log(Ms/M_\odot)$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']
+            label_list_host = [r'$z$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']   # r'$log(Ms/M_\odot)$', 
             label_list_sn = [r'$z$', r'$Day$', r'$Host frac$']
 
             # Read previously run samples using pickle 
