@@ -72,8 +72,8 @@ print("Noise addition done. Check simulated images.")
 fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
-#tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
-#tabnames = tabulate.run(grisms, sources, beam)
+tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
+tabnames = tabulate.run(grisms, sources, beam)
 
 extraction_parameters = grisms.get_default_extraction()
 
@@ -86,7 +86,7 @@ root = 'romansim1_ext'
 logdamp = [-7, -1, 0.1]  # logdamp = -np.inf
 
 print("Extracting...")
-pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, inverter='lsqr', group=True)
+pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, group=False)
 
 print("Simulation and extraction done.")
 print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")

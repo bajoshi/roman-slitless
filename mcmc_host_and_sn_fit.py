@@ -164,7 +164,7 @@ def loglike_host(theta, x, data, err):
     y = y * alpha
 
     # ------- log likelihood
-    lnLike = -0.5 * np.nansum( (y-data)**2/err**2  +  np.log(2 * np.pi * err**2))
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) #  +  np.log(2 * np.pi * err**2))
     #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
     #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
 
@@ -388,7 +388,6 @@ def add_noise(sig_arr, noise_level):
     This function will vary the flux randomly within 
     the noise level specified. It assumes the statistical
     noise is Gaussian.
-    The final error array returned is Poissonian noise.
     """
     # Poisson noise: does the signal have to be in 
     # units of photons or electrons for sqrt(N) to 
@@ -467,7 +466,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     # ----------- Emcee 
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool)
-        sampler.run_mcmc(pos, 2000, progress=True)
+        sampler.run_mcmc(pos, 1000, progress=True)
 
     #pickle.dump(sampler.chain, open(object_type + '_' + str(objid) + '_emcee_chains.pkl', 'wb'))
     pickle.dump(sampler, open(object_type + '_' + str(objid) + '_emcee_sampler.pkl', 'wb'))
@@ -504,17 +503,18 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # Get autocorrelation time
     # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
     tau = get_autocorr_time(sampler)
-    if not np.isnan(tau[0]):
-        burn_in = int(3 * tau[0])
-        thinning_steps = int(0.5 * tau[0])
-    else:
-        burn_in = 400
-        thinning_steps = 67
-        print("Burn-in:", burn_in)
-        print("Thinning steps:", thinning_steps)
+    #if not np.isnan(tau[0]):
+    #    burn_in = int(3 * tau[0])
+    #    thinning_steps = int(0.5 * tau[0])
+    #else:
+    burn_in = 300
+    thinning_steps = 50
+    print(f"{bcolors.WARNING}Using hardcoded burn-in and thinning steps.{bcolors.ENDC}")
+    print("Burn-in:", burn_in)
+    print("Thinning steps:", thinning_steps)
 
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
-    print("Flat samples shape:", flat_samples.shape)
+    print("\nFlat samples shape:", flat_samples.shape)
 
     # plot corner plot
     # compute weights for the samples first
@@ -522,7 +522,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # some LSF values in the samples are negative
     corner_weights = np.zeros(len(flat_samples))
 
-    for j in range(5):#len(flat_samples)):
+    for j in range(20):#len(flat_samples)):
 
         s = flat_samples[j]
         w = logprior_host(s)
@@ -551,7 +551,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             x = args_obj[0]
             d = args_obj[1]
             e = args_obj[2]
-            y = model_host(x, s[0], s[1], s[2], s[3], s[4], s[5])
+            y = model_host(x, s[0], s[1], s[2], s[3], s[4])
 
             # ------- Clip all arrays to where grism sensitivity is >= 25%
             # then get the log likelihood
@@ -582,10 +582,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             plt.clf()
             plt.close()
 
+    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red')
-    #range=[(1.9, 2.0), (9.0, 12.0), (0.4, 1.8), (1, 15.0), (0.0, 1.0), (0.0, 5.0)], \
+        verbose=True, truth_color='tab:red', \
+        range=[(1.94, 1.96), (0.0, 2.0), (0, 15.0), (0.0, 1.0), (0.0, 5.0)] )
     fig.savefig(roman_slitless_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -658,7 +659,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'prev_run/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -749,10 +750,10 @@ def main():
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.03  # relative to signal
+            noise_level = 0.05  # relative to signal
             # First assign noise to each point
-            #host_flam_noisy, host_ferr = add_noise(host_flam, noise_level)
-            #sn_flam_noisy, sn_ferr = add_noise(sn_flam, noise_level)
+            #host_flam, host_ferr = add_noise(host_flam, noise_level)
+            #sn_flam, sn_ferr = add_noise(sn_flam, noise_level)
 
             host_ferr = noise_level * host_flam
             sn_ferr = noise_level * sn_flam
@@ -762,19 +763,21 @@ def main():
             snr_host = host_flam / host_ferr
             print("Mean of signal to noise array:", np.mean(snr_host))
 
-            fig = plt.figure()
+            fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
             ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
             ax.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
 
             # plot extracted spectrum
-            ax.plot(host_wav, host_flam, color='tab:brown', lw=2.5, \
+            ax.plot(host_wav, host_flam, color='k', lw=2, \
                 label='pyLINEAR extraction (sky noise added; no stat noise)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
+            #ax.errorbar(host_wav, host_flam, yerr=host_ferr, marker='o', \
+            #    markersize=1.5, color='k', ecolor='b', lw=0.2, zorder=1)
 
-            m = model_host(host_wav, host_z, host_ms, host_age, host_tau, host_av, 4.0)
+            m = model_host(host_wav, host_z, host_age, host_tau, host_av, 3.0)
 
             # Only consider wavelengths where sensitivity is above 20%
             host_x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
@@ -782,25 +785,91 @@ def main():
             m = m[host_x0]
 
             a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
-            print("HOST a:", a)
+            print("HOST a:", "{:.3e}".format(a))
             m = a*m
-            print("HOST base model reduced chi2:", np.nansum( (m - host_flam[host_x0])**2 / host_ferr[host_x0]**2 ) / len(m))
+            chi2_good = np.nansum( (m - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(m)
+            print("HOST base model reduced chi2:", chi2_good)
 
             ax.plot(host_wav[host_x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
-            ax.plot(host_template['lam'], 1e2 * host_template['flux'], lw=1.0, \
+            ax.plot(host_template['lam'], 6e4 * host_template['flux'], lw=1.0, \
                 color='tab:green', zorder=1, label='model given to pyLINEAR (+constant)')
+
+            # plot some other template that is NOT a good fit
+            bad_model = model_host(host_wav, 1.95, 1.0, 13.0, 1.0, 3.0)
+            bad_model = bad_model[host_x0]
+
+            ab = np.nansum(host_flam[host_x0] * bad_model / host_ferr[host_x0]**2) / np.nansum(bad_model**2 / host_ferr[host_x0]**2)
+            print(f"{bcolors.WARNING}\nHOST a for bad model:", "{:.3e}".format(ab))
+            bad_model = ab*bad_model
+            chi2_bad = np.nansum( (bad_model - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(bad_model)
+            print("HOST base model reduced chi2 for bad model:", chi2_bad)
+            print(f"{bcolors.ENDC}")
+            ax.plot(host_wav[host_x0], bad_model, lw=1.0, color='magenta', zorder=2, label='Representative bad model (downgraded)')
+
+            # another model worse than the bad model
+            worse_model = model_host(host_wav, 1.9, 3.0, 0.5, 0.1, 3.0)
+            worse_model = worse_model[host_x0]
+
+            aw = np.nansum(host_flam[host_x0] * worse_model / host_ferr[host_x0]**2) / np.nansum(worse_model**2 / host_ferr[host_x0]**2)
+            print(f"{bcolors.FAIL}\nHOST a for bad model:", "{:.3e}".format(aw))
+            worse_model = aw*worse_model
+            chi2_worse = np.nansum( (worse_model - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(worse_model)
+            print("HOST base model reduced chi2 for worse model:", chi2_worse)
+            print(f"{bcolors.ENDC}")
+            ax.plot(host_wav[host_x0], worse_model, lw=1.0, color='slateblue', zorder=2, label='Representative worse model (downgraded)')
+
+            # Get ln(likelihood) for all models
+            lnl_good = logpost_host([host_z, host_age, host_tau, host_av, 3.0], host_wav, host_flam, host_ferr)
+            lnl_bad = logpost_host([1.95, 1.0, 13.0, 1.0, 3.0], host_wav, host_flam, host_ferr)
+            lnl_worse = logpost_host([1.9, 3.0, 0.5, 0.1, 3.0], host_wav, host_flam, host_ferr)
+
+            # Info to plot
+            ax.text(x=0.45, y=0.2, s=r"$\chi^2_\mathrm{good} \,=\, $" + "{:.2f}".format(chi2_good), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='tab:red', size=12)
+            ax.text(x=0.45, y=0.14, s=r"$\chi^2_\mathrm{bad} \,=\, $" + "{:.2f}".format(chi2_bad), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='magenta', size=12)
+            ax.text(x=0.45, y=0.08, s=r"$\chi^2_\mathrm{worse} \,=\, $" + "{:.2f}".format(chi2_worse), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='slateblue', size=12)
+
+            ax.text(x=0.7, y=0.2, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{good}) \,=\, $" + "{:.2f}".format(lnl_good), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='tab:red', size=12)
+            ax.text(x=0.7, y=0.14, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{bad}) \,=\, $" + "{:.2f}".format(lnl_bad), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='magenta', size=12)
+            ax.text(x=0.7, y=0.08, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{worse}) \,=\, $" + "{:.2f}".format(lnl_worse), \
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='slateblue', size=12)
 
             ax.set_xlim(9000, 20000)
             host_fig_ymin = np.min(host_flam)
             host_fig_ymax = np.max(host_flam)
-            #ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
+            ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.8)
 
-            ax.legend(loc=0)
+            ax.legend(loc=0, frameon=False)
 
-            plt.show()
+            fig.savefig(roman_slitless_dir + 'galaxy_model_lnL_examples.pdf', dpi=200, bbox_inches='tight')
+
+            # Now save all these to an ascii file
+            fh = open(roman_slitless_dir + 'galaxy_model_lnL_examples.txt', 'w')
+            fh.write("# log likelihood values for the three models given below." + "\n")
+            fh.write("# for the good model, ln(L) = " + "{:.2f}".format(lnl_good) + "\n")
+            fh.write("# for the bad model, ln(L) = " + "{:.2f}".format(lnl_bad) + "\n")
+            fh.write("# for the worse model, ln(L) = " + "{:.2f}".format(lnl_worse) + "\n")
+            fh.write("#  lam  flam  ferr  flam_good  flam_bad  flam_worse" + "\n")
+
+            for l in range(len(m)):
+                fh.write( "{:.3f}".format(host_wav[host_x0][l]) + "  " + \
+                          "{:.3e}".format(host_flam[host_x0][l]) + "  " + \
+                          "{:.3e}".format(host_ferr[host_x0][l]) + "  " + \
+                          "{:.3e}".format(m[l]) + "  " + \
+                          "{:.3e}".format(bad_model[l]) + "  " + \
+                          "{:.3e}".format(worse_model[l]) )
+                fh.write("\n")
+
+            fh.close()
+
+            #plt.show()
             sys.exit(0)
             """
 
@@ -1073,10 +1142,10 @@ def main():
             print("\nRunning emcee...")
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-            jump_size_z = 0.002
+            jump_size_z = 0.01
             jump_size_ms = 0.1  # log(ms)
             jump_size_age = 0.1  # in gyr
-            jump_size_tau = 0.1  # in gyr
+            jump_size_tau = 0.2  # in gyr
             jump_size_av = 0.1  # magnitudes
             jump_size_lsf = 0.2
 
@@ -1094,13 +1163,13 @@ def main():
             args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
             args_host = [host_wav, host_flam, host_ferr]
 
-            rhost_init = np.array([host_z, host_age, host_tau, host_av, 1.0])  #get_optimal_fit(args_host, object_type='host')
+            rhost_init = np.array([1.9, host_age, host_tau, host_av, 4.0])  #get_optimal_fit(args_host, object_type='host')
 
             host_frac_init = 0.005
             rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
 
             # Setup dims and walkers
-            nwalkers = 100
+            nwalkers = 50
             ndim_host = 5
             ndim_sn  = 3
 
@@ -1134,7 +1203,7 @@ def main():
                 pos_sn[i] = rsn
             
             # Set up truth arrays
-            host_lsf = 4.0  # dummy
+            host_lsf = 2.0  # dummy
             truth_arr_host = np.array([host_z, host_age, host_tau, host_av, host_lsf])
             truth_arr_sn = np.array([sn_z, sn_day, host_frac_init])
 
