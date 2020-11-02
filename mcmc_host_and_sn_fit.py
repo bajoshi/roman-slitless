@@ -27,7 +27,7 @@ ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
-modeldir = "/Volumes/Heather_extdrive/bc03_output_dir/"  # home + '/Documents/bc03_output_dir/'
+modeldir = "/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/"
 
 grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
     dtype=None, names=True, skip_header=3)
@@ -288,18 +288,18 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     av: visual dust extinction
     """
 
-    #met = 0.0001
-    #model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
+    met = 0.0001
+    model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
 
+    """
     tauv = 0.0
     metallicity = 0.02
     model_llam = get_template(np.log10(age * 1e9), tau, tauv, metallicity, \
         log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
         model_lam_grid, model_grid)
-
     model_lam = model_lam_grid
-
     model_lam, model_llam = remove_emission_lines(model_lam, model_llam)
+    """
 
     # ------ Apply dust extinction
     model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
@@ -330,11 +330,6 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     lam_step = x[-1] - x[-2]
     idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
     model_mod[-1] = np.mean(model_lsfconv[idx])
-
-    # ------ Apply sensitivity curve of the dispersive element
-    #grism_sens_modelgrid = griddata(points=grism_sens_wav, values=grism_sens, xi=x, method='linear')
-    #grism_sens_modelgrid[grism_sens_modelgrid == 0] = np.nan
-    #model_mod /= grism_sens_modelgrid
 
     return model_mod
 
@@ -431,6 +426,9 @@ def add_noise(sig_arr, noise_level):
 
 def get_autocorr_time(sampler):
 
+    # OLD code block when I didnt know I could 
+    # just use tol=0 and avoid the autocorr error
+    """
     try:
         tau = sampler.get_autocorr_time()
     except emcee.autocorr.AutocorrError as errmsg:
@@ -454,7 +452,9 @@ def get_autocorr_time(sampler):
                 tau.append(float(curr_elem.rstrip(']')))
             elif len(curr_elem) > 1:
                 tau.append(float(tau_list[j]))
+    """
 
+    tau = sampler.get_autocorr_time(tol=0)
     print("Tau:", tau)
 
     return tau
@@ -463,13 +463,18 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     print("Running on:", object_type)
 
+    # ----------- Set up the HDF5 file to incrementally save progress to
+    emcee_savefile = object_type + '_' + str(objid) + '_emcee_sampler.h5'
+    backend = emcee.backends.HDFBackend(emcee_savefile)
+    backend.reset(nwalkers, ndim)
+
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
         sampler.run_mcmc(pos, 1000, progress=True)
 
-    #pickle.dump(sampler.chain, open(object_type + '_' + str(objid) + '_emcee_chains.pkl', 'wb'))
-    pickle.dump(sampler, open(object_type + '_' + str(objid) + '_emcee_sampler.pkl', 'wb'))
+    # ----------- Also save the final result as a pickle dump
+    pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
 
     print("Done with fitting.")
 
@@ -503,15 +508,13 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # Get autocorrelation time
     # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
     tau = get_autocorr_time(sampler)
-    #if not np.isnan(tau[0]):
-    #    burn_in = int(3 * tau[0])
-    #    thinning_steps = int(0.5 * tau[0])
-    #else:
-    burn_in = 300
-    thinning_steps = 50
-    print(f"{bcolors.WARNING}Using hardcoded burn-in and thinning steps.{bcolors.ENDC}")
+    burn_in = int(2 * np.max(tau))
+    thinning_steps = int(0.5 * np.min(tau))
+
+    print(f"{bcolors.WARNING}")
     print("Burn-in:", burn_in)
     print("Thinning steps:", thinning_steps)
+    print(f"{bcolors.ENDC}")
 
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
@@ -641,6 +644,13 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
 def get_optimal_fit(args_obj, object_type):
 
+    # first pull out required stuff from args
+    wav = args_obj[0]
+    flam = args_obj[1]
+    ferr = args_obj[2]
+
+
+
     return np.array([best_z, 10.5, best_age, best_tau, best_av, 1.0])
 
 def main():
@@ -750,7 +760,7 @@ def main():
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.05  # relative to signal
+            noise_level = 0.1  # relative to signal
             # First assign noise to each point
             #host_flam, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam, sn_ferr = add_noise(sn_flam, noise_level)
@@ -869,7 +879,7 @@ def main():
 
             fh.close()
 
-            #plt.show()
+            plt.show()
             sys.exit(0)
             """
 
@@ -1164,6 +1174,7 @@ def main():
             args_host = [host_wav, host_flam, host_ferr]
 
             rhost_init = np.array([1.9, host_age, host_tau, host_av, 4.0])  #get_optimal_fit(args_host, object_type='host')
+            print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
 
             host_frac_init = 0.005
             rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
