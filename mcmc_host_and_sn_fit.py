@@ -655,9 +655,10 @@ def get_optimal_fit(args_obj, object_type):
 
 def main():
 
-    print("\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * *")
+    print(f"{bcolors.WARNING}", "\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * *")
     print("\n * * * *    [WARNING]: check vertical scaling.    * * * *")
     print("\n * * * *    [WARNING]: use FlatLambdaCDM cosmology from astropy consistently.    * * * *")
+    print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"
     img_suffix = 'Y106_11_1'
