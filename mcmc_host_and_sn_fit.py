@@ -4,7 +4,11 @@ import emcee
 import corner
 import scipy
 from scipy.interpolate import griddata
-from astropy.cosmology import Planck15
+
+from astropy.cosmology import FlatLambdaCDM
+import astropy.units as u
+astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
+
 from multiprocessing import Pool
 import pickle
 
@@ -12,7 +16,9 @@ import os
 import sys
 from functools import reduce
 import time
-import datetime
+import datetime as dt
+
+#os.environ["OMP_NUM_THREADS"] = "1"
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -39,28 +45,30 @@ grism_wav_idx = np.where(grism_sens > 0.25)
 sys.path.append(stacking_utils)
 import proper_and_lum_dist as cosmo
 from dust_utils import get_dust_atten_model
-from bc03_utils import get_bc03_spectrum
+from bc03_utils import get_age_spec
 
 # Read in SALT2 SN IA file from Lou
 salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
-# Read in all models and parameters
-model_lam_grid = np.load(pears_figs_dir + 'model_lam_grid_withlines_chabrier.npy', mmap_mode='r')
-model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy', mmap_mode='r')
+# Load in all models
+start = time.time()
 
-log_age_arr = np.load(pears_figs_dir + 'log_age_arr_chab.npy', mmap_mode='r')
-metal_arr = np.load(pears_figs_dir + 'metal_arr_chab.npy', mmap_mode='r')
-tau_gyr_arr = np.load(pears_figs_dir + 'tau_gyr_arr_chab.npy', mmap_mode='r')
-tauv_arr = np.load(pears_figs_dir + 'tauv_arr_chab.npy', mmap_mode='r')
+print("Starting at:", dt.datetime.now())
 
-"""
-Array ranges are:
-1. Age: 7.02 to 10.114 (this is log of the age in years)
-2. Metals: 0.0001 to 0.05 (absolute fraction of metals. All CSP models although are fixed at solar = 0.02)
-3. Tau: 0.01 to 63.095 (this is in Gyr. SSP models get -99.0)
-4. TauV: 0.0 to 2.8 (Visual dust extinction in magnitudes. SSP models get -99.0)
-"""
+model_lam = np.load(modeldir + 'bc03_models_wavelengths.npy', mmap_mode='r')
+model_ages = np.load(modeldir + 'bc03_models_ages.npy', mmap_mode='r')
+
+all_m22_models = []
+tau_low = 0
+tau_high = 20
+for t in range(tau_low, tau_high, 1):
+    tau_str = "{:.3f}".format(t).replace('.', 'p')
+    a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m22_chab.npy', mmap_mode='r')
+    all_m22_models.append(a)
+    del a
+
+print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
@@ -74,6 +82,162 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+def logpost_host(theta, x, data, err):
+
+    lp = logprior_host(theta)
+    #print("Prior HOST:", lp)
+    
+    if not np.isfinite(lp):
+        return -np.inf
+    
+    lnL = loglike_host(theta, x, data, err)
+
+    #print("Likelihood HOST:", lnL)
+    
+    return lp + lnL
+
+def logprior_host(theta):
+
+    z, age, tau, av, lsf_sigma = theta
+    #print("Parameter vector given:", theta)
+    
+    # Make sure model is not older than the Universe
+    # Allowing at least 100 Myr for the first galaxies to form after Big Bang
+    age_at_z = astropy_cosmo.age(z).value  # in Gyr
+    age_lim = age_at_z - 0.1  # in Gyr
+
+    #(9.0 <= ms <= 12.0) and \
+
+    if ((0.0001 <= z <= 6.0) and \
+        (0.01 <= age <= age_lim) and \
+        (tau_low <= tau < tau_high) and \
+        (0.0 <= av <= 5.0) and \
+        (0.5 <= lsf_sigma <= 20.0)):
+        return 0.0
+    
+    return -np.inf
+
+def loglike_host(theta, x, data, err):
+    
+    z, age, tau, av, lsf_sigma = theta
+
+    y = model_host(x, z, age, tau, av, lsf_sigma)
+    #print("Model func result:", y)
+
+    # ------- Clip all arrays to where grism sensitivity is >= 25%
+    # then get the log likelihood
+    x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
+                   (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+    y = y[x0]
+    data = data[x0]
+    err = err[x0]
+
+    # ------- Vertical scaling factor
+    alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
+    #print("Alpha HOST:", "{:.2e}".format(alpha))
+    y = y * alpha
+
+    # ------- log likelihood
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) #  +  np.log(2 * np.pi * err**2))
+    #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
+    #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
+
+    return lnLike
+
+def model_host(x, z, age, tau, av, lsf_sigma):
+    """
+    Expects to get the following arguments
+    
+    x: observed wavelength grid
+    
+    z: redshift to apply to template
+    ms: log of the stellar mass
+    age: age of SED in Gyr
+    tau: exponential SFH timescale in Gyr
+    metallicity: absolute fraction of metals
+    av: visual dust extinction
+    """
+
+    metals = 0.0001
+
+    # Get the metallicity in the format that BC03 needs
+    if metals == 0.0001:
+        metallicity = 'm22'
+    elif metals == 0.0004:
+        metallicity = 'm32'
+    elif metals == 0.004:
+        metallicity = 'm42'
+    elif metals == 0.008:
+        metallicity = 'm52'
+    elif metals == 0.02:
+        metallicity = 'm62'
+    elif metals == 0.05:
+        metallicity = 'm72'
+
+    # Create the name for the output files
+    #tau_str = "{:.3f}".format(tau).replace('.', 'p')
+    #modelfile = modeldir + "bc2003_hr_" + metallicity + "_csp_tau" + tau_str + "_chab.fits"
+    #model_lam, model_llam = get_age_spec(modelfile, age)
+
+    tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
+    age_idx = np.argmin(abs(model_ages - age*1e9))
+    model_idx = tau_int_idx * len(model_ages)  +  age_idx
+
+    models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
+    models_arr = all_m22_models[models_taurange_idx]
+
+    #print("Tau:", tau)
+    #print("Age:", age)
+    #print("Tau int index:", tau_int_idx)
+    #print("Age index:", age_idx)
+    #print("Model tau range index:", models_taurange_idx)
+    #print("Model index:", model_idx)
+
+    model_llam = models_arr[model_idx]
+
+    """
+    tauv = 0.0
+    metallicity = 0.02
+    model_llam = get_template(np.log10(age * 1e9), tau, tauv, metallicity, \
+        log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
+        model_lam_grid, model_grid)
+    model_lam = model_lam_grid
+    model_lam, model_llam = remove_emission_lines(model_lam, model_llam)
+    """
+
+    # ------ Apply dust extinction
+    model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
+
+    # ------ Multiply luminosity by stellar mass
+    #model_dusty_llam = model_dusty_llam * 10**ms
+
+    # ------ Apply redshift
+    model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_dusty_llam, z)
+
+    # ------ Apply LSF
+    model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
+
+    # ------ Downgrade to grism resolution
+    model_mod = np.zeros(len(x))
+
+    ### Zeroth element
+    lam_step = x[1] - x[0]
+    idx = np.where((model_lam_z >= x[0] - lam_step) & (model_lam_z < x[0] + lam_step))[0]
+    model_mod[0] = np.mean(model_lsfconv[idx])
+
+    ### all elements in between
+    for j in range(1, len(x) - 1):
+        idx = np.where((model_lam_z >= x[j-1]) & (model_lam_z < x[j+1]))[0]
+        model_mod[j] = np.mean(model_lsfconv[idx])
+    
+    ### Last element
+    lam_step = x[-1] - x[-2]
+    idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
+    model_mod[-1] = np.mean(model_lsfconv[idx])
+
+    return model_mod
 
 
 def get_template(age, tau, tauv, metallicity, \
@@ -142,60 +306,11 @@ def loglike_sn(theta, x, data, err, host_flam):
     
     return lnLike
 
-def loglike_host(theta, x, data, err):
-    
-    z, age, tau, av, lsf_sigma = theta
-
-    y = model_host(x, z, age, tau, av, lsf_sigma)
-    #print("Model func result:", y)
-
-    # ------- Clip all arrays to where grism sensitivity is >= 25%
-    # then get the log likelihood
-    x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
-                   (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
-
-    y = y[x0]
-    data = data[x0]
-    err = err[x0]
-
-    # ------- Vertical scaling factor
-    alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
-    #print("Alpha HOST:", "{:.2e}".format(alpha))
-    y = y * alpha
-
-    # ------- log likelihood
-    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) #  +  np.log(2 * np.pi * err**2))
-    #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
-    #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
-
-    return lnLike
-
 def logprior_sn(theta):
 
     z, day, host_frac = theta
 
     if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.0 <= host_frac <= 0.5):
-        return 0.0
-    
-    return -np.inf
-
-def logprior_host(theta):
-
-    z, age, tau, av, lsf_sigma = theta
-    #print("Parameter vector given:", theta)
-    
-    # Make sure model is not older than the Universe
-    # Allowing at least 100 Myr for the first galaxies to form after Big Bang
-    age_at_z = Planck15.age(z).value  # in Gyr
-    age_lim = age_at_z - 0.1  # in Gyr
-
-    #(9.0 <= ms <= 12.0) and \
-
-    if ((0.0001 <= z <= 6.0) and \
-        (0.01 <= age <= age_lim) and \
-        (0.001 <= tau <= 20.0) and \
-        (0.0 <= av <= 5.0) and \
-        (0.5 <= lsf_sigma <= 20.0)):
         return 0.0
     
     return -np.inf
@@ -212,20 +327,6 @@ def logpost_sn(theta, x, data, err, host_flam):
     lnL = loglike_sn(theta, x, data, err, host_flam)
 
     #print("SN log(likelihood):", lnL)
-    
-    return lp + lnL
-
-def logpost_host(theta, x, data, err):
-
-    lp = logprior_host(theta)
-    #print("Prior HOST:", lp)
-    
-    if not np.isfinite(lp):
-        return -np.inf
-    
-    lnL = loglike_host(theta, x, data, err)
-
-    #print("Likelihood HOST:", lnL)
     
     return lp + lnL
 
@@ -273,65 +374,6 @@ def model_sn(x, z, day, sn_av):
     #sn_flam_hostcomb = sn_mod  +  host_frac * host_flam
 
     return sn_mod
-
-def model_host(x, z, age, tau, av, lsf_sigma):
-    """
-    Expects to get the following arguments
-    
-    x: observed wavelength grid
-    
-    z: redshift to apply to template
-    ms: log of the stellar mass
-    age: age of SED in Gyr
-    tau: exponential SFH timescale in Gyr
-    metallicity: absolute fraction of metals
-    av: visual dust extinction
-    """
-
-    met = 0.0001
-    model_lam, model_llam = get_bc03_spectrum(age, tau, met, modeldir)
-
-    """
-    tauv = 0.0
-    metallicity = 0.02
-    model_llam = get_template(np.log10(age * 1e9), tau, tauv, metallicity, \
-        log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
-        model_lam_grid, model_grid)
-    model_lam = model_lam_grid
-    model_lam, model_llam = remove_emission_lines(model_lam, model_llam)
-    """
-
-    # ------ Apply dust extinction
-    model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
-
-    # ------ Multiply luminosity by stellar mass
-    #model_dusty_llam = model_dusty_llam * 10**ms
-
-    # ------ Apply redshift
-    model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_dusty_llam, z)
-
-    # ------ Apply LSF
-    model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
-
-    # ------ Downgrade to grism resolution
-    model_mod = np.zeros(len(x))
-
-    ### Zeroth element
-    lam_step = x[1] - x[0]
-    idx = np.where((model_lam_z >= x[0] - lam_step) & (model_lam_z < x[0] + lam_step))[0]
-    model_mod[0] = np.mean(model_lsfconv[idx])
-
-    ### all elements in between
-    for j in range(1, len(x) - 1):
-        idx = np.where((model_lam_z >= x[j-1]) & (model_lam_z < x[j+1]))[0]
-        model_mod[j] = np.mean(model_lsfconv[idx])
-    
-    ### Last element
-    lam_step = x[-1] - x[-2]
-    idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
-    model_mod[-1] = np.mean(model_lsfconv[idx])
-
-    return model_mod
 
 def remove_emission_lines(l, ll):
     """
@@ -471,7 +513,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     # ----------- Emcee 
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
-        sampler.run_mcmc(pos, 1000, progress=True)
+        sampler.run_mcmc(pos, 5000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -519,6 +561,29 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
 
+    # Take bogus chains out
+    remove_bad_chains = False
+    if remove_bad_chains:
+        new_flat_samples_file = roman_slitless_dir + 'modsamples_' + object_type + '_' + str(objid) + '_' + img_suffix + '.npy'
+        if not os.path.isfile(new_flat_samples_file):
+            new_flat_samples = []
+            print("Removing bogus chains...")
+            for w in range(len(flat_samples)):
+                print("Working on sample:", w, end='\r')
+                s = flat_samples[w]
+                lnL = logpost_host(s, args_obj[0], args_obj[1], args_obj[2])
+                if lnL < -500:
+                    continue
+                else:
+                    new_flat_samples.append(s)
+
+            flat_samples = np.asarray(new_flat_samples)
+            np.save(new_flat_samples_file, flat_samples)
+        else:
+            flat_samples = np.load(new_flat_samples_file)
+    
+        print("New flat samples shape:", flat_samples.shape)
+
     # plot corner plot
     # compute weights for the samples first
     # only doing this because I noticed that 
@@ -529,8 +594,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
         s = flat_samples[j]
         w = logprior_host(s)
-        if w == 0.0:
-            corner_weights[j] = 1.0
+        #if w == 0.0:
+        #    corner_weights[j] = 1.0
 
         if verbose:
             if corner_weights[j] == 1.0:
@@ -541,6 +606,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
             print("\nSample number:", j)
             print(f"{wcol}Weight: ", corner_weights[j], f"{bcolors.ENDC}")
+            print("Parameter vector:", s)
             if object_type == 'host':
                 lnL = logpost_host(s, args_obj[0], args_obj[1], args_obj[2])
             else:
@@ -586,10 +652,10 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             plt.close()
 
     print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
-    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+    fig = corner.corner(flat_samples, 15, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red', \
-        range=[(1.94, 1.96), (0.0, 2.0), (0, 15.0), (0.0, 1.0), (0.0, 5.0)] )
+        range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
     fig.savefig(roman_slitless_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -617,6 +683,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
         # Check that LSF is not negative
         if sample[-1] < 0.0:
+            print("Negative LSF ....")
             sample[-1] = 1.0
 
         if object_type == 'host':
@@ -649,15 +716,12 @@ def get_optimal_fit(args_obj, object_type):
     flam = args_obj[1]
     ferr = args_obj[2]
 
-
-
-    return np.array([best_z, 10.5, best_age, best_tau, best_av, 1.0])
+    return np.array([best_z, best_age, best_tau, best_av, 1.0])
 
 def main():
 
     print(f"{bcolors.WARNING}", "\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * *")
     print("\n * * * *    [WARNING]: check vertical scaling.    * * * *")
-    print("\n * * * *    [WARNING]: use FlatLambdaCDM cosmology from astropy consistently.    * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"
@@ -761,7 +825,7 @@ def main():
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.1  # relative to signal
+            noise_level = 0.05  # relative to signal
             # First assign noise to each point
             #host_flam, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam, sn_ferr = add_noise(sn_flam, noise_level)
@@ -1007,12 +1071,12 @@ def main():
             # ----------------------- Test with explicit Metropolis-Hastings  ----------------------- #
             """
             print("\nRunning explicit Metropolis-Hastings...")
-            N = 1000   #number of "timesteps"
+            N = 10000   #number of "timesteps"
 
             #host_frac_init = 0.05
             #r = np.array([0.01, 20, host_frac_init])  # initial position
 
-            r = np.array([0.01, 10.0, 1.0, 2.0, 0.0, 2.0])
+            r = np.array([1.9, 1.5, 12.4, 0.5, 2.0])
             print("Initial parameter vector:", r)
 
             #logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
@@ -1031,10 +1095,10 @@ def main():
 
             samples = []  #creating array to hold parameter vector with time
             accept = 0.
-            logl_list = []
-            chi2_list = []
+            #logl_list = []
+            #chi2_list = []
 
-            for i in range(N): #beginning the iteratitive loop
+            for i in range(200): #beginning the iteratitive loop
 
                 print("\nMH Iteration", i, end='\n')
                 #print("MH Iteration", i, end='\r')
@@ -1045,40 +1109,39 @@ def main():
                 #rn = np.array([rn0, rn1, rn2])
 
                 rh0 = float(r[0] + jump_size_z * np.random.normal(size=1))
-                rh1 = float(r[1] + jump_size_ms * np.random.normal(size=1))
-                rh2 = float(r[2] + jump_size_age * np.random.normal(size=1))
-                rh3 = float(r[3] + jump_size_tau * np.random.normal(size=1))
-                rh4 = float(r[4] + jump_size_av * np.random.normal(size=1))
-                rh5 = float(r[5] + jump_size_lsf * np.random.normal(size=1))
+                rh1 = float(r[1] + jump_size_age * np.random.normal(size=1))
+                rh2 = float(r[2] + jump_size_tau * np.random.normal(size=1))
+                rh3 = float(r[3] + jump_size_av * np.random.normal(size=1))
+                rh4 = float(r[4] + jump_size_lsf * np.random.normal(size=1))
 
-                rn = np.array([rh0, rh1, rh2, rh3, rh4, rh5])
+                rn = np.array([rh0, rh1, rh2, rh3, rh4])
 
-                print("Proposal parameter vector", rn)
+                #print("Proposal parameter vector", rn)
                 
                 #logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)  #evaluating probability of proposal vector
                 logpn = logpost_host(rn, host_wav, host_flam, host_ferr)  #evaluating probability of proposal vector
-                print("Proposed parameter vector log(probability):", logpn)
+                #print("Proposed parameter vector log(probability):", logpn)
                 dlogL = logpn - logp
-                print("dlogL:", dlogL)
+                #print("dlogL:", dlogL)
 
                 a = np.exp(dlogL)
 
-                print("Ratio of probabilities at proposed to current position:", a)
+                #print("Ratio of probabilities at proposed to current position:", a)
 
                 if a >= 1:   #always keep it if probability got higher
-                    print("Will accept point since probability increased.")
+                    #print("Will accept point since probability increased.")
                     logp = logpn
                     r = rn
                     accept+=1
         
                 else:  #only keep it based on acceptance probability
-                    print("Probability decreased. Will decide whether to keep point or not.")
+                    #print("Probability decreased. Will decide whether to keep point or not.")
                     u = np.random.rand()  #random number between 0 and 1
                     if u < a:  #only if proposal prob / previous prob is greater than u, then keep new proposed step
                         logp = logpn
                         r = rn
                         accept+=1
-                        print("Point kept.")
+                        #print("Point kept.")
 
                 samples.append(r)  #update
                 
@@ -1118,19 +1181,10 @@ def main():
             samples = np.array(samples)
 
             # plot trace
-            #fig = plt.figure()
-            #ax = fig.add_subplot(111)
-            #ax.plot(samples[:,0], color='tab:red', label=r'$z$')
-            #ax.plot(samples[:,1], color='tab:blue', label=r'$\mathrm{Day}$')
-            #ax.plot(samples[:,2], color='tab:brown', label=r'$\mathrm{Host\ frac}$')
-            #ax.legend(loc=0)
-            #plt.show()
-
-            # plot trace
-            fig1, axes1 = plt.subplots(6, figsize=(10, 6), sharex=True)
+            fig1, axes1 = plt.subplots(5, figsize=(10, 6), sharex=True)
             label_list_host = [r'$z$', r'$log(Ms/M_\odot)$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']
 
-            for i in range(6):
+            for i in range(5):
                 ax1 = axes1[i]
                 ax1.plot(samples[:, i], "k", alpha=0.2)
                 ax1.set_xlim(0, len(samples))
@@ -1195,7 +1249,6 @@ def main():
 
                 # ---------- For HOST
                 rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
-                #rh1 = float(rhost_init[1] + jump_size_ms * np.random.normal(size=1))
                 rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
                 rh2 = float(rhost_init[2] + jump_size_tau * np.random.normal(size=1))
                 rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
@@ -1215,7 +1268,7 @@ def main():
                 pos_sn[i] = rsn
             
             # Set up truth arrays
-            host_lsf = 2.0  # dummy
+            host_lsf = 1.0  # dummy
             truth_arr_host = np.array([host_z, host_age, host_tau, host_av, host_lsf])
             truth_arr_sn = np.array([sn_z, sn_day, host_frac_init])
 

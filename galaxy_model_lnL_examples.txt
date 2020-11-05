@@ -1,7 +1,7 @@
 # log likelihood values for the three models given below.
 # for the good model, ln(L) = -35.52
 # for the bad model, ln(L) = -168.97
-# for the worse model, ln(L) = -740.70
+# for the worse model, ln(L) = -inf
 #  lam  flam  ferr  flam_good  flam_bad  flam_worse
 10050.000  6.720e-15  6.720e-16  6.618e-15  6.048e-15  5.265e-15
 10060.000  6.784e-15  6.784e-16  6.578e-15  6.048e-15  5.392e-15
