@@ -53,6 +53,7 @@ salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 # Load in all models
+# ------ THIS HAS TO BE GLOBAL!
 start = time.time()
 
 print("Starting at:", dt.datetime.now())
@@ -177,11 +178,6 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     elif metals == 0.05:
         metallicity = 'm72'
 
-    # Create the name for the output files
-    #tau_str = "{:.3f}".format(tau).replace('.', 'p')
-    #modelfile = modeldir + "bc2003_hr_" + metallicity + "_csp_tau" + tau_str + "_chab.fits"
-    #model_lam, model_llam = get_age_spec(modelfile, age)
-
     tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
     age_idx = np.argmin(abs(model_ages - age*1e9))
     model_idx = tau_int_idx * len(model_ages)  +  age_idx
@@ -237,6 +233,8 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     lam_step = x[-1] - x[-2]
     idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
     model_mod[-1] = np.mean(model_lsfconv[idx])
+
+    model_mod /= np.nanmedian(model_mod)
 
     return model_mod
 
@@ -507,14 +505,14 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     print("Running on:", object_type)
 
     # ----------- Set up the HDF5 file to incrementally save progress to
-    emcee_savefile = object_type + '_' + str(objid) + '_emcee_sampler.h5'
+    emcee_savefile = object_type + '_' + str(objid) + '_emcee_sampler_1ksteps.h5'
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim)
 
     # ----------- Emcee 
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
-        sampler.run_mcmc(pos, 2000, progress=True)
+        sampler.run_mcmc(pos, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -526,12 +524,15 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, objid, img_suffix, verbose=False):
 
     #pkl_path = roman_slitless_dir + '/emcee_diagnostics/run1/' + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
-    pkl_path = roman_slitless_dir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
+    pkl_path = roman_slitless_dir + object_type + '_' + str(objid) + '_emcee_sampler_1ksteps.pkl'
     sampler = pickle.load(open(pkl_path, 'rb'))
     samples = sampler.get_chain()
-
     print(f"{bcolors.CYAN}\nRead in pickle:", pkl_path, f"{bcolors.ENDC}")
     print("Samples shape:", samples.shape)
+
+    #reader = emcee.backends.HDFBackend(pkl_path.replace('.pkl', '.h5'))
+    #samples = reader.get_chain()
+    #tau = reader.get_autocorr_time(tol=0)
 
     # plot trace
     fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
@@ -565,7 +566,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # Take bogus chains out
     remove_bad_chains = True
     if remove_bad_chains:
-        new_flat_samples_file = roman_slitless_dir + 'modsamples_' + object_type + '_' + str(objid) + '_' + img_suffix + '.npy'
+        new_flat_samples_file = roman_slitless_dir + 'modsamples_' + object_type + '_' + str(objid) + '_' + img_suffix + '_1ksteps.npy'
         if not os.path.isfile(new_flat_samples_file):
             new_flat_samples = []
             print("Removing bogus chains...")
@@ -882,6 +883,10 @@ def main():
 
             host_ferr = noise_level * host_flam
             sn_ferr = noise_level * sn_flam
+
+            host_flam_norm = host_flam / np.median(host_flam)
+            host_ferr_norm = noise_level * host_flam_norm
+
 
             # -------- Test figure for HOST
             """
@@ -1276,12 +1281,12 @@ def main():
             # lsf_sigma in angstroms
 
             args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
-            args_host = [host_wav, host_flam, host_ferr]
+            args_host = [host_wav, host_flam_norm, host_ferr_norm]
 
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([2.0, 0.1, 2.0, 0.5, 1.0])  
+            rhost_init = np.array([1.96, 0.5, 2.0, 0.5, 1.0])  
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
 
             host_frac_init = 0.005
@@ -1331,7 +1336,7 @@ def main():
 
             # Read previously run samples using pickle 
             #host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
-            host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
+            host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler_1ksteps.pkl'
 
             if os.path.isfile(host_pickle):
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)

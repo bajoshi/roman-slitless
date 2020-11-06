@@ -7,7 +7,7 @@ import sys
 home = os.getenv('HOME')
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
 
-modeldir = "/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/"
+modeldir = "/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/m62/"
 
 sys.path.append(stacking_utils)
 from bc03_utils import gen_bc03_spectrum
@@ -101,14 +101,14 @@ def consolidate_fits2npy():
 
     return None
 
-def main():
+def main(tau):
 
-    consolidate_fits2npy()
-    sys.exit(0)
+    #consolidate_fits2npy()
+    #sys.exit(0)
 
     # Set up arrays
     #tau_arr = np.arange(0.000, 9.001, 0.001)
-    metals = 0.0001
+    metals = 0.02
 
     # First get hte metallicity string
     # Get the isedfile and the metallicity in the format that BC03 needs
@@ -125,7 +125,7 @@ def main():
     #elif metals == 0.05:
     #    metallicity = 'm72'
 
-    metallicity = 'm22'
+    metallicity = 'm62'
 
     # If the ised file exists and has the correct size then don't rerun
 
@@ -134,31 +134,32 @@ def main():
     output = modeldir + "bc2003_hr_" + metallicity + "_csp_tau" + tau_str + "_chab.ised"
 
     print("Working on:", output)
+    gen_bc03_spectrum(tau, metals, modeldir)
 
-    if os.path.isfile(output):
-        s = os.stat(output).st_size
-        s = s/1e6
-        # be careful if this is run on anything other than MacOS
-        # MacOS uses base-10 file size, i.e., 1 MB = 1e6 bytes,
-        # whereas other OSes will use base-2, i.e., 1 MB = 1024*1024 bytes
-        if s >= 11.5:  # in MB
-            print(f"{bcolors.GREEN}File exists and has correct size. Moving to the next model.{bcolors.ENDC}")
-            return None
-        else:
-            os.remove(output)
-            print(f"{bcolors.FAIL}Removed:", output, "due to file size of", s, "MB", f"{bcolors.ENDC}")
-            gen_bc03_spectrum(tau, metals, modeldir)
-    else:            
-        gen_bc03_spectrum(tau, metals, modeldir)
+    #if os.path.isfile(output):
+    #    s = os.stat(output).st_size
+    #    s = s/1e6
+    #    # be careful if this is run on anything other than MacOS
+    #    # MacOS uses base-10 file size, i.e., 1 MB = 1e6 bytes,
+    #    # whereas other OSes will use base-2, i.e., 1 MB = 1024*1024 bytes
+    #    if s >= 11.5:  # in MB
+    #        print(f"{bcolors.GREEN}File exists and has correct size. Moving to the next model.{bcolors.ENDC}")
+    #        return None
+    #    else:
+    #        os.remove(output)
+    #        print(f"{bcolors.FAIL}Removed:", output, "due to file size of", s, "MB", f"{bcolors.ENDC}")
+    #        gen_bc03_spectrum(tau, metals, modeldir)
+    #else:
+    #    gen_bc03_spectrum(tau, metals, modeldir)            
 
     return None
 
 if __name__ == '__main__':
 
-    #tau = int(sys.argv[1])
-    #tau /= 1000
+    tau = int(sys.argv[1])
+    tau /= 1000
 
-    main()
+    main(tau)
 
     sys.exit(0)
 
