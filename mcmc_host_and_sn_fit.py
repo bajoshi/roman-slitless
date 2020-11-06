@@ -4,6 +4,7 @@ import emcee
 import corner
 import scipy
 from scipy.interpolate import griddata
+from scipy.optimize import curve_fit
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
@@ -513,7 +514,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     # ----------- Emcee 
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
-        sampler.run_mcmc(pos, 5000, progress=True)
+        sampler.run_mcmc(pos, 2000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -562,7 +563,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     print("\nFlat samples shape:", flat_samples.shape)
 
     # Take bogus chains out
-    remove_bad_chains = False
+    remove_bad_chains = True
     if remove_bad_chains:
         new_flat_samples_file = roman_slitless_dir + 'modsamples_' + object_type + '_' + str(objid) + '_' + img_suffix + '.npy'
         if not os.path.isfile(new_flat_samples_file):
@@ -652,7 +653,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             plt.close()
 
     print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
-    fig = corner.corner(flat_samples, 15, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red', \
         range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
@@ -667,7 +668,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     flam = args_obj[1]
     ferr = args_obj[2]
 
-    fig3 = plt.figure()
+    fig3 = plt.figure(figsize=(9,4))
     ax3 = fig3.add_subplot(111)
 
     ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
@@ -709,12 +710,61 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     return None
 
+def model_host_norm(x, z, age, tau, av):
+
+    m = model_host(x, z, age, tau, av, 1.0)
+    m /= np.median(m)
+
+    x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
+                   (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+    m = m[x0]
+
+    return m
+
 def get_optimal_fit(args_obj, object_type):
+
+    print("Running scipy.optimize.curve_fit to determine initial position.")
 
     # first pull out required stuff from args
     wav = args_obj[0]
     flam = args_obj[1]
     ferr = args_obj[2]
+
+    x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                   (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+    wav = wav[x0]
+    flam = flam[x0]
+    ferr = ferr[x0]
+
+    flam_norm = flam / np.median(flam)
+    ferr_norm = ferr / np.median(ferr)
+
+    # Initial guess
+    # Based on eyeballing the spectrum
+    p0 = [1.95, 1.4, 12.0, 0.5]
+
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(wav, flam_norm)
+    ax.plot(wav, model_host_norm(wav, *p0))
+    plt.show()
+    sys.exit(0)
+    """
+
+    popt, pcov = curve_fit(f=model_host_norm, xdata=wav, ydata=flam_norm, p0=p0, sigma=ferr_norm, \
+        bounds=[(1.8, 0, 0, 0), (2.0, 5, 20, 5)])
+
+    print(popt)
+    print(pcov)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(wav, flam_norm)
+    ax.plot(wav, model_host_norm(wav, *popt))
+    plt.show()
+    sys.exit(0)
 
     return np.array([best_z, best_age, best_tau, best_av, 1.0])
 
@@ -1228,7 +1278,10 @@ def main():
             args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
             args_host = [host_wav, host_flam, host_ferr]
 
-            rhost_init = np.array([1.9, host_age, host_tau, host_av, 4.0])  #get_optimal_fit(args_host, object_type='host')
+            #rhost_init = get_optimal_fit(args_host, object_type='host')
+            #sys.exit(0)
+
+            rhost_init = np.array([2.0, 0.1, 2.0, 0.5, 1.0])  
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
 
             host_frac_init = 0.005
