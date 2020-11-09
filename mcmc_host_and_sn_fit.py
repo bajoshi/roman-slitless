@@ -34,7 +34,7 @@ ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
-modeldir = "/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/"
+modeldir = "/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/m62/"
 
 grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
     dtype=None, names=True, skip_header=3)
@@ -58,16 +58,16 @@ start = time.time()
 
 print("Starting at:", dt.datetime.now())
 
-model_lam = np.load(modeldir + 'bc03_models_wavelengths.npy', mmap_mode='r')
-model_ages = np.load(modeldir + 'bc03_models_ages.npy', mmap_mode='r')
+model_lam = np.load("/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
+model_ages = np.load("/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
 
-all_m22_models = []
+all_m62_models = []
 tau_low = 0
 tau_high = 20
 for t in range(tau_low, tau_high, 1):
     tau_str = "{:.3f}".format(t).replace('.', 'p')
-    a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m22_chab.npy', mmap_mode='r')
-    all_m22_models.append(a)
+    a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m62_chab.npy', mmap_mode='r')
+    all_m62_models.append(a)
     del a
 
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
@@ -162,7 +162,7 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     av: visual dust extinction
     """
 
-    metals = 0.0001
+    metals = 0.02
 
     # Get the metallicity in the format that BC03 needs
     if metals == 0.0001:
@@ -183,7 +183,7 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     model_idx = tau_int_idx * len(model_ages)  +  age_idx
 
     models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
-    models_arr = all_m22_models[models_taurange_idx]
+    models_arr = all_m62_models[models_taurange_idx]
 
     #print("Tau:", tau)
     #print("Age:", age)
@@ -234,7 +234,7 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
     model_mod[-1] = np.mean(model_lsfconv[idx])
 
-    model_mod /= np.nanmedian(model_mod)
+    #model_mod /= np.nanmedian(model_mod)
 
     return model_mod
 
@@ -510,9 +510,9 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     backend.reset(nwalkers, ndim)
 
     # ----------- Emcee 
-    with Pool() as pool:
+    with Pool(6) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
-        sampler.run_mcmc(pos, 1000, progress=True)
+        sampler.run_mcmc(pos, 5000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -564,7 +564,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     print("\nFlat samples shape:", flat_samples.shape)
 
     # Take bogus chains out
-    remove_bad_chains = True
+    remove_bad_chains = False
     if remove_bad_chains:
         new_flat_samples_file = roman_slitless_dir + 'modsamples_' + object_type + '_' + str(objid) + '_' + img_suffix + '_1ksteps.npy'
         if not os.path.isfile(new_flat_samples_file):
@@ -653,11 +653,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             plt.clf()
             plt.close()
 
-    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', \
-        range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
+        verbose=True, truth_color='tab:red')#, \
+    #range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
     fig.savefig(roman_slitless_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -884,8 +884,8 @@ def main():
             host_ferr = noise_level * host_flam
             sn_ferr = noise_level * sn_flam
 
-            host_flam_norm = host_flam / np.median(host_flam)
-            host_ferr_norm = noise_level * host_flam_norm
+            #host_flam_norm = host_flam / np.median(host_flam)
+            #host_ferr_norm = noise_level * host_flam_norm
 
 
             # -------- Test figure for HOST
@@ -1281,12 +1281,12 @@ def main():
             # lsf_sigma in angstroms
 
             args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
-            args_host = [host_wav, host_flam_norm, host_ferr_norm]
+            args_host = [host_wav, host_flam, host_ferr]
 
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([1.96, 0.5, 2.0, 0.5, 1.0])  
+            rhost_init = np.array([1.8, 0.5, 2.0, 0.5, 1.0])
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
 
             host_frac_init = 0.005

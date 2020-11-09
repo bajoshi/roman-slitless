@@ -36,7 +36,7 @@ def consolidate_fits2npy():
     """
 
     # Set up arrays
-    metals = 0.0001
+    metals = 0.02
 
     # First get hte metallicity string
     # Get the isedfile and the metallicity in the format that BC03 needs
@@ -53,7 +53,7 @@ def consolidate_fits2npy():
     elif metals == 0.05:
         metallicity = 'm72'
 
-    for tau_start in range(14, 20, 1):
+    for tau_start in range(0, 20, 1):
         
         print("Working on tau starting from:", tau_start)
         tau_arr = np.arange(tau_start, tau_start + 1.000, 0.001)
@@ -101,10 +101,10 @@ def consolidate_fits2npy():
 
     return None
 
-def main(tau):
+def main():
 
-    #consolidate_fits2npy()
-    #sys.exit(0)
+    consolidate_fits2npy()
+    sys.exit(0)
 
     # Set up arrays
     #tau_arr = np.arange(0.000, 9.001, 0.001)
@@ -156,10 +156,10 @@ def main(tau):
 
 if __name__ == '__main__':
 
-    tau = int(sys.argv[1])
-    tau /= 1000
+    #tau = int(sys.argv[1])
+    #tau /= 1000
 
-    main(tau)
+    main()
 
     sys.exit(0)
 
