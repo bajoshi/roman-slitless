@@ -19,8 +19,6 @@ from functools import reduce
 import time
 import datetime as dt
 
-#os.environ["OMP_NUM_THREADS"] = "1"
-
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.gridspec as gridspec
@@ -33,6 +31,7 @@ roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
+emcee_diagnostics_dir = home + "/Documents/emcee_runs/emcee_diagnostics_roman/"
 
 modeldir = "/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/m62/"
 
@@ -102,21 +101,20 @@ def logpost_host(theta, x, data, err):
 def logprior_host(theta):
 
     z, age, tau, av, lsf_sigma = theta
-    #print("Parameter vector given:", theta)
+    #print("\nParameter vector given:", theta)
+
+    if (0.0001 <= z <= 6.0):
     
-    # Make sure model is not older than the Universe
-    # Allowing at least 100 Myr for the first galaxies to form after Big Bang
-    age_at_z = astropy_cosmo.age(z).value  # in Gyr
-    age_lim = age_at_z - 0.1  # in Gyr
+        # Make sure model is not older than the Universe
+        # Allowing at least 100 Myr for the first galaxies to form after Big Bang
+        age_at_z = astropy_cosmo.age(z).value  # in Gyr
+        age_lim = age_at_z - 0.1  # in Gyr
 
-    #(9.0 <= ms <= 12.0) and \
-
-    if ((0.0001 <= z <= 6.0) and \
-        (0.01 <= age <= age_lim) and \
-        (tau_low <= tau < tau_high) and \
-        (0.0 <= av <= 5.0) and \
-        (0.5 <= lsf_sigma <= 20.0)):
-        return 0.0
+        if ((0.01 <= age <= age_lim) and \
+            (tau_low <= tau < tau_high) and \
+            (0.0 <= av <= 5.0) and \
+            (0.0 <= lsf_sigma <= 20.0)):
+            return 0.0
     
     return -np.inf
 
@@ -135,16 +133,40 @@ def loglike_host(theta, x, data, err):
     y = y[x0]
     data = data[x0]
     err = err[x0]
+    x = x[x0]
 
     # ------- Vertical scaling factor
+    #try:
     alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
     #print("Alpha HOST:", "{:.2e}".format(alpha))
+    #except RuntimeWarning:
+    #    print("RuntimeWarning encountered.")
+    #    print("Parameter vector given:", theta)
+    #    sys.exit(0)
+
     y = y * alpha
 
     # ------- log likelihood
-    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) #  +  np.log(2 * np.pi * err**2))
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
+
     #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
     #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
+    #print("log likelihood HOST:", lnLike)
+
+    """
+    fig = plt.figure(figsize=(9,5))
+    ax = fig.add_subplot(111)
+    ax.set_xlabel(r'$\lambda\, [\mathrm{\AA}]$', fontsize=14)
+    ax.set_ylabel(r'$f_\lambda\, [\mathrm{cgs}]$', fontsize=14)
+
+    ax.plot(x, data, color='k')
+    ax.fill_between(x, data - err, data + err, color='gray', alpha=0.5)
+
+    ax.plot(x, y, color='firebrick')
+
+    ax.set_xscale('log')
+    plt.show()
+    """
 
     return lnLike
 
@@ -164,6 +186,7 @@ def model_host(x, z, age, tau, av, lsf_sigma):
 
     metals = 0.02
 
+    """
     # Get the metallicity in the format that BC03 needs
     if metals == 0.0001:
         metallicity = 'm22'
@@ -177,6 +200,7 @@ def model_host(x, z, age, tau, av, lsf_sigma):
         metallicity = 'm62'
     elif metals == 0.05:
         metallicity = 'm72'
+    """
 
     tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
     age_idx = np.argmin(abs(model_ages - age*1e9))
@@ -187,8 +211,8 @@ def model_host(x, z, age, tau, av, lsf_sigma):
 
     #print("Tau:", tau)
     #print("Age:", age)
-    #print("Tau int index:", tau_int_idx)
-    #print("Age index:", age_idx)
+    #print("Tau int and age index:", tau_int_idx, age_idx)
+    #print("Tau and age from index:", models_taurange_idx+tau_int_idx/1e3, model_ages[age_idx]/1e9)
     #print("Model tau range index:", models_taurange_idx)
     #print("Model index:", model_idx)
 
@@ -217,6 +241,7 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     model_lsfconv = scipy.ndimage.gaussian_filter1d(input=model_flam_z, sigma=lsf_sigma)
 
     # ------ Downgrade to grism resolution
+    """
     model_mod = np.zeros(len(x))
 
     ### Zeroth element
@@ -233,6 +258,8 @@ def model_host(x, z, age, tau, av, lsf_sigma):
     lam_step = x[-1] - x[-2]
     idx = np.where((model_lam_z >= x[-1] - lam_step) & (model_lam_z < x[-1] + lam_step))[0]
     model_mod[-1] = np.mean(model_lsfconv[idx])
+    """
+    model_mod = griddata(points=model_lam_z, values=model_lsfconv, xi=x)
 
     #model_mod /= np.nanmedian(model_mod)
 
@@ -505,14 +532,15 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     print("Running on:", object_type)
 
     # ----------- Set up the HDF5 file to incrementally save progress to
-    emcee_savefile = object_type + '_' + str(objid) + '_emcee_sampler_1ksteps.h5'
+    emcee_savefile = emcee_diagnostics_dir + object_type + '_' + str(objid) + '_emcee_sampler.h5'
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim)
 
     # ----------- Emcee 
-    with Pool(6) as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
-        sampler.run_mcmc(pos, 5000, progress=True)
+    with Pool() as pool:
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend, \
+            moves=emcee.moves.DEMove())# (emcee.moves.DESnookerMove(), 0.1),])
+        sampler.run_mcmc(pos, 2000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -523,8 +551,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
 def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, objid, img_suffix, verbose=False):
 
-    #pkl_path = roman_slitless_dir + '/emcee_diagnostics/run1/' + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
-    pkl_path = roman_slitless_dir + object_type + '_' + str(objid) + '_emcee_sampler_1ksteps.pkl'
+    pkl_path = emcee_diagnostics_dir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
     sampler = pickle.load(open(pkl_path, 'rb'))
     samples = sampler.get_chain()
     print(f"{bcolors.CYAN}\nRead in pickle:", pkl_path, f"{bcolors.ENDC}")
@@ -546,7 +573,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     axes1[-1].set_xlabel("Step number")
 
-    fig1.savefig(roman_slitless_dir + 'emcee_trace_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig1.savefig(emcee_diagnostics_dir + 'emcee_trace_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     # Get autocorrelation time
@@ -555,6 +582,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     burn_in = int(2 * np.max(tau))
     thinning_steps = int(0.5 * np.min(tau))
 
+    print("Average Tau:", np.mean(tau))
     print(f"{bcolors.WARNING}")
     print("Burn-in:", burn_in)
     print("Thinning steps:", thinning_steps)
@@ -658,7 +686,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red')#, \
     #range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
-    fig.savefig(roman_slitless_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     # ------------ Plot 100 random models from the parameter space
@@ -706,7 +734,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         m *= a
         ax3.plot(wav, m, color='tab:red', alpha=0.2, zorder=2)
 
-    fig3.savefig(roman_slitless_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     return None
@@ -876,7 +904,7 @@ def main():
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
             # ---- Apply noise and get dummy noisy spectra
-            noise_level = 0.05  # relative to signal
+            noise_level = 0.03  # relative to signal
             # First assign noise to each point
             #host_flam, host_ferr = add_noise(host_flam, noise_level)
             #sn_flam, sn_ferr = add_noise(sn_flam, noise_level)
@@ -1286,7 +1314,7 @@ def main():
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([1.8, 0.5, 2.0, 0.5, 1.0])
+            rhost_init = np.array([host_z, host_age, host_tau, host_av, 1.0])
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
 
             host_frac_init = 0.005
@@ -1301,7 +1329,7 @@ def main():
             pos_host = np.zeros(shape=(nwalkers, ndim_host))
             pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
 
-            z_init = np.linspace(0.001, 3.0, nwalkers)
+            #z_init = np.linspace(0.001, 3.0, nwalkers)
 
             for i in range(nwalkers):
 
@@ -1335,8 +1363,7 @@ def main():
             label_list_sn = [r'$z$', r'$Day$', r'$Host frac$']
 
             # Read previously run samples using pickle 
-            #host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
-            host_pickle = roman_slitless_dir + 'host_' + str(hostid) + '_emcee_sampler_1ksteps.pkl'
+            host_pickle = emcee_diagnostics_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
 
             if os.path.isfile(host_pickle):
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
