@@ -47,13 +47,13 @@ import proper_and_lum_dist as cosmo
 from dust_utils import get_dust_atten_model
 from bc03_utils import get_age_spec
 
-# Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
-    dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
-
 # Load in all models
 # ------ THIS HAS TO BE GLOBAL!
 start = time.time()
+
+# Read in SALT2 SN IA file from Lou
+salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
+    dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 print("Starting at:", dt.datetime.now())
 
@@ -166,8 +166,9 @@ def loglike_host(theta, x, data, err):
 
     ax.set_xscale('log')
     plt.show()
-    sys.exit(0)
+    #sys.exit(0)
     """
+    
 
     return lnLike
 
@@ -275,7 +276,6 @@ def model_host(x, z, ms, age, tau, av):
 
     return model_mod
 
-
 def get_template(age, tau, tauv, metallicity, \
     log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
     model_lam_grid_withlines_mmap, model_comp_spec_withlines_mmap):
@@ -320,12 +320,22 @@ def get_template(age, tau, tauv, metallicity, \
 
     return model_llam
 
-def loglike_sn(theta, x, data, err, host_flam):
+def loglike_sn(theta, x, data, err):
     
-    z, day, host_frac = theta
+    z, day, av = theta
 
-    y = model_sn(x, z, day, host_frac, host_flam)
+    y = model_sn(x, z, day, av)
     #print("Model SN func result:", y)
+
+    # ------- Clip all arrays to where grism sensitivity is >= 25%
+    # then get the log likelihood
+    x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
+                   (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+    y = y[x0]
+    data = data[x0]
+    err = err[x0]
+    x = x[x0]
 
     # ------- Vertical scaling factor
     alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
@@ -334,24 +344,39 @@ def loglike_sn(theta, x, data, err, host_flam):
     y = y * alpha
 
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) #  +  np.log(2 * np.pi * err**2))
+
+    #print("Chi2 term:", np.sum((y-data)**2/err**2))
+    #print("Second loglikelihood term:", np.log(2 * np.pi * err**2))
     #print("ln(likelihood) SN", lnLike)
 
-    #print("Chi2 array:", (y-data)**2/err**2)
-    #print("Chi2 array sum:", np.sum((y-data)**2/err**2))
-    #print("Second loglikelihood term:", np.log(2 * np.pi * err**2))
+    """
+    fig = plt.figure(figsize=(9,5))
+    ax = fig.add_subplot(111)
+    ax.set_xlabel(r'$\lambda\, [\mathrm{\AA}]$', fontsize=14)
+    ax.set_ylabel(r'$f_\lambda\, [\mathrm{cgs}]$', fontsize=14)
+
+    ax.plot(x, data, color='k')
+    ax.fill_between(x, data - err, data + err, color='gray', alpha=0.5)
+
+    ax.plot(x, y, color='firebrick')
+
+    ax.set_xscale('log')
+    plt.show()
+    #sys.exit(0)
+    """
     
     return lnLike
 
 def logprior_sn(theta):
 
-    z, day, host_frac = theta
+    z, day, av = theta
 
-    if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.0 <= host_frac <= 0.5):
+    if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.0 <= av <= 5.0):
         return 0.0
     
     return -np.inf
 
-def logpost_sn(theta, x, data, err, host_flam):
+def logpost_sn(theta, x, data, err):
 
     lp = logprior_sn(theta)
 
@@ -360,7 +385,7 @@ def logpost_sn(theta, x, data, err, host_flam):
     if not np.isfinite(lp):
         return -np.inf
     
-    lnL = loglike_sn(theta, x, data, err, host_flam)
+    lnL = loglike_sn(theta, x, data, err)
 
     #print("SN log(likelihood):", lnL)
     
@@ -403,6 +428,8 @@ def model_sn(x, z, day, sn_av):
     lam_step = x[-1] - x[-2]
     idx = np.where((sn_lam_z >= x[-1] - lam_step) & (sn_lam_z < x[-1] + lam_step))[0]
     sn_mod[-1] = np.mean(sn_flam_z[idx])
+
+    #sn_mod = griddata(points=sn_lam_z, values=sn_flam_z, xi=x)
 
     # ------ combine host light
     # some fraction to account for host contamination
@@ -575,7 +602,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     for i in range(ndim):
         ax1 = axes1[i]
-        ax1.plot(samples[:, :, i], "k", alpha=0.1)
+        ax1.plot(samples[:, :, i], "k", alpha=0.05)
         ax1.set_xlim(0, len(samples))
         ax1.set_ylabel(label_list[i])
         ax1.yaxis.set_label_coords(-0.1, 0.5)
@@ -629,66 +656,54 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # some LSF values in the samples are negative
     corner_weights = np.zeros(len(flat_samples))
 
-    for j in range(20):#len(flat_samples)):
+    if verbose:
 
-        s = flat_samples[j]
-        w = logprior_host(s)
-        #if w == 0.0:
-        #    corner_weights[j] = 1.0
+        print("\nSample number:", j)
+        print(f"{wcol}Weight: ", corner_weights[j], f"{bcolors.ENDC}")
+        print("Parameter vector:", s)
+        if object_type == 'host':
+            lnL = logpost_host(s, args_obj[0], args_obj[1], args_obj[2])
+        else:
+            lnL = logpost_sn(s, args_obj[0], args_obj[1], args_obj[2], args_obj[3])
+        print("ln(likelihood): ", lnL)
 
-        if verbose:
-            if corner_weights[j] == 1.0:
-                wcol = bcolors.GREEN
-            else:
-                print("\nSkipping invalid sample... negative LSF.")
-                continue
+        # Now plot model and data to compare
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        
+        x = args_obj[0]
+        d = args_obj[1]
+        e = args_obj[2]
+        y = model_host(x, s[0], s[1], s[2], s[3], s[4])
 
-            print("\nSample number:", j)
-            print(f"{wcol}Weight: ", corner_weights[j], f"{bcolors.ENDC}")
-            print("Parameter vector:", s)
-            if object_type == 'host':
-                lnL = logpost_host(s, args_obj[0], args_obj[1], args_obj[2])
-            else:
-                lnL = logpost_sn(s, args_obj[0], args_obj[1], args_obj[2], args_obj[3])
-            print("ln(likelihood): ", lnL)
+        # ------- Clip all arrays to where grism sensitivity is >= 25%
+        # then get the log likelihood
+        x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
+                       (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
 
-            # Now plot model and data to compare
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            
-            x = args_obj[0]
-            d = args_obj[1]
-            e = args_obj[2]
-            y = model_host(x, s[0], s[1], s[2], s[3], s[4])
+        x = x[x0]
+        y = y[x0]
+        d = d[x0]
+        e = e[x0]
 
-            # ------- Clip all arrays to where grism sensitivity is >= 25%
-            # then get the log likelihood
-            x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
-                           (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+        # ------- Vertical scaling factor
+        a = np.nansum(d * y / e**2) / np.nansum(y**2 / e**2)
+        print("Alpha HOST recomputed:", "{:.2e}".format(a))
 
-            x = x[x0]
-            y = y[x0]
-            d = d[x0]
-            e = e[x0]
+        y = y * a
 
-            # ------- Vertical scaling factor
-            a = np.nansum(d * y / e**2) / np.nansum(y**2 / e**2)
-            print("Alpha HOST recomputed:", "{:.2e}".format(a))
+        print(f"{bcolors.CYAN}Reduced chi2 (pure chi2 NOT ln(likelihood)):", np.nansum( (y-d)**2/e**2 ) / len(y), f"{bcolors.ENDC}")
+        chi2_expl = 0
+        for w in range(len(x)):
+            chi2_expl += (y[w]-d[w])**2/e[w]**2
+        print("Explicitly summed chi2:", chi2_expl)
 
-            y = y * a
+        ax.plot(x, d)
+        ax.plot(x, y)
 
-            print(f"{bcolors.CYAN}Reduced chi2 (pure chi2 NOT ln(likelihood)):", np.nansum( (y-d)**2/e**2 ) / len(y), f"{bcolors.ENDC}")
-            chi2_expl = 0
-            for w in range(len(x)):
-                chi2_expl += (y[w]-d[w])**2/e[w]**2
-            print("Explicitly summed chi2:", chi2_expl)
-
-            ax.plot(x, d)
-            ax.plot(x, y)
-
-            plt.show()
-            plt.clf()
-            plt.close()
+        plt.show()
+        plt.clf()
+        plt.close()
 
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
@@ -698,20 +713,22 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
-    cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
-    cq_age = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
-    cq_tau = corner.quantile(x=flat_samples[:, 2], q=[0.16, 0.5, 0.84])
-    cq_av = corner.quantile(x=flat_samples[:, 3], q=[0.16, 0.5, 0.84])
+    if object_type == 'host':
+        cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
+        cq_ms = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
+        cq_age = corner.quantile(x=flat_samples[:, 2], q=[0.16, 0.5, 0.84])
+        cq_tau = corner.quantile(x=flat_samples[:, 3], q=[0.16, 0.5, 0.84])
+        cq_av = corner.quantile(x=flat_samples[:, 4], q=[0.16, 0.5, 0.84])
 
-    # print parameter estimates
-    print(f"{bcolors.CYAN}")
-    print("Parameter estimates:")
-    print("Redshift: ", cq_z)
-    print("Stellar mass [log(M/M_sol)]:", )
-    print("Age [Gyr]: ", cq_age)
-    print("SFH Timescale [Gyr]: ", cq_tau)
-    print("Visual extinction [mag]:", cq_av)
-    print(f"{bcolors.ENDC}")
+        # print parameter estimates
+        print(f"{bcolors.CYAN}")
+        print("Parameter estimates:")
+        print("Redshift: ", cq_z)
+        print("Stellar mass [log(M/M_sol)]:", cq_ms)
+        print("Age [Gyr]: ", cq_age)
+        print("SFH Timescale [Gyr]: ", cq_tau)
+        print("Visual extinction [mag]:", cq_av)
+        print(f"{bcolors.ENDC}")
 
     # ------------ Plot 100 random models from the parameter space
     inds = np.random.randint(len(flat_samples), size=100)
@@ -736,14 +753,14 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         #print("With sample:", sample)
 
         # Check that LSF is not negative
-        if sample[-1] < 0.0:
-            print("Negative LSF ....")
-            sample[-1] = 1.0
+        #if sample[-1] < 0.0:
+        #    print("Negative LSF ....")
+        #    sample[-1] = 1.0
 
         if object_type == 'host':
             m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4])
         elif object_type == 'sn':
-            m = model_sn(wav, sample[0], sample[1], sample[2], args_obj[-1])
+            m = model_sn(wav, sample[0], sample[1], sample[2])
 
         # ------- Clip all arrays to where grism sensitivity is >= 25%
         x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
@@ -823,8 +840,9 @@ def get_optimal_fit(args_obj, object_type):
 
 def main():
 
-    print(f"{bcolors.WARNING}", "\n * * * *    [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.    * * * *")
-    print("\n * * * *    [WARNING]: check vertical scaling.    * * * *")
+    print(f"{bcolors.WARNING}")
+    print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
+    print("* * * *   [WARNING]: check vertical scaling.   * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"
@@ -938,7 +956,6 @@ def main():
 
             #host_flam_norm = host_flam / np.median(host_flam)
             #host_ferr_norm = noise_level * host_flam_norm
-
 
             # -------- Test figure for HOST
             """
@@ -1321,9 +1338,7 @@ def main():
             jump_size_av = 0.1  # magnitudes
             jump_size_lsf = 0.2
 
-            jump_size_day = 1  # days
-            jump_size_host_frac = 0.02
-            jump_size_lsf = 1.0  # angstrom
+            jump_size_day = 2  # days
 
             # Define initial position and arguments required for emcee
             # The parameter vector is (redshift, ms, age, tau, av, lsf_sigma)
@@ -1332,20 +1347,22 @@ def main():
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
 
-            args_sn = [sn_wav, sn_flam, sn_ferr, host_flam]
+            args_sn = [sn_wav, sn_flam, sn_ferr]
             args_host = [host_wav, host_flam, host_ferr]
 
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([1.96, 14.8, 0.2, 2.0, 0.0])
+            rhost_init = np.array([1.96, 15.0, 1.0, 15.0, 0.0])
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
+            print("logpost at starting position:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
 
-            host_frac_init = 0.005
-            rsn_init = np.array([0.01, 1, host_frac_init])  # redshift, day relative to peak, and fraction of host contamination
+            rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
+            print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
+            print("logpost at starting position:", logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
 
             # Setup dims and walkers
-            nwalkers = 200
+            nwalkers = 300
             ndim_host = 5
             ndim_sn  = 3
 
@@ -1370,8 +1387,8 @@ def main():
 
                 # ---------- For SN
                 rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
-                rsn1 = int(rsn_init[1] + jump_size_day * np.random.choice([-1, 1]))
-                rsn2 = float(rsn_init[2] + jump_size_host_frac * np.random.normal(size=1))
+                rsn1 = int(rsn_init[1] + jump_size_day * np.random.normal(size=1))
+                rsn2 = float(rsn_init[2] + jump_size_av * np.random.normal(size=1))
 
                 rsn = np.array([rsn0, rsn1, rsn2])
 
@@ -1379,25 +1396,26 @@ def main():
             
             # Set up truth arrays
             truth_arr_host = np.array([host_z, host_ms, host_age, host_tau, host_av])
-            truth_arr_sn = np.array([sn_z, sn_day, host_frac_init])
+            truth_arr_sn = np.array([sn_z, sn_day, sn_av])
 
             # Labels for corner and trace plots
             label_list_host = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']   # r'$log(Ms/M_\odot)$', 
-            label_list_sn = [r'$z$', r'$Day$', r'$Host frac$']
+            label_list_sn = [r'$z$', r'$Day$', r'$A_V [mag]$']
 
             # Read previously run samples using pickle 
             host_pickle = emcee_diagnostics_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
+            sn_pickle = emcee_diagnostics_dir + 'sn_' + str(segid) + '_emcee_sampler.pkl'
 
-            if os.path.isfile(host_pickle):
-                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
-                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+            if os.path.isfile(sn_pickle):
+                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
             else:
                 # Call emcee
-                #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
-                run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
+                run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
+                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
-                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
-                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
+                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
             sys.exit(0)
 
