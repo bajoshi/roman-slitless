@@ -587,15 +587,34 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
 def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, objid, img_suffix, verbose=False):
 
-    pkl_path = emcee_diagnostics_dir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
-    sampler = pickle.load(open(pkl_path, 'rb'))
+    checkdir = 'generic_11112020/'
+    pkl_path = emcee_diagnostics_dir + checkdir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
+    #sampler = pickle.load(open(pkl_path, 'rb'))
+
+    sampler = emcee.backends.HDFBackend(pkl_path.replace('.pkl','.h5'))
+
     samples = sampler.get_chain()
-    print(f"{bcolors.CYAN}\nRead in pickle:", pkl_path, f"{bcolors.ENDC}")
+    print(f"{bcolors.CYAN}\nRead in sampler:", pkl_path, f"{bcolors.ENDC}")
     print("Samples shape:", samples.shape)
 
     #reader = emcee.backends.HDFBackend(pkl_path.replace('.pkl', '.h5'))
     #samples = reader.get_chain()
     #tau = reader.get_autocorr_time(tol=0)
+
+    # Get autocorrelation time
+    # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
+    tau = get_autocorr_time(sampler)
+    burn_in = int(2 * np.max(tau))
+    thinning_steps = int(0.5 * np.min(tau))
+
+    print(f"{bcolors.WARNING}")
+    print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
+    print("Average Tau:", np.mean(tau))
+    print("Burn-in:", burn_in)
+    print("Thinning steps:", thinning_steps)
+    print(f"{bcolors.ENDC}")
+
+    sys.exit(0)
 
     # plot trace
     fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
@@ -612,18 +631,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     fig1.savefig(emcee_diagnostics_dir + 'emcee_trace_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
-    # Get autocorrelation time
-    # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-    tau = get_autocorr_time(sampler)
-    burn_in = int(2 * np.max(tau))
-    thinning_steps = int(0.5 * np.min(tau))
-
-    print("Average Tau:", np.mean(tau))
-    print(f"{bcolors.WARNING}")
-    print("Burn-in:", burn_in)
-    print("Thinning steps:", thinning_steps)
-    print(f"{bcolors.ENDC}")
-
+    # Create flat samples
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
 
@@ -706,12 +714,12 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         plt.close()
 
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
-    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
-        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red')#, \
+    #fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+    #    label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
+    #    verbose=True, truth_color='tab:red')#, \
     #range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
-    fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
-        dpi=200, bbox_inches='tight')
+    #fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    #    dpi=200, bbox_inches='tight')
 
     if object_type == 'host':
         cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
@@ -1403,19 +1411,20 @@ def main():
             label_list_sn = [r'$z$', r'$Day$', r'$A_V [mag]$']
 
             # Read previously run samples using pickle 
-            host_pickle = emcee_diagnostics_dir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
+            checkdir = 'generic_11112020/'
+            host_pickle = emcee_diagnostics_dir + checkdir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
             sn_pickle = emcee_diagnostics_dir + 'sn_' + str(segid) + '_emcee_sampler.pkl'
 
-            if os.path.isfile(sn_pickle):
-                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
-                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+            if os.path.isfile(host_pickle):
+                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
             else:
                 # Call emcee
-                run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
-                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
+                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
-                #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
-                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
+                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
             sys.exit(0)
 
