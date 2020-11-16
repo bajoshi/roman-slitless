@@ -100,7 +100,7 @@ def logpost_host(theta, x, data, err):
 
 def logprior_host(theta):
 
-    z, ms, age, tau, av = theta
+    z, ms, age, logtau, av = theta
     #print("\nParameter vector given:", theta)
 
     if (0.0001 <= z <= 6.0):
@@ -112,7 +112,7 @@ def logprior_host(theta):
 
         if ((0.0 <= ms <= 20.0) and \
             (0.01 <= age <= age_lim) and \
-            (tau_low <= tau < tau_high) and \
+            (-3.0 <= logtau < 1.3) and \
             (0.0 <= av <= 5.0)):
             return 0.0
     
@@ -120,9 +120,9 @@ def logprior_host(theta):
 
 def loglike_host(theta, x, data, err):
     
-    z, ms, age, tau, av = theta
+    z, ms, age, logtau, av = theta
 
-    y = model_host(x, z, ms, age, tau, av)
+    y = model_host(x, z, ms, age, logtau, av)
     #print("Model func result:", y)
 
     # ------- Clip all arrays to where grism sensitivity is >= 25%
@@ -168,11 +168,10 @@ def loglike_host(theta, x, data, err):
     plt.show()
     #sys.exit(0)
     """
-    
 
     return lnLike
 
-def model_host(x, z, ms, age, tau, av):
+def model_host(x, z, ms, age, logtau, av):
     """
     Expects to get the following arguments
     
@@ -203,6 +202,8 @@ def model_host(x, z, ms, age, tau, av):
     elif metals == 0.05:
         metallicity = 'm72'
     """
+
+    tau = 10**logtau
 
     tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
     age_idx = np.argmin(abs(model_ages - age*1e9))
@@ -587,7 +588,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
 def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, objid, img_suffix, verbose=False):
 
-    checkdir = 'generic_11112020/'
+    checkdir = '' #'generic_11112020/'
     pkl_path = emcee_diagnostics_dir + checkdir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
     #sampler = pickle.load(open(pkl_path, 'rb'))
 
@@ -1342,7 +1343,7 @@ def main():
             jump_size_z = 0.01
             jump_size_ms = 0.1  # log(ms)
             jump_size_age = 0.1  # in gyr
-            jump_size_tau = 0.2  # in gyr
+            jump_size_logtau = 0.01  # tau in gyr
             jump_size_av = 0.1  # magnitudes
             jump_size_lsf = 0.2
 
@@ -1361,13 +1362,13 @@ def main():
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([1.96, 15.0, 1.0, 15.0, 0.0])
+            rhost_init = np.array([1.96, 15.3, 1.0, 1.0, 0.0])
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
-            print("logpost at starting position:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
+            print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
 
             rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
-            print("logpost at starting position:", logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
+            print("logpost at starting position for SN:", logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
 
             # Setup dims and walkers
             nwalkers = 300
@@ -1386,7 +1387,7 @@ def main():
                 rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
                 rh1 = float(rhost_init[1] + jump_size_ms * np.random.normal(size=1))
                 rh2 = float(rhost_init[2] + jump_size_age * np.random.normal(size=1))
-                rh3 = float(rhost_init[3] + jump_size_tau * np.random.normal(size=1))
+                rh3 = float(rhost_init[3] + jump_size_logtau * np.random.normal(size=1))
                 rh4 = float(rhost_init[4] + jump_size_av * np.random.normal(size=1))
 
                 rh = np.array([rh0, rh1, rh2, rh3, rh4])
@@ -1403,15 +1404,16 @@ def main():
                 pos_sn[i] = rsn
             
             # Set up truth arrays
-            truth_arr_host = np.array([host_z, host_ms, host_age, host_tau, host_av])
+            truth_arr_host = np.array([host_z, host_ms, host_age, np.log10(host_tau), host_av])
             truth_arr_sn = np.array([sn_z, sn_day, sn_av])
 
             # Labels for corner and trace plots
-            label_list_host = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$']   # r'$log(Ms/M_\odot)$', 
+            label_list_host = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', r'$\mathrm{Age\, [Gyr]}$', \
+            r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$']   # r'$log(Ms/M_\odot)$', 
             label_list_sn = [r'$z$', r'$Day$', r'$A_V [mag]$']
 
             # Read previously run samples using pickle 
-            checkdir = 'generic_11112020/'
+            checkdir = '' #'generic_11112020/'
             host_pickle = emcee_diagnostics_dir + checkdir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
             sn_pickle = emcee_diagnostics_dir + 'sn_' + str(segid) + '_emcee_sampler.pkl'
 
