@@ -609,13 +609,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     thinning_steps = int(0.5 * np.min(tau))
 
     print(f"{bcolors.WARNING}")
-    print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
+    #print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
     print("Average Tau:", np.mean(tau))
     print("Burn-in:", burn_in)
     print("Thinning steps:", thinning_steps)
     print(f"{bcolors.ENDC}")
-
-    sys.exit(0)
 
     # plot trace
     fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
@@ -635,29 +633,6 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # Create flat samples
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
-
-    # Take bogus chains out
-    remove_bad_chains = False
-    if remove_bad_chains:
-        new_flat_samples_file = roman_slitless_dir + 'modsamples_' + object_type + '_' + str(objid) + '_' + img_suffix + '_1ksteps.npy'
-        if not os.path.isfile(new_flat_samples_file):
-            new_flat_samples = []
-            print("Removing bogus chains...")
-            for w in range(len(flat_samples)):
-                print("Working on sample:", w, end='\r')
-                s = flat_samples[w]
-                lnL = logpost_host(s, args_obj[0], args_obj[1], args_obj[2])
-                if lnL < -500:
-                    continue
-                else:
-                    new_flat_samples.append(s)
-
-            flat_samples = np.asarray(new_flat_samples)
-            np.save(new_flat_samples_file, flat_samples)
-        else:
-            flat_samples = np.load(new_flat_samples_file)
-    
-        print("New flat samples shape:", flat_samples.shape)
 
     # plot corner plot
     # compute weights for the samples first
@@ -715,12 +690,12 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         plt.close()
 
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
-    #fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
-    #    label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-    #    verbose=True, truth_color='tab:red')#, \
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
+        verbose=True, truth_color='tab:red')#, \
     #range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
-    #fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
-    #    dpi=200, bbox_inches='tight')
+    fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+        dpi=200, bbox_inches='tight')
 
     if object_type == 'host':
         cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
