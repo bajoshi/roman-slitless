@@ -53,7 +53,53 @@ def consolidate_fits2npy():
     elif metals == 0.05:
         metallicity = 'm72'
 
-    for tau_start in range(0, 20, 1):
+    # Set up array and loop
+    logtau_arr = np.arange(1.30, 2.01, 0.01)
+
+    totalwavelengths = 13216
+    totalages = 221
+    totalspectra = totalages * len(logtau_arr)
+    npy_savearr = np.zeros((totalspectra, totalwavelengths), dtype=np.float32)
+
+    count = 0
+    for logtau in logtau_arr:
+
+        print("Working on logtau:", logtau)
+        tau = 10**logtau
+
+        print("Model number:", count+1, end='\r')
+
+        # Now construct the output ised path
+        tau_str = "{:.3f}".format(tau).replace('.', 'p')
+        output = modeldir + "bc2003_hr_" + metallicity + "_csp_tau" + tau_str + "_chab.fits"
+
+        # Now read the fits file and add spectra to large numpy array
+        if not os.path.isfile(output):
+            print("Missing fits file. Generating spec with tau:", tau)
+            #if os.path.isfile(output.replace('.fits','.ised')): 
+            #    os.remove(output.replace('.fits','.ised'))
+            gen_bc03_spectrum(tau, metals, modeldir)
+
+        h = fits.open(output)
+
+        for j in range(totalages):
+
+            spec = h[3+j].data
+
+            # save to npy array
+            npy_savearr[count] = spec
+
+            count += 1
+
+        h.close()
+
+    # Now save
+    savefile = modeldir + 'bc03_all_tau20p000_' + metallicity + '_chab.npy'
+    np.save(savefile, npy_savearr)
+    print("Saved:", savefile)
+
+    """
+    for tau_start in range(20, 100, 1):
         
         print("Working on tau starting from:", tau_start)
         tau_arr = np.arange(tau_start, tau_start + 1.000, 0.001)
@@ -65,7 +111,6 @@ def consolidate_fits2npy():
         npy_savearr = np.zeros((totalspectra, totalwavelengths), dtype=np.float32)
 
         count = 0
-
         for tau in tau_arr:
 
             print("Model number:", count+1, end='\r')
@@ -98,6 +143,7 @@ def consolidate_fits2npy():
         savefile = modeldir + 'bc03_all_tau' + '{:.3f}'.format(tau_arr[0]).replace('.', 'p') + '_' + metallicity + '_chab.npy'
         np.save(savefile, npy_savearr)
         print("Saved:", savefile)
+    """
 
     return None
 
@@ -108,6 +154,7 @@ def main():
 
     # Set up arrays
     #tau_arr = np.arange(0.000, 9.001, 0.001)
+    tau = 10**logtau
     metals = 0.02
 
     # First get hte metallicity string
@@ -156,8 +203,8 @@ def main():
 
 if __name__ == '__main__':
 
-    #tau = int(sys.argv[1])
-    #tau /= 1000
+    #logtau = int(sys.argv[1])
+    #logtau /= 100
 
     main()
 

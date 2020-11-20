@@ -69,6 +69,9 @@ for t in range(tau_low, tau_high, 1):
     all_m62_models.append(a)
     del a
 
+# load models with large tau separately
+all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
+
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
 # This class came from stackoverflow
@@ -112,7 +115,7 @@ def logprior_host(theta):
 
         if ((0.0 <= ms <= 20.0) and \
             (0.01 <= age <= age_lim) and \
-            (-3.0 <= logtau < 1.3) and \
+            (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
             return 0.0
     
@@ -710,7 +713,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         print("Redshift: ", cq_z)
         print("Stellar mass [log(M/M_sol)]:", cq_ms)
         print("Age [Gyr]: ", cq_age)
-        print("SFH Timescale [Gyr]: ", cq_tau)
+        print("log SFH Timescale [Gyr]: ", cq_tau)
         print("Visual extinction [mag]:", cq_av)
         print(f"{bcolors.ENDC}")
 
