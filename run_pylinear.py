@@ -27,8 +27,17 @@ beam = '+1'
 maglim = 99.0
 seddir = 'SEDs_' + img_suffix
 
+fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
+
+assert os.path.isfile(segfile)
+assert os.path.isfile(obslst)
+assert os.path.isfile(sedlst)
+assert os.path.isfile(wcslst)
+assert os.path.isfile(fltlst)
+
 # Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
+
 """
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
@@ -68,8 +77,8 @@ for oldf in glob.glob('*_flt.fits'):
 
 print("Noise addition done. Check simulated images.")
 """
+
 # ---------- Extraction
-fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
 #tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
