@@ -1,0 +1,22 @@
+Step                                                           Resulting Units
+------------------------------------------------------------------------------
+1.  img from LINEAR simulation                                    [e/s]
+2.  add pedestal noise (in e/s; this is the contrib from sky)     [e/s]  # const for now but realistically from Zodi and thermal
+2a. add dark current                                              [e/s]  # check documentation
+3.  multiply by exp time in seconds                               [e] 
+
+4a. Draw Poisson dist for each pix using result img from step 3   [e]    # using np.random.possion(lam), where lam is the pix value
+--  Add read noise                                                [e]    # although this can be ignored to begin with
+5a. Divide by exp time                                            [e/s]
+6a. Subtract background pedestal level                            [e/s] 
+
+---- this is 1st extension of file to be passed back to LINEAR
+Steps 4a, 5a, and 6a get you back to an image in e/s which is what LINEAR needs
+
+** Do the following steps in parallel
+4b. sqrt of the img from 3                                        [e]
+5b. divide by exp time                                            [e/s]
+
+---- this is 2nd extension of file to be passed back to LINEAR
+This is the noise image that LINEAR needs
+Steps 4b and 5b are the counterparts to 4a and 5a

@@ -104,7 +104,7 @@ def logpost_host(theta, x, data, err):
 def logprior_host(theta):
 
     z, ms, age, logtau, av = theta
-    #print("\nParameter vector given:", theta)
+    print("\nParameter vector given:", theta)
 
     if (0.0001 <= z <= 6.0):
     
@@ -152,11 +152,10 @@ def loglike_host(theta, x, data, err):
     # ------- log likelihood
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
 
-    #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
+    print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
     #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
-    #print("log likelihood HOST:", lnLike)
+    print("log likelihood HOST:", lnLike)
 
-    """
     fig = plt.figure(figsize=(9,5))
     ax = fig.add_subplot(111)
     ax.set_xlabel(r'$\lambda\, [\mathrm{\AA}]$', fontsize=14)
@@ -170,7 +169,6 @@ def loglike_host(theta, x, data, err):
     ax.set_xscale('log')
     plt.show()
     #sys.exit(0)
-    """
 
     return lnLike
 
@@ -215,12 +213,12 @@ def model_host(x, z, ms, age, logtau, av):
     models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
     models_arr = all_m62_models[models_taurange_idx]
 
-    #print("Tau:", tau)
-    #print("Age:", age)
-    #print("Tau int and age index:", tau_int_idx, age_idx)
-    #print("Tau and age from index:", models_taurange_idx+tau_int_idx/1e3, model_ages[age_idx]/1e9)
-    #print("Model tau range index:", models_taurange_idx)
-    #print("Model index:", model_idx)
+    print("Tau:", tau)
+    print("Age:", age)
+    print("Tau int and age index:", tau_int_idx, age_idx)
+    print("Tau and age from index:", models_taurange_idx+tau_int_idx/1e3, model_ages[age_idx]/1e9)
+    print("Model tau range index:", models_taurange_idx)
+    print("Model index:", model_idx)
 
     model_llam = models_arr[model_idx]
 
