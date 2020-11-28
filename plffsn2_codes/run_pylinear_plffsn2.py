@@ -39,7 +39,6 @@ assert os.path.isfile(fltlst)
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
 # Set up and tabulate
-"""
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
 tabnames = tabulate.run(grisms, sources, beam)
@@ -52,7 +51,7 @@ print("Simulation done.")
 
 # ---------- Add noise
 print("Adding noise...")
-sig = 0.1    # noise RMS in e-/s (check Russell's notes in pylinear notebooks)
+sig = 0.001    # noise RMS in e-/s (check Russell's notes in pylinear notebooks)
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)
@@ -76,7 +75,6 @@ for oldf in glob.glob('*_flt.fits'):
         hdul.writeto(oldf, overwrite=True)
 
 print("Noise addition done. Check simulated images.")
-"""
 
 # ---------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
