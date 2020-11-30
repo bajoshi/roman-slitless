@@ -37,7 +37,7 @@ assert os.path.isfile(fltlst)
 
 # Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
-"""
+
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
@@ -75,7 +75,7 @@ for oldf in glob.glob('*_flt.fits'):
         hdul.writeto(oldf, overwrite=True)
 
 print("Noise addition done. Check simulated images.")
-"""
+
 # ---------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
