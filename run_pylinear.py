@@ -25,12 +25,16 @@ direct_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
 
 # Figure out the correct filenames depending on which machine is being used
 img_suffix = 'Y106_11_1'
+
+# Define list files and other preliminary stuff
+segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
+
+# changing img_suffix can only be done after segfile is defined 
+# because of the way segfile is named. Needs to be cleaned up.
 hostname = socket.gethostname()
 if 'plffsn2' in hostname:
     img_suffix = 'plffsn2_' + img_suffix
 
-# Define list files and other preliminary stuff
-segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
 obslst = pylinear_lst_dir + 'obs_' + img_suffix + '.lst'
 wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
 sedlst = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
