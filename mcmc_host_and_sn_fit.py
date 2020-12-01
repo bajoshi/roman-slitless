@@ -18,6 +18,7 @@ import sys
 from functools import reduce
 import time
 import datetime as dt
+import socket
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -104,7 +105,7 @@ def logpost_host(theta, x, data, err):
 def logprior_host(theta):
 
     z, ms, age, logtau, av = theta
-    print("\nParameter vector given:", theta)
+    #print("\nParameter vector given:", theta)
 
     if (0.0001 <= z <= 6.0):
     
@@ -152,10 +153,11 @@ def loglike_host(theta, x, data, err):
     # ------- log likelihood
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
 
-    print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
+    #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
     #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
-    print("log likelihood HOST:", lnLike)
+    #print("log likelihood HOST:", lnLike)
 
+    """
     fig = plt.figure(figsize=(9,5))
     ax = fig.add_subplot(111)
     ax.set_xlabel(r'$\lambda\, [\mathrm{\AA}]$', fontsize=14)
@@ -168,7 +170,8 @@ def loglike_host(theta, x, data, err):
 
     ax.set_xscale('log')
     plt.show()
-    #sys.exit(0)
+    sys.exit(0)
+    """
 
     return lnLike
 
@@ -204,21 +207,39 @@ def model_host(x, z, ms, age, logtau, av):
         metallicity = 'm72'
     """
 
-    tau = 10**logtau
+    tau = 10**logtau  # logtau is log of tau in gyr
 
-    tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
-    age_idx = np.argmin(abs(model_ages - age*1e9))
-    model_idx = tau_int_idx * len(model_ages)  +  age_idx
+    #print("log(tau [Gyr]):", logtau)
+    #print("Tau [Gyr]:", tau)
+    #print("Age [Gyr]:", age)
 
-    models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
-    models_arr = all_m62_models[models_taurange_idx]
+    if tau < 20.0:
 
-    print("Tau:", tau)
-    print("Age:", age)
-    print("Tau int and age index:", tau_int_idx, age_idx)
-    print("Tau and age from index:", models_taurange_idx+tau_int_idx/1e3, model_ages[age_idx]/1e9)
-    print("Model tau range index:", models_taurange_idx)
-    print("Model index:", model_idx)
+        tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
+        age_idx = np.argmin(abs(model_ages - age*1e9))
+        model_idx = tau_int_idx * len(model_ages)  +  age_idx
+
+        models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
+        models_arr = all_m62_models[models_taurange_idx]
+
+        #print("Tau int and age index:", tau_int_idx, age_idx)
+        #print("Tau and age from index:", models_taurange_idx+tau_int_idx/1e3, model_ages[age_idx]/1e9)
+        #print("Model tau range index:", models_taurange_idx)
+
+    elif tau >= 20.0:
+        
+        logtau_arr = np.arange(1.30, 2.01, 0.01)
+        logtau_idx = np.argmin(abs(logtau_arr - logtau))
+
+        age_idx = np.argmin(abs(model_ages - age*1e9))
+        model_idx = logtau_idx * len(model_ages) + age_idx
+
+        models_arr = all_m62_models[-1]
+
+        #print("logtau and age index:", logtau_idx, age_idx)
+        #print("Tau and age from index:", 10**(logtau_arr[logtau_idx]), model_ages[age_idx]/1e9)
+
+    #print("Model index:", model_idx)
 
     model_llam = models_arr[model_idx]
 
@@ -835,12 +856,12 @@ def main():
 
     # Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
-    sedlst_path = roman_slitless_dir + 'sed_' + img_suffix + '_edit.lst'
+    sedlst_path = roman_slitless_dir + 'pylinear_lst_files/' + 'sed_plffsn2_' + img_suffix + '.lst'
     sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'prev_run/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_nov30/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -850,10 +871,10 @@ def main():
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
     # For Y106_11_1
-    host_segids = np.array([475, 755, 548, 207])
-    sn_segids = np.array([481, 753, 547, 241])
+    host_segids = np.array([755])  #np.array([475, 755, 548, 207])
+    sn_segids = np.array([753])  #np.array([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(700, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -906,9 +927,9 @@ def main():
             print("Host input z:", host_z)
             print("Host input stellar mass [log(Ms/Msol)]:", host_ms)
             print("Host input age [Gyr]:", host_age)
-            print("Host input tau:", host_tau)
+            print("Host input tau [Gyr]:", host_tau)
             print("Host input metallicity:", host_met)
-            print("Host input Av:", host_av)
+            print("Host input Av [mag]:", host_av)
 
             # Put into input dict
             input_dict['host_z'] = host_z
@@ -961,7 +982,7 @@ def main():
             #ax.errorbar(host_wav, host_flam, yerr=host_ferr, marker='o', \
             #    markersize=1.5, color='k', ecolor='b', lw=0.2, zorder=1)
 
-            m = model_host(host_wav, host_z, host_age, host_tau, host_av, 3.0)
+            m = model_host(host_wav, host_z, host_ms, host_age, np.log10(host_tau), host_av)
 
             # Only consider wavelengths where sensitivity is above 20%
             host_x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
@@ -977,9 +998,21 @@ def main():
             ax.plot(host_wav[host_x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
+            if 'plffsn2' not in socket.gethostname():
+                h_path = h_path.replace('/home/bajoshi/', '/Users/baj/')
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
-            ax.plot(host_template['lam'], 6e4 * host_template['flux'], lw=1.0, \
+            ax.plot(host_template['lam'], 50 * host_template['flux'], lw=1.0, \
                 color='tab:green', zorder=1, label='model given to pyLINEAR (+constant)')
+
+            #ax.set_xlim(9000, 20000)
+            #host_fig_ymin = np.min(host_flam)
+            #host_fig_ymax = np.max(host_flam)
+            #ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.2)
+
+            #ax.legend(loc=0, frameon=False)
+
+            #plt.show()
+            #sys.exit(0)
 
             # plot some other template that is NOT a good fit
             bad_model = model_host(host_wav, 1.95, 1.0, 13.0, 1.0, 3.0)
@@ -1338,7 +1371,7 @@ def main():
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([1.96, 15.3, 1.0, 1.0, 0.0])
+            rhost_init = np.array([0.92, 13.0, 3.0, 0.1, 0.0])
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
 
