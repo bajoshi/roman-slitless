@@ -8,34 +8,45 @@ import time
 import datetime as dt
 import glob
 import shutil
+import socket
 
+# ---------------------- Preliminary stuff
+# Get starting time
 start = time.time()
 print("Starting at:", dt.datetime.now())
 
+# Change directory to make sure results go in the right place
 home = os.getenv('HOME')
-
 os.chdir(home + '/Documents/roman_slitless_sims_results/')
 
+# Define directories for imaging and lst files
+pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
+direct_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
+
+# Figure out the correct filenames depending on which machine is being used
 img_suffix = 'Y106_11_1'
+hostname = socket.gethostname()
+if 'plffsn2' in hostname:
+    img_suffix = 'plffsn2_' + img_suffix
 
 # Define list files and other preliminary stuff
-segfile = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/akari_match_' + img_suffix + '_segmap.fits'
-obslst = home + '/Documents/GitHub/roman-slitless/obs_' + img_suffix + '.lst'
-wcslst = home + '/Documents/GitHub/roman-slitless/wcs_' + img_suffix + '.lst'
-sedlst = home + '/Documents/GitHub/roman-slitless/sed_' + img_suffix + '.lst'
+segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
+obslst = pylinear_lst_dir + 'obs_' + img_suffix + '.lst'
+wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
+sedlst = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
 beam = '+1'
 maglim = 99.0
-seddir = 'SEDs_' + img_suffix
 
-fltlst = home + '/Documents/GitHub/roman-slitless/flt_' + img_suffix + '.lst'
+fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '.lst'
 
+# make sure the files exist
 assert os.path.isfile(segfile)
 assert os.path.isfile(obslst)
 assert os.path.isfile(sedlst)
 assert os.path.isfile(wcslst)
 assert os.path.isfile(fltlst)
 
-# Get sources
+# ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
 # Set up and tabulate
@@ -43,15 +54,17 @@ grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
 tabnames = tabulate.run(grisms, sources, beam)
 
-# ---------- Simulate
+# ---------------------- Simulate
 print("Simulating...")
 simulate = pylinear.modules.Simulate(sedlst, gzip=False)
 fltnames = simulate.run(grisms, sources, beam)
 print("Simulation done.")
 
-# ---------- Add noise
+# ---------------------- Add noise
 print("Adding noise...")
-sig = 0.001    # noise RMS in e-/s (check Russell's notes in pylinear notebooks)
+# check Russell's notes in pylinear notebooks
+# also check WFIRST tech report TR1901
+sig = 0.001    # noise RMS in e-/s 
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)
@@ -76,7 +89,7 @@ for oldf in glob.glob('*_flt.fits'):
 
 print("Noise addition done. Check simulated images.")
 
-# ---------- Extraction
+# ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 path = home + '/Documents/roman_slitless_sims_results/tables'
 #tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
