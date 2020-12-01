@@ -101,7 +101,7 @@ print('\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'.f
 
 # Set extraction params
 sources.update_extraction_parameters(**extraction_parameters)
-method = 'golden'  # single
+method = 'grid'  # single
 root = 'romansim1_ext'
 logdamp = [-7, -1, 0.1]  # logdamp = -np.inf
 
