@@ -158,7 +158,10 @@ def loglike_host(theta, x, data, err):
     #y = y * alpha
 
     # ------- log likelihood
-    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
+    chi2 = np.nansum( (y-data)**2/err**2 )
+    #lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
+    stretch_fac = 1.0
+    lnLike = -0.5 * (1 + stretch_fac) * chi2
 
     #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
     #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
@@ -179,7 +182,6 @@ def loglike_host(theta, x, data, err):
     plt.show()
     sys.exit(0)
     """
-    
 
     return lnLike
 
@@ -882,7 +884,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(400, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1379,7 +1381,7 @@ def main():
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([0.44, 12.9, 5.0, 0.2, 3.0])
+            rhost_init = np.array([1.96, 15.3, 1.0, 1.0, 0.0])
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
 
@@ -1445,7 +1447,7 @@ def main():
                 run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
-        sys.exit(0)
+            sys.exit(0)
 
     return None
 
