@@ -34,8 +34,6 @@ template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 emcee_diagnostics_dir = home + "/Documents/emcee_runs/emcee_diagnostics_roman/"
 
-modeldir = "/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/m62/"
-
 grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
     dtype=None, names=True, skip_header=3)
 
@@ -58,8 +56,17 @@ salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
 
 print("Starting at:", dt.datetime.now())
 
-model_lam = np.load("/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
-model_ages = np.load("/Volumes/Joshi_external_HDD/Roman/bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
+if 'plffsn2' in socket.gethostname():
+    extdir = '/astro/ffsn/Joshi/'
+    modeldir = extdir + 'bc03_output_dir/'
+else:
+    extdir = '/Volumes/Joshi_external_HDD/Roman/'
+    modeldir = extdir + 'bc03_output_dir/m62/'
+
+assert os.path.isdir(modeldir)
+
+model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
+model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
 
 all_m62_models = []
 tau_low = 0
