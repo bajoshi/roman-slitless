@@ -750,9 +750,6 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
     ax3.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
 
-    ax3.plot(wav, flam, color='k')
-    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
-
     for ind in inds:
         sample = flat_samples[ind]
         #print("\nAt random index:", ind)
@@ -780,6 +777,9 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         #a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
         #m *= a
         ax3.plot(wav, m, color='tab:red', alpha=0.2, zorder=2)
+
+    ax3.plot(wav, flam, color='k', zorder=3)
+    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
 
     fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
@@ -871,10 +871,10 @@ def main():
     # This will come from detection on the direct image
     # For now this comes from the sedlst generation code
     # For Y106_11_1
-    host_segids = np.array([755])  #np.array([475, 755, 548, 207])
-    sn_segids = np.array([753])  #np.array([481, 753, 547, 241])
+    host_segids = np.array([475, 755, 548, 207])
+    sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(700, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1436,8 +1436,6 @@ def main():
 
                 run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
-
-            sys.exit(0)
 
     return None
 
