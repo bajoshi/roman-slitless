@@ -24,6 +24,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.gridspec as gridspec
 
+start = time.time()
+print("Starting at:", dt.datetime.now())
+
+# Assign directories and custom imports
 home = os.getenv('HOME')
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
 pears_figs_dir = home + '/Documents/pears_figs_data/'
@@ -48,13 +52,10 @@ from bc03_utils import get_age_spec
 
 # Load in all models
 # ------ THIS HAS TO BE GLOBAL!
-start = time.time()
 
 # Read in SALT2 SN IA file from Lou
 salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
-
-print("Starting at:", dt.datetime.now())
 
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
@@ -160,7 +161,7 @@ def loglike_host(theta, x, data, err):
     # ------- log likelihood
     chi2 = np.nansum( (y-data)**2/err**2 )
     #lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
-    stretch_fac = 1.0
+    stretch_fac = 0.1
     lnLike = -0.5 * (1 + stretch_fac) * chi2
 
     #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
@@ -1447,7 +1448,7 @@ def main():
                 run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
-            sys.exit(0)
+        sys.exit(0)
 
     return None
 
