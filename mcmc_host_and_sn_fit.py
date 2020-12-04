@@ -159,9 +159,9 @@ def loglike_host(theta, x, data, err):
     #y = y * alpha
 
     # ------- log likelihood
-    chi2 = np.nansum( (y-data)**2/err**2 )
+    chi2 = np.nansum( (y-data)**2/err**2 ) / len(y)
     #lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
-    stretch_fac = 0.1
+    stretch_fac = 10.0
     lnLike = -0.5 * (1 + stretch_fac) * chi2
 
     #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
@@ -885,7 +885,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(400, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1382,7 +1382,11 @@ def main():
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
-            rhost_init = np.array([1.96, 15.3, 1.0, 1.0, 0.0])
+            if hostid == 207:
+                rhost_init = np.array([1.96, 15.3,  1.0, 1.0, 0.0])
+            elif hostid == 475:
+                rhost_init = np.array([0.44, 12.85, 2.0, 0.5, 3.5])
+
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
 
