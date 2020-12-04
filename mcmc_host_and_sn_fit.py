@@ -885,7 +885,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(400, len(sedlst)):
+    for i in range(500, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1386,6 +1386,10 @@ def main():
                 rhost_init = np.array([1.96, 15.3,  1.0, 1.0, 0.0])
             elif hostid == 475:
                 rhost_init = np.array([0.44, 12.85, 2.0, 0.5, 3.5])
+            elif hostid == 548:
+            	rhost_init = np.array([1.59, 14.5, 3.5, 2.0, 0.0])
+            elif hostid == 755:
+            	rhost_init = np.array([0.92, 13.5, 1.0, 1.0, 0.0])
 
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
