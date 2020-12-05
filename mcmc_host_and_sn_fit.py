@@ -722,10 +722,19 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         plt.clf()
         plt.close()
 
+    # These need to be built from the truth arrays.
+    # However, it seems like you cannot input the truth 
+    # value (+- some padding) directly into the tuples in the range list.
+    # For some unknown reason corner freezes when that is done.
+    #range_list = [(1.945, 1.96), (14.0, 17.0), (0.0, 5.0), (-0.8, 2.0), (0.0, 1.6)]  # for 207
+    #range_list = [(0.0, 1.5), (10.5, 15.5), (0.0, 12.0), (-2.5, 2.0), (1.0, 5.0)]  # for 475
+    #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
+    #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
+
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red')#, \
+        verbose=True, truth_color='tab:red', smooth=0.5, smooth1d=0.5)#, \
     #range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
