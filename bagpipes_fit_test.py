@@ -26,7 +26,7 @@ def load_data(hostid):
 
 def main():
 
-    galaxy = pipes.galaxy('207', load_data, photometry_exists=False)
+    galaxy = pipes.galaxy('755', load_data, photometry_exists=False)
 
     dblplaw = {}                        
     dblplaw["tau"] = (0., 15.)            
@@ -51,10 +51,18 @@ def main():
     dust["n_prior_sigma"] = 0.3
     
     fit_instructions = {}
-    fit_instructions["redshift"] = (1.5, 2.5)
+    fit_instructions["redshift"] = (0.7, 1.15)
+
+    # Redshift ranges for the test galaxies
+    # also make sure to change the redshift mu prior below 
+    # (1.5, 2.5)  # for 207
+    # (0.2, 0.7)  # for 475
+    # (1.4, 1.8)  # for 548
+    # (0.7, 1.15)  # for 755
+    
     fit_instructions["t_bc"] = 0.01
     fit_instructions["redshift_prior"] = "Gaussian"
-    fit_instructions["redshift_prior_mu"] = 1.95
+    fit_instructions["redshift_prior_mu"] = 0.92
     fit_instructions["redshift_prior_sigma"] = 0.05
     fit_instructions["dblplaw"] = dblplaw 
     fit_instructions["nebular"] = nebular
@@ -97,6 +105,8 @@ def main():
     fig = fit.plot_calibration(save=True, show=True)
     fig = fit.plot_sfh_posterior(save=True, show=True)
     fig = fit.plot_corner(save=True, show=True)
+
+    print("\a    \a    \a")
 
     return None
 
