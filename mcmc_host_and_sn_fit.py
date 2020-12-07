@@ -159,10 +159,10 @@ def loglike_host(theta, x, data, err):
     #y = y * alpha
 
     # ------- log likelihood
-    chi2 = np.nansum( (y-data)**2/err**2 ) / len(y)
-    #lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) / len(y) #  +  np.log(2 * np.pi * err**2))
-    stretch_fac = 10.0
-    lnLike = -0.5 * (1 + stretch_fac) * chi2
+    #chi2 = np.nansum( (y-data)**2/err**2 ) / len(y)
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) - 0.5 * np.nansum( np.log(2 * np.pi * err**2) )
+    #stretch_fac = 10.0
+    #lnLike = -0.5 * (1 + stretch_fac) * chi2
 
     #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
     #print("Second error term:", np.nansum(np.log(2 * np.pi * err**2)))
