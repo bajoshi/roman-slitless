@@ -609,7 +609,8 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend, \
+            moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
         sampler.run_mcmc(pos, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
@@ -638,7 +639,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # Get autocorrelation time
     # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
     tau = get_autocorr_time(sampler)
-    burn_in = int(2 * np.max(tau))
+    burn_in = int(3 * np.max(tau))
     thinning_steps = int(0.5 * np.min(tau))
 
     print(f"{bcolors.WARNING}")
@@ -735,7 +736,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red', smooth=0.5, smooth1d=0.5)#, \
-    #range=[(1.95, 1.96), (1.0, 2.5), (0, 20.0), (0.0, 1.0), (0.0, 1.5)] )
+    #range=[(1.95, 1.955), (12.5, 14.0), (0.5, 1.0), (0.0, 1.4), (0.4, 1.0)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -772,8 +773,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     for ind in inds:
         sample = flat_samples[ind]
-        #print("\nAt random index:", ind)
-        #print("With sample:", sample)
+        print("\nAt random index:", ind)
 
         # Check that LSF is not negative
         #if sample[-1] < 0.0:
@@ -794,9 +794,24 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         flam = flam[x0]
         ferr = ferr[x0]
 
-        #a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
-        #m *= a
         ax3.plot(wav, m, color='tab:red', alpha=0.2, zorder=2)
+
+        # ------------------------ print info
+        #lnL = logpost_host(sample, wav, flam, ferr)
+        #if sample[0] > 1.97:
+        #    print(f"{bcolors.FAIL}")
+        #    print("With sample:", sample)
+        #    print("Log likelihood for this sample:", lnL)
+        #    print(f"{bcolors.ENDC}")
+
+        #    ax3.plot(wav, flam, color='k', zorder=3)
+        #    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
+        #    plt.show()
+        #    sys.exit(0)
+
+        #else:
+        #    print("With sample:", sample)
+        #    print("Log likelihood for this sample:", lnL)
 
     ax3.plot(wav, flam, color='k', zorder=3)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
@@ -1396,9 +1411,9 @@ def main():
             elif hostid == 475:
                 rhost_init = np.array([0.44, 10.7, 2.0, 0.5, 3.5])
             elif hostid == 548:
-            	rhost_init = np.array([1.59, 12.3, 3.5, 2.0, 0.0])
+                rhost_init = np.array([1.59, 12.3, 3.5, 2.0, 0.0])
             elif hostid == 755:
-            	rhost_init = np.array([0.92, 11.3, 1.0, 1.0, 0.0])
+                rhost_init = np.array([0.92, 11.3, 1.0, 1.0, 0.0])
 
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
