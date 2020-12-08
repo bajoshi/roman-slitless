@@ -1465,6 +1465,8 @@ def main():
                 run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
+            sys.exit(0)
+
     return None
 
 if __name__ == '__main__':
