@@ -639,7 +639,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # Get autocorrelation time
     # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
     tau = get_autocorr_time(sampler)
-    burn_in = int(3 * np.max(tau))
+    burn_in = int(2 * np.max(tau))
     thinning_steps = int(0.5 * np.min(tau))
 
     print(f"{bcolors.WARNING}")
@@ -773,7 +773,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     for ind in inds:
         sample = flat_samples[ind]
-        print("\nAt random index:", ind)
+        #print("\nAt random index:", ind)
 
         # Check that LSF is not negative
         #if sample[-1] < 0.0:
