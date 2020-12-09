@@ -1407,7 +1407,7 @@ def main():
             #sys.exit(0)
 
             if hostid == 207:
-                rhost_init = np.array([1.96, 13.2,  1.0, 1.0, 0.0])
+                rhost_init = np.array([1.96, 12.9,  1.0, 1.0, 0.0])
             elif hostid == 475:
                 rhost_init = np.array([0.44, 10.7, 2.0, 0.5, 3.5])
             elif hostid == 548:
