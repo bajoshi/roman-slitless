@@ -122,7 +122,7 @@ def logprior_host(theta, zprior, zprior_sigma):
         age_at_z = astropy_cosmo.age(z).value  # in Gyr
         age_lim = age_at_z - 0.1  # in Gyr
 
-        if ((0.0 <= ms <= 13.0) and \
+        if ((0.0 <= ms <= 14.0) and \
             (0.01 <= age <= age_lim) and \
             (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
@@ -1409,7 +1409,7 @@ def main():
 
             if hostid == 207:
                 zprior = 1.96
-                rhost_init = np.array([zprior, 12.9,  1.0, 1.0, 0.0])
+                rhost_init = np.array([zprior, 13.3,  1.0, 1.1, 0.0])
             elif hostid == 475:
                 zprior = 0.44
                 rhost_init = np.array([zprior, 10.7, 2.0, 0.5, 3.5])
