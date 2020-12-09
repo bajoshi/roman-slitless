@@ -739,8 +739,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.5, smooth1d=0.5)#, \
-    #range=[(1.95, 1.955), (12.5, 14.0), (0.5, 1.0), (0.0, 1.4), (0.4, 1.0)] )
+        verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7, \
+        range=[(1.952, 1.954), (12.5, 13.2), (0.5, 1.0), (-0.6, 0.6), (0.5, 0.9)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -1476,10 +1476,10 @@ def main():
 
             # Read previously run samples using pickle 
             checkdir = '' #'generic_11112020/'
-            host_pickle = emcee_diagnostics_dir + checkdir + 'host_' + str(hostid) + '_emcee_sampler.pkl'
-            sn_pickle = emcee_diagnostics_dir + 'sn_' + str(segid) + '_emcee_sampler.pkl'
+            host_h5 = emcee_diagnostics_dir + checkdir + 'host_' + str(hostid) + '_emcee_sampler.h5'
+            sn_h5 = emcee_diagnostics_dir + 'sn_' + str(segid) + '_emcee_sampler.h5'
 
-            if os.path.isfile(host_pickle):
+            if os.path.isfile(host_h5):
                 #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
             else:
