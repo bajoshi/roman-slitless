@@ -96,9 +96,9 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def logpost_host(theta, x, data, err):
+def logpost_host(theta, x, data, err, zprior, zprior_sigma):
 
-    lp = logprior_host(theta)
+    lp = logprior_host(theta, zprior, zprior_sigma)
     #print("Prior HOST:", lp)
     
     if not np.isfinite(lp):
@@ -110,7 +110,7 @@ def logpost_host(theta, x, data, err):
     
     return lp + lnL
 
-def logprior_host(theta):
+def logprior_host(theta, zprior, zprior_sigma):
 
     z, ms, age, logtau, av = theta
     #print("\nParameter vector given:", theta)
@@ -122,11 +122,15 @@ def logprior_host(theta):
         age_at_z = astropy_cosmo.age(z).value  # in Gyr
         age_lim = age_at_z - 0.1  # in Gyr
 
-        if ((0.0 <= ms <= 13.0) and \
+        if ((0.0 <= ms <= 12.0) and \
             (0.01 <= age <= age_lim) and \
             (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
-            return 0.0
+
+            # Gaussian prior on redshift
+            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+
+            return ln_pz
     
     return -np.inf
 
@@ -1400,23 +1404,29 @@ def main():
             # dust parameter is av not tauv
             # lsf_sigma in angstroms
 
-            args_sn = [sn_wav, sn_flam, sn_ferr]
-            args_host = [host_wav, host_flam, host_ferr]
-
             #rhost_init = get_optimal_fit(args_host, object_type='host')
             #sys.exit(0)
 
             if hostid == 207:
-                rhost_init = np.array([1.96, 12.9,  1.0, 1.0, 0.0])
+                zprior = 1.96
+                rhost_init = np.array([zprior, 11.9,  1.0, 1.0, 0.0])
             elif hostid == 475:
-                rhost_init = np.array([0.44, 10.7, 2.0, 0.5, 3.5])
+                zprior = 0.44
+                rhost_init = np.array([zprior, 10.7, 2.0, 0.5, 3.5])
             elif hostid == 548:
-                rhost_init = np.array([1.59, 12.3, 3.5, 2.0, 0.0])
+                zprior = 1.59
+                rhost_init = np.array([zprior, 11.8, 3.5, 2.0, 0.0])
             elif hostid == 755:
-                rhost_init = np.array([0.92, 11.3, 1.0, 1.0, 0.0])
+                zprior = 0.92
+                rhost_init = np.array([zprior, 11.3, 1.0, 1.0, 0.0])
+
+            zprior_sigma = 0.05  # standard deviation for the Gaussian prior on redshift
+
+            args_sn = [sn_wav, sn_flam, sn_ferr]
+            args_host = [host_wav, host_flam, host_ferr, zprior, zprior_sigma]
 
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
-            print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr))
+            print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
 
             rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
