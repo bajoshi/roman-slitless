@@ -122,7 +122,7 @@ def logprior_host(theta):
         age_at_z = astropy_cosmo.age(z).value  # in Gyr
         age_lim = age_at_z - 0.1  # in Gyr
 
-        if ((0.0 <= ms <= 20.0) and \
+        if ((0.0 <= ms <= 13.0) and \
             (0.01 <= age <= age_lim) and \
             (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
