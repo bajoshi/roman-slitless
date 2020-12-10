@@ -2,6 +2,7 @@ import numpy as np
 from astropy.io import fits
 from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import griddata
+from scipy.interpolate import splev, splrep
 
 import os
 import sys
@@ -14,6 +15,7 @@ import astropy.units as u
 astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 start = time.time()
 print("Starting at:", dt.datetime.now())
@@ -241,6 +243,49 @@ def model_host(x, z, ms, age, logtau, av):
     return model_mod
 
 
+def divcont(wav, flux, ferr):
+
+    # Normalize flux levels to approx 1.0
+    flux_norm = flux / np.mean(flux)
+    ferr_norm = ferr / np.mean(flux)
+
+    # Mask lines
+    masked_flux_arr, mask = 
+
+    # SciPy smoothing spline fit
+    spl = splrep(x=wav, y=flux_norm, s=0.5)
+    wav_plt = np.arange(wav[0], wav[-1], 1.0)
+    spl_eval = splev(wav_plt, spl)
+
+    # Divide the given flux by the smooth spline fit and return
+    cont_div_flux = flux_norm / splev(wav, spl)
+
+    # Test figure showing fits
+    fig = plt.figure(figsize=(10,6))
+    gs = gridspec.GridSpec(5,1)
+    gs.update(left=0.06, right=0.95, bottom=0.1, top=0.9, wspace=0.00, hspace=0.5)
+
+    ax1 = fig.add_subplot(gs[:3,:])
+    ax2 = fig.add_subplot(gs[3:,:])
+
+    ax1.set_ylabel(r'$\mathrm{Flux\ [normalized]}$', fontsize=15)
+    ax2.set_ylabel(r'$\mathrm{Continuum\ divided\ flux}$', fontsize=15)
+    ax2.set_xlabel(r'$\mathrm{Wavelength\ [\AA]}$', fontsize=15)
+
+    ax1.plot(wav, flux_norm, color='k')
+    ax1.fill_between(wav, flux_norm - ferr_norm, flux_norm + ferr_norm, color='gray', alpha=0.5)
+    ax1.plot(wav_plt, spl_eval, color='crimson', lw=3.0, label='SciPy smooth spline fit')
+
+    ax2.plot(wav, cont_div_flux, color='teal', lw=2.0, label='Continuum divided fluxes')
+    ax2.axhline(y=1.0, ls='--', color='k', lw=1.8)
+
+    # Tick label sizes
+
+    plt.show()
+
+    return cont_div_flux
+
+
 def main():
 
     ext_root = "romansim1"
@@ -270,6 +315,10 @@ def main():
     noise_level = 0.03  # relative to signal
 
     host_ferr = noise_level * host_flam
+
+    # Divide 
+    host_wav_norm, host_flam_norm, host_ferr_norm = divcont(host_wav, host_flam, host_ferr)
+    sys.exit(0)
 
     # ---- fitting
     zprior = 1.96
