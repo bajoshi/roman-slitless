@@ -73,6 +73,18 @@ all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap
 
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
+# This class came from stackoverflow
+# SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
+class bcolors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 def logpost_host(theta, x, data, err, zprior, zprior_sigma):
 
@@ -87,7 +99,6 @@ def logpost_host(theta, x, data, err, zprior, zprior_sigma):
     #print("Likelihood HOST:", lnL)
     
     return lp + lnL
-
 
 def logprior_host(theta, zprior, zprior_sigma):
 
@@ -112,7 +123,6 @@ def logprior_host(theta, zprior, zprior_sigma):
             return ln_pz
     
     return -np.inf
-
 
 def loglike_host(theta, x, data, err):
     
@@ -169,7 +179,6 @@ def loglike_host(theta, x, data, err):
     
 
     return lnLike
-
 
 def model_host(x, z, ms, age, logtau, av):
     """
@@ -242,18 +251,22 @@ def model_host(x, z, ms, age, logtau, av):
 
     return model_mod
 
-
-def divcont(wav, flux, ferr):
+def divcont(wav, flux, ferr, zprior):
 
     # Normalize flux levels to approx 1.0
     flux_norm = flux / np.mean(flux)
     ferr_norm = ferr / np.mean(flux)
 
     # Mask lines
-    masked_flux_arr, mask = 
+    mask_indices = get_mask_indices(wav, zprior)
+
+    weights = np.ones(len(wav))
+    #mask_indices = np.array([483, 484, 485, 486, 487, 488, 489])
+    # the above indices are manually done as a test for masking H-beta
+    weights[mask_indices] = 0
 
     # SciPy smoothing spline fit
-    spl = splrep(x=wav, y=flux_norm, s=0.5)
+    spl = splrep(x=wav, y=flux_norm, w=weights, s=0.5)
     wav_plt = np.arange(wav[0], wav[-1], 1.0)
     spl_eval = splev(wav_plt, spl)
 
@@ -280,11 +293,94 @@ def divcont(wav, flux, ferr):
     ax2.axhline(y=1.0, ls='--', color='k', lw=1.8)
 
     # Tick label sizes
+    ax1.tick_params(which='both', labelsize=14)
+    ax2.tick_params(which='both', labelsize=14)
 
     plt.show()
 
+    sys.exit(0)
+
     return cont_div_flux
 
+def air2vac():
+
+    # Conversion between air and vacuum wavelengths
+    # from here: http://classic.sdss.org/dr3/products/spectra/vacwavelength.html
+    # they got it from Morton 1991, ApJS, 77, 119
+    # Vacuum wavelengths in angstroms
+    # air = vac / (1.0 + 2.735182e-4 + 131.4182 / vac**2 + 2.76249e8 / vac**4)
+    pass
+
+def gen_balmer_lines():
+
+    # Check the latest Rydberg constant data here
+    # https://physics.nist.gov/cgi-bin/cuu/Value?ryd|search_for=Rydberg
+    # short list here for quick reference: https://physics.nist.gov/cuu/pdf/wall_2018.pdf
+    rydberg_const = 10973731.568  # in m^-1
+
+    balmer_line_wav_list = []
+
+    for lvl in range(3, 15):
+
+        energy_levels_term = (1/4) - (1/lvl**2)
+        lam_vac = (1/rydberg_const) * (1/energy_levels_term)
+
+        lam_vac_ang = lam_vac*1e10
+
+        #print("Transition:", lvl, "--> 2,       wavelength in vacuum [Angstroms]:", "{:.3f}".format(lam_vac_ang))
+
+        balmer_line_wav_list.append(lam_vac_ang)
+
+    print(f"{bcolors.WARNING}")
+    print("* * * *   [WARNING]: the supplied vacuum wavelengths are a bit off from those ")
+    print("          typically quoted for the Balmer lines. Needs to be checked.  * * * *")
+    print(f"{bcolors.ENDC}")
+
+    return balmer_line_wav_list
+
+def get_mask_indices(obs_wav, redshift):
+
+    # Define rest-frame wavelengths in vacuum
+    # Emission or absorption doesn't matter
+    gband = 4300
+    #hbeta = 4862.72
+    oiii4959 = 4960.295
+    oiii5007 = 5008.239
+    mg2_mgb = 5175
+    fe5270 = 5270
+    fe5335 = 5335
+    fe5406 = 5406
+    nad = 5890
+    #halpha = 6564.614
+
+    all_balmer_lines = gen_balmer_lines()
+
+    all_lines = [gband, oiii4959, oiii5007]
+    all_lines = all_lines + all_balmer_lines
+
+    # Set up empty array for masking indices
+    mask_indices = []
+
+    # Loop over all lines and get masking indices
+    for line in all_lines:
+
+        obs_line_wav = (1 + redshift) * line
+        #print(obs_line_wav)
+        if (obs_line_wav >= obs_wav[0]) and (obs_line_wav <= obs_wav[-1]):
+            closest_obs_wav_idx = np.argmin(abs(obs_wav - obs_line_wav))
+
+            #print(line, "  ", redshift, "  ", obs_line_wav, "  ", closest_obs_wav_idx)
+
+            mask_indices.append(np.arange(closest_obs_wav_idx-3, closest_obs_wav_idx+4))
+
+    # Convert to numpy array
+    mask_indices = np.asarray(mask_indices)
+    mask_indices = mask_indices.ravel()
+
+    # Make sure the returned indices are unique and sorted
+    mask_indices = np.unique(mask_indices)
+
+    return mask_indices
 
 def main():
 
@@ -316,16 +412,16 @@ def main():
 
     host_ferr = noise_level * host_flam
 
-    # Divide 
-    host_wav_norm, host_flam_norm, host_ferr_norm = divcont(host_wav, host_flam, host_ferr)
-    sys.exit(0)
-
     # ---- fitting
-    zprior = 1.96
+    zprior = 1.953
     zprior_sigma = 0.05
     rhost_init = np.array([zprior, 13.3,  1.0, 1.1, 0.0])
 
-    # Test figure showing 
+    # Divide by continuum
+    host_wav_norm, host_flam_norm, host_ferr_norm = divcont(host_wav, host_flam, host_ferr, zprior)
+    sys.exit(0)
+
+    # Test figure showing fits 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
