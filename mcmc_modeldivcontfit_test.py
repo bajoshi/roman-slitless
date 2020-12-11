@@ -468,7 +468,7 @@ def main():
     # ---- fitting
     #zprior = 1.95
     #zprior_sigma = 0.02
-    rhost_init = np.array([1.96, 1.0, 1.1, 0.0])
+    rhost_init = np.array([1.96, 1.0, 1.1])
 
     # Divide by continuum
     # In this call you want to see the plot showing the fit
@@ -498,7 +498,7 @@ def main():
     #logpost_host(rhost_init, host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma)
 
     # --------------------------------- Emcee run
-    nwalkers, ndim = 300, 4
+    nwalkers, ndim = 300, 3
 
     # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
     pos_host = np.zeros(shape=(nwalkers, ndim))
@@ -506,7 +506,7 @@ def main():
     jump_size_z = 0.01
     jump_size_age = 0.1  # in gyr
     jump_size_logtau = 0.01  # tau in gyr
-    jump_size_av = 0.1  # magnitudes
+    #jump_size_av = 0.1  # magnitudes
 
     for i in range(nwalkers):
 
@@ -514,9 +514,9 @@ def main():
         rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
         rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
         rh2 = float(rhost_init[2] + jump_size_logtau * np.random.normal(size=1))
-        rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+        #rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
 
-        rh = np.array([rh0, rh1, rh2, rh3])
+        rh = np.array([rh0, rh1, rh2])#, rh3])
 
         pos_host[i] = rh
 
