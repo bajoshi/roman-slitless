@@ -736,7 +736,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
     #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
 
-    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7, \
@@ -1470,7 +1470,7 @@ def main():
 
             # Labels for corner and trace plots
             label_list_host = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', r'$\mathrm{Age\, [Gyr]}$', \
-            r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$']   # r'$log(Ms/M_\odot)$', 
+            r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$'] 
             label_list_sn = [r'$z$', r'$Day$', r'$A_V [mag]$']
 
             # Read previously run samples using pickle 

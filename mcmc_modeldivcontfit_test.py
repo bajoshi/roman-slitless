@@ -427,7 +427,7 @@ def main():
 
     # ---- fitting
     zprior = 1.96
-    zprior_sigma = 0.05
+    zprior_sigma = 0.02
     rhost_init = np.array([zprior, 1.0, 1.1, 0.0])
 
     # Divide by continuum
@@ -485,6 +485,9 @@ def main():
 
     # ----------- Set up the HDF5 file to incrementally save progress to
     emcee_savefile = emcee_diagnostics_dir +'emcee_sampler_' + str(hostid) + '_contdivtest.h5'
+
+
+    """
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim)
 
@@ -498,9 +501,107 @@ def main():
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
 
     print("Done with fitting.")
+    """
 
     # ---------------------------------------- Plot results
+    #  r'$\mathrm{log(M_s/M_\odot)}$',
+    label_list = [r'$z$', r'$\mathrm{Age\, [Gyr]}$', r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$']
 
+    sampler = emcee.backends.HDFBackend(emcee_savefile)
+
+    samples = sampler.get_chain()
+    print(f"{bcolors.CYAN}\nRead in sampler:", emcee_savefile, f"{bcolors.ENDC}")
+    print("Samples shape:", samples.shape)
+
+    # Get autocorrelation time
+    # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
+    tau = sampler.get_autocorr_time(tol=0)
+    burn_in = int(2 * np.max(tau))
+    thinning_steps = int(0.5 * np.min(tau))
+
+    print(f"{bcolors.WARNING}")
+    #print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
+    print("Average Tau:", np.mean(tau))
+    print("Burn-in:", burn_in)
+    print("Thinning steps:", thinning_steps)
+    print(f"{bcolors.ENDC}")
+
+    # plot trace
+    fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
+
+    for i in range(ndim):
+        ax1 = axes1[i]
+        ax1.plot(samples[:, :, i], "k", alpha=0.05)
+        ax1.set_xlim(0, len(samples))
+        ax1.set_ylabel(label_list[i])
+        ax1.yaxis.set_label_coords(-0.1, 0.5)
+
+    axes1[-1].set_xlabel("Step number")
+
+    fig1.savefig(emcee_diagnostics_dir + 'emcee_trace_' + str(hostid) + '_' + img_suffix + '_contdivtest.pdf', \
+        dpi=200, bbox_inches='tight')
+
+    # Create flat samples
+    flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
+    print("\nFlat samples shape:", flat_samples.shape)
+
+    # Get truths
+    # ---- HOST
+    h_idx = int(np.where(sedlst['segid'] == hostid)[0])
+    h_path = sedlst['sed_path'][h_idx]
+    th = os.path.basename(h_path)
+    print("Template name HOST:", th)
+
+    th = th.split('.txt')[0].split('_')
+
+    host_av = float(th[-1].replace('p', '.').replace('av',''))
+    host_met = float(th[-2].replace('p', '.').replace('met',''))
+    host_tau = float(th[-3].replace('p', '.').replace('tau',''))
+    host_age = float(th[-4].replace('p', '.').replace('age',''))
+    host_ms = float(th[-5].replace('p', '.').replace('ms',''))
+    host_z = float(th[-6].replace('p', '.').replace('z',''))
+
+    truth_arr = np.array([host_z, host_age, np.log10(host_tau), host_av])
+
+    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
+        verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7)#, \
+    #range=[(1.952, 1.954), (12.5, 13.2), (0.5, 1.0), (-0.6, 0.6), (0.5, 0.9)] )
+    fig.savefig(emcee_diagnostics_dir + 'corner_' + str(hostid) + '_' + img_suffix + '_contdivtest.pdf', \
+        dpi=200, bbox_inches='tight')
+
+    # ------------ Plot 100 random models from the parameter space
+    inds = np.random.randint(len(flat_samples), size=100)
+
+    fig3 = plt.figure(figsize=(9,4))
+    ax3 = fig3.add_subplot(111)
+
+    ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [normalized]}$', fontsize=15)
+
+    for ind in inds:
+        sample = flat_samples[ind]
+
+        m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3])
+
+        # ------- Clip all arrays to where grism sensitivity is >= 25%
+        x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                       (host_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+        m = m[x0]
+        host_wav = host_wav[x0]
+        host_flam_cont_norm = host_flam_cont_norm[x0]
+        host_ferr_cont_norm = host_ferr_cont_norm[x0]
+
+        ax3.plot(host_wav, m, color='tab:red', alpha=0.2, zorder=2)
+
+    ax3.plot(host_wav, host_flam_cont_norm, color='k', zorder=3)
+    ax3.fill_between(host_wav, host_flam_cont_norm - host_ferr_cont_norm, host_flam_cont_norm + host_ferr_cont_norm, \
+        color='gray', alpha=0.5, zorder=3)
+
+    fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + str(hostid) + '_' + img_suffix + '_contdivtest.pdf', \
+        dpi=200, bbox_inches='tight')
 
     return None
 
