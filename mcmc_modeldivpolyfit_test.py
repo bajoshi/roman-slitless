@@ -3,6 +3,8 @@ from astropy.io import fits
 from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import griddata
 from scipy.interpolate import splev, splrep
+import emcee 
+import corner
 
 import os
 import sys
@@ -102,7 +104,7 @@ def logpost_host(theta, x, data, err, zprior, zprior_sigma):
 
 def logprior_host(theta, zprior, zprior_sigma):
 
-    z, ms, age, logtau, av = theta
+    z, age, logtau, av = theta
     print("\nParameter vector given:", theta)
 
     if (0.0001 <= z <= 6.0):
@@ -112,8 +114,7 @@ def logprior_host(theta, zprior, zprior_sigma):
         age_at_z = astropy_cosmo.age(z).value  # in Gyr
         age_lim = age_at_z - 0.1  # in Gyr
 
-        if ((0.0 <= ms <= 14.0) and \
-            (0.01 <= age <= age_lim) and \
+        if ((0.01 <= age <= age_lim) and \
             (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
 
@@ -126,9 +127,9 @@ def logprior_host(theta, zprior, zprior_sigma):
 
 def loglike_host(theta, x, data, err):
     
-    z, ms, age, logtau, av = theta
+    z, age, logtau, av = theta
 
-    y = model_host(x, z, ms, age, logtau, av)
+    y = model_host(x, z, age, logtau, av)
     #print("Model func result:", y)
 
     # ------- Clip all arrays to where grism sensitivity is >= 25%
@@ -158,11 +159,11 @@ def loglike_host(theta, x, data, err):
     #stretch_fac = 10.0
     #lnLike = -0.5 * (1 + stretch_fac) * chi2
 
-    print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
-    print("Second error term:", np.nansum( np.log(2 * np.pi * err**2) ))
-    print("log likelihood HOST:", lnLike)
+    #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
+    #print("Second error term:", np.nansum( np.log(2 * np.pi * err**2) ))
+    #print("log likelihood HOST:", lnLike)
 
-    
+    """
     fig = plt.figure(figsize=(9,5))
     ax = fig.add_subplot(111)
     ax.set_xlabel(r'$\lambda\, [\mathrm{\AA}]$', fontsize=14)
@@ -176,11 +177,11 @@ def loglike_host(theta, x, data, err):
     ax.set_xscale('log')
     plt.show()
     sys.exit(0)
-    
+    """
 
     return lnLike
 
-def model_host(x, z, ms, age, logtau, av):
+def model_host(x, z, age, logtau, av):
     """
     Expects to get the following arguments
     
@@ -236,7 +237,7 @@ def model_host(x, z, ms, age, logtau, av):
     model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
 
     # ------ Multiply luminosity by stellar mass
-    model_dusty_llam = model_dusty_llam * 10**ms
+    #model_dusty_llam = model_dusty_llam * 10**ms
 
     # ------ Apply redshift
     model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_dusty_llam, z)
@@ -249,9 +250,12 @@ def model_host(x, z, ms, age, logtau, av):
     # ------ Downgrade to grism resolution
     model_mod = griddata(points=model_lam_z, values=model_lsfconv, xi=x)
 
-    return model_mod
+    model_err = np.zeros(len(x))
+    model_cont_norm, model_err_cont_norm = divcont(x, model_mod, model_err, z, showplot=False)
 
-def divcont(wav, flux, ferr, zprior):
+    return model_cont_norm
+
+def divcont(wav, flux, ferr, zprior, showplot=False):
 
     # Normalize flux levels to approx 1.0
     flux_norm = flux / np.mean(flux)
@@ -272,35 +276,35 @@ def divcont(wav, flux, ferr, zprior):
 
     # Divide the given flux by the smooth spline fit and return
     cont_div_flux = flux_norm / splev(wav, spl)
+    cont_div_err  = ferr_norm / splev(wav, spl)
 
     # Test figure showing fits
-    fig = plt.figure(figsize=(10,6))
-    gs = gridspec.GridSpec(5,1)
-    gs.update(left=0.06, right=0.95, bottom=0.1, top=0.9, wspace=0.00, hspace=0.5)
+    if showplot:
+        fig = plt.figure(figsize=(10,6))
+        gs = gridspec.GridSpec(5,1)
+        gs.update(left=0.06, right=0.95, bottom=0.1, top=0.9, wspace=0.00, hspace=0.5)
 
-    ax1 = fig.add_subplot(gs[:3,:])
-    ax2 = fig.add_subplot(gs[3:,:])
+        ax1 = fig.add_subplot(gs[:3,:])
+        ax2 = fig.add_subplot(gs[3:,:])
 
-    ax1.set_ylabel(r'$\mathrm{Flux\ [normalized]}$', fontsize=15)
-    ax2.set_ylabel(r'$\mathrm{Continuum\ divided\ flux}$', fontsize=15)
-    ax2.set_xlabel(r'$\mathrm{Wavelength\ [\AA]}$', fontsize=15)
+        ax1.set_ylabel(r'$\mathrm{Flux\ [normalized]}$', fontsize=15)
+        ax2.set_ylabel(r'$\mathrm{Continuum\ divided\ flux}$', fontsize=15)
+        ax2.set_xlabel(r'$\mathrm{Wavelength\ [\AA]}$', fontsize=15)
 
-    ax1.plot(wav, flux_norm, color='k')
-    ax1.fill_between(wav, flux_norm - ferr_norm, flux_norm + ferr_norm, color='gray', alpha=0.5)
-    ax1.plot(wav_plt, spl_eval, color='crimson', lw=3.0, label='SciPy smooth spline fit')
+        ax1.plot(wav, flux_norm, color='k')
+        ax1.fill_between(wav, flux_norm - ferr_norm, flux_norm + ferr_norm, color='gray', alpha=0.5)
+        ax1.plot(wav_plt, spl_eval, color='crimson', lw=3.0, label='SciPy smooth spline fit')
 
-    ax2.plot(wav, cont_div_flux, color='teal', lw=2.0, label='Continuum divided fluxes')
-    ax2.axhline(y=1.0, ls='--', color='k', lw=1.8)
+        ax2.plot(wav, cont_div_flux, color='teal', lw=2.0, label='Continuum divided flux')
+        ax2.axhline(y=1.0, ls='--', color='k', lw=1.8)
 
-    # Tick label sizes
-    ax1.tick_params(which='both', labelsize=14)
-    ax2.tick_params(which='both', labelsize=14)
+        # Tick label sizes
+        ax1.tick_params(which='both', labelsize=14)
+        ax2.tick_params(which='both', labelsize=14)
 
-    plt.show()
+        plt.show()
 
-    sys.exit(0)
-
-    return cont_div_flux
+    return cont_div_flux, cont_div_err
 
 def air2vac():
 
@@ -413,15 +417,15 @@ def main():
     host_ferr = noise_level * host_flam
 
     # ---- fitting
-    zprior = 1.953
+    zprior = 1.96
     zprior_sigma = 0.05
-    rhost_init = np.array([zprior, 13.3,  1.0, 1.1, 0.0])
+    rhost_init = np.array([zprior, 1.0, 1.1, 0.0])
 
     # Divide by continuum
-    host_wav_norm, host_flam_norm, host_ferr_norm = divcont(host_wav, host_flam, host_ferr, zprior)
-    sys.exit(0)
+    host_flam_cont_norm, host_ferr_cont_norm = divcont(host_wav, host_flam, host_ferr, zprior, showplot=False)
 
-    # Test figure showing fits 
+    """
+    # Test figure showing pdf for redshift prior
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
@@ -430,18 +434,17 @@ def main():
         pdf_z = ( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) * np.exp(-0.5*(z - zprior)**2/zprior_sigma**2)
         print("{:.3f}".format(z), "      ", "{:.3e}".format(pdf_z))
 
-    #sys.exit(0)
     #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z_arr - zprior)**2/zprior_sigma**2
     pdf_z = ( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) * np.exp(-0.5*(z_arr - zprior)**2/zprior_sigma**2)
 
     ax.plot(z_arr, pdf_z)
     #ax.set_yscale('log')
-
     plt.show()
     sys.exit(0)
+    """
 
     # now call posterior func to test
-    logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma)
+    logpost_host(rhost_init, host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma)
 
     return None
 
