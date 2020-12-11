@@ -473,7 +473,7 @@ def main():
     # Divide by continuum
     # In this call you want to see the plot showing the fit
     # because you need the assess how good your redshift prior is
-    host_flam_cont_norm, host_ferr_cont_norm = divcont(host_wav, host_flam, host_ferr, showplot=True)
+    host_flam_cont_norm, host_ferr_cont_norm = divcont(host_wav, host_flam, host_ferr, showplot=False)
 
     """
     # Test figure showing pdf for redshift prior
@@ -622,7 +622,7 @@ def main():
     for ind in inds:
         sample = flat_samples[ind]
 
-        m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3])
+        m = model_host(host_wav, sample[0], sample[1], sample[2])
 
         # ------- Clip all arrays to where grism sensitivity is >= 25%
         x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
