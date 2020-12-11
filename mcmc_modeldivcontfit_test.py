@@ -426,7 +426,7 @@ def main():
     host_ferr = noise_level * host_flam
 
     # ---- fitting
-    zprior = 1.96
+    zprior = 1.95
     zprior_sigma = 0.02
     rhost_init = np.array([zprior, 1.0, 1.1, 0.0])
 
