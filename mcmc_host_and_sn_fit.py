@@ -604,7 +604,7 @@ def get_autocorr_time(sampler):
 
 def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
-    print("Running on:", object_type)
+    print("Running on:", object_type, "with ID:", objid)
 
     # ----------- Set up the HDF5 file to incrementally save progress to
     emcee_savefile = emcee_diagnostics_dir + object_type + '_' + str(objid) + '_emcee_sampler.h5'

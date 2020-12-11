@@ -6,6 +6,9 @@ from scipy.interpolate import splev, splrep
 import emcee 
 import corner
 
+from multiprocessing import Pool
+import pickle
+
 import os
 import sys
 import socket
@@ -29,6 +32,7 @@ stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
+emcee_diagnostics_dir = home + "/Documents/emcee_runs/emcee_diagnostics_roman/"
 
 sys.path.append(stacking_utils)
 import proper_and_lum_dist as cosmo
@@ -91,7 +95,7 @@ class bcolors:
 def logpost_host(theta, x, data, err, zprior, zprior_sigma):
 
     lp = logprior_host(theta, zprior, zprior_sigma)
-    print("Prior HOST:", lp)
+    #print("Prior HOST:", lp)
     
     if not np.isfinite(lp):
         return -np.inf
@@ -105,7 +109,7 @@ def logpost_host(theta, x, data, err, zprior, zprior_sigma):
 def logprior_host(theta, zprior, zprior_sigma):
 
     z, age, logtau, av = theta
-    print("\nParameter vector given:", theta)
+    #print("\nParameter vector given:", theta)
 
     if (0.0001 <= z <= 6.0):
     
@@ -264,6 +268,10 @@ def divcont(wav, flux, ferr, zprior, showplot=False):
     # Mask lines
     mask_indices = get_mask_indices(wav, zprior)
 
+    # Make sure masking indices are consistent with array to be masked
+    remove_mask_idx = np.where(mask_indices >= len(wav))[0]
+    mask_indices = np.delete(arr=mask_indices, obj=remove_mask_idx)
+
     weights = np.ones(len(wav))
     #mask_indices = np.array([483, 484, 485, 486, 487, 488, 489])
     # the above indices are manually done as a test for masking H-beta
@@ -335,11 +343,6 @@ def gen_balmer_lines():
 
         balmer_line_wav_list.append(lam_vac_ang)
 
-    print(f"{bcolors.WARNING}")
-    print("* * * *   [WARNING]: the supplied vacuum wavelengths are a bit off from those ")
-    print("          typically quoted for the Balmer lines. Needs to be checked.  * * * *")
-    print(f"{bcolors.ENDC}")
-
     return balmer_line_wav_list
 
 def get_mask_indices(obs_wav, redshift):
@@ -387,6 +390,11 @@ def get_mask_indices(obs_wav, redshift):
     return mask_indices
 
 def main():
+
+    print(f"{bcolors.WARNING}")
+    print("* * * *   [WARNING]: the supplied vacuum wavelengths are a bit off from those ")
+    print("          typically quoted for the Balmer lines. Needs to be checked.  * * * *")
+    print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"
     img_suffix = 'Y106_11_1'
@@ -444,7 +452,54 @@ def main():
     """
 
     # now call posterior func to test
-    logpost_host(rhost_init, host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma)
+    #logpost_host(rhost_init, host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma)
+
+    # --------------------------------- Emcee run
+    nwalkers, ndim = 300, 4
+
+    # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
+    pos_host = np.zeros(shape=(nwalkers, ndim))
+
+    jump_size_z = 0.01
+    jump_size_age = 0.1  # in gyr
+    jump_size_logtau = 0.01  # tau in gyr
+    jump_size_av = 0.1  # magnitudes
+
+    for i in range(nwalkers):
+
+        # ---------- For HOST
+        rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
+        rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
+        rh2 = float(rhost_init[2] + jump_size_logtau * np.random.normal(size=1))
+        rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+
+        rh = np.array([rh0, rh1, rh2, rh3])
+
+        pos_host[i] = rh
+
+    # Setup arguments for posterior function
+    args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma]
+
+    print("Running on:", hostid)
+
+    # ----------- Set up the HDF5 file to incrementally save progress to
+    emcee_savefile = emcee_diagnostics_dir +'emcee_sampler_' + str(hostid) + '_contdivtest.h5'
+    backend = emcee.backends.HDFBackend(emcee_savefile)
+    backend.reset(nwalkers, ndim)
+
+    # ----------- Emcee 
+    with Pool() as pool:
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost_host, args=args_host, pool=pool, backend=backend)
+        #moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
+        sampler.run_mcmc(pos_host, 1000, progress=True)
+
+    # ----------- Also save the final result as a pickle dump
+    pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
+
+    print("Done with fitting.")
+
+    # ---------------------------------------- Plot results
+
 
     return None
 
