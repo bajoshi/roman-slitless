@@ -468,7 +468,7 @@ def main():
     # ---- fitting
     #zprior = 1.95
     #zprior_sigma = 0.02
-    rhost_init = np.array([1.5, 1.0, 1.1])
+    rhost_init = np.array([1.95, 1.0, 1.1])
 
     # Divide by continuum
     # In this call you want to see the plot showing the fit
@@ -555,7 +555,7 @@ def main():
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost_host, args=args_host, pool=pool, backend=backend) 
         #moves=[(emcee.moves.DEMove(), 0.6), (emcee.moves.DESnookerMove(), 0.4),],)
-        sampler.run_mcmc(pos_host, 2000, progress=True)
+        sampler.run_mcmc(pos_host, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
