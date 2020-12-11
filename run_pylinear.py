@@ -69,6 +69,7 @@ print("Adding noise...")
 # check Russell's notes in pylinear notebooks
 # also check WFIRST tech report TR1901
 sig = 0.001    # noise RMS in e-/s 
+exptime = 300
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)
@@ -82,11 +83,16 @@ for oldf in glob.glob('*_flt.fits'):
         sci = hdul[('SCI',1)].data    # the science image
         size = sci.shape              # dimensionality of the image
 
+        # Multiply the science image with the exptime
+        # sci image originally in electrons/s
+        sci = sci * exptime  # this is now in electrons
+
         # update the science extension with random noise
         hdul[('SCI',1)].data = sci + np.random.normal(loc=0., scale=sig, size=size)
 
         # update the uncertainty extension with the sigma
-        hdul[('ERR',1)].data = np.full_like(sci, sig)
+        err = np.sqrt(sci) / exptime
+        hdul[('ERR',1)].data = err  # np.full_like(sci, sig)
 
         # now write to a new file name
         hdul.writeto(oldf, overwrite=True)
