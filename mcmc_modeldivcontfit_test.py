@@ -468,7 +468,7 @@ def main():
     # ---- fitting
     #zprior = 1.95
     #zprior_sigma = 0.02
-    rhost_init = np.array([1.96, 1.0, 1.1])
+    rhost_init = np.array([1.5, 1.0, 1.1])
 
     # Divide by continuum
     # In this call you want to see the plot showing the fit
@@ -523,6 +523,25 @@ def main():
     # Setup arguments for posterior function
     args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm]
 
+    # Get truths
+    # ---- HOST
+    h_idx = int(np.where(sedlst['segid'] == hostid)[0])
+    h_path = sedlst['sed_path'][h_idx]
+    th = os.path.basename(h_path)
+    print("Template name HOST:", th)
+
+    th = th.split('.txt')[0].split('_')
+
+    host_av = float(th[-1].replace('p', '.').replace('av',''))
+    host_met = float(th[-2].replace('p', '.').replace('met',''))
+    host_tau = float(th[-3].replace('p', '.').replace('tau',''))
+    host_age = float(th[-4].replace('p', '.').replace('age',''))
+    host_ms = float(th[-5].replace('p', '.').replace('ms',''))
+    host_z = float(th[-6].replace('p', '.').replace('z',''))
+
+    truth_arr = np.array([host_z, host_age, np.log10(host_tau), host_av])
+
+    # ------
     print("Running on:", hostid)
 
     # ----------- Set up the HDF5 file to incrementally save progress to
@@ -584,23 +603,7 @@ def main():
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
 
-    # Get truths
-    # ---- HOST
-    h_idx = int(np.where(sedlst['segid'] == hostid)[0])
-    h_path = sedlst['sed_path'][h_idx]
-    th = os.path.basename(h_path)
-    print("Template name HOST:", th)
 
-    th = th.split('.txt')[0].split('_')
-
-    host_av = float(th[-1].replace('p', '.').replace('av',''))
-    host_met = float(th[-2].replace('p', '.').replace('met',''))
-    host_tau = float(th[-3].replace('p', '.').replace('tau',''))
-    host_age = float(th[-4].replace('p', '.').replace('age',''))
-    host_ms = float(th[-5].replace('p', '.').replace('ms',''))
-    host_z = float(th[-6].replace('p', '.').replace('z',''))
-
-    truth_arr = np.array([host_z, host_age, np.log10(host_tau), host_av])
 
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
