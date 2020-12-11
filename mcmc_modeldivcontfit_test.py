@@ -394,6 +394,7 @@ def main():
     print(f"{bcolors.WARNING}")
     print("* * * *   [WARNING]: the supplied vacuum wavelengths are a bit off from those ")
     print("          typically quoted for the Balmer lines. Needs to be checked.  * * * *")
+    print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"

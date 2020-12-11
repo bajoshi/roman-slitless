@@ -887,7 +887,6 @@ def main():
 
     print(f"{bcolors.WARNING}")
     print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
-    print("* * * *   [WARNING]: check vertical scaling.   * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"
