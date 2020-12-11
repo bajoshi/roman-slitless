@@ -486,8 +486,6 @@ def main():
     # ----------- Set up the HDF5 file to incrementally save progress to
     emcee_savefile = emcee_diagnostics_dir +'emcee_sampler_' + str(hostid) + '_contdivtest.h5'
 
-
-    """
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim)
 
@@ -501,7 +499,6 @@ def main():
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
 
     print("Done with fitting.")
-    """
 
     # ---------------------------------------- Plot results
     #  r'$\mathrm{log(M_s/M_\odot)}$',
