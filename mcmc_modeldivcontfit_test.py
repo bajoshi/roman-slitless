@@ -543,6 +543,7 @@ def main():
 
     # ------
     print("Running on:", hostid)
+    print("Starting position for ball of walkers:", rhost_init)
 
     # ----------- Set up the HDF5 file to incrementally save progress to
     emcee_savefile = emcee_diagnostics_dir +'emcee_sampler_' + str(hostid) + '_contdivtest.h5'
@@ -552,8 +553,8 @@ def main():
 
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost_host, args=args_host, pool=pool, backend=backend)
-        #moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost_host, args=args_host, pool=pool, backend=backend, 
+            moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
         sampler.run_mcmc(pos_host, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
@@ -603,8 +604,6 @@ def main():
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
 
-
-
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
@@ -646,8 +645,6 @@ def main():
         dpi=200, bbox_inches='tight')
 
     return None
-
-
 
 if __name__ == '__main__':
     main()
