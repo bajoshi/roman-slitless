@@ -92,9 +92,9 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def logpost_host(theta, x, data, err, zprior, zprior_sigma):
+def logpost_host(theta, x, data, err):
 
-    lp = logprior_host(theta, zprior, zprior_sigma)
+    lp = logprior_host(theta)
     #print("Prior HOST:", lp)
     
     if not np.isfinite(lp):
@@ -106,9 +106,53 @@ def logpost_host(theta, x, data, err, zprior, zprior_sigma):
     
     return lp + lnL
 
-def logprior_host(theta, zprior, zprior_sigma):
+"""
+def logprior_host(theta, *priorargs, zprior_flag=False):
 
     z, age, logtau, av = theta
+    #print("\nParameter vector given:", theta)
+
+    if zprior_flag:
+
+        zprior, zprior_sigma = args[0], args[1]
+
+        if (0.0001 <= z <= 6.0):
+    
+            # Make sure model is not older than the Universe
+            # Allowing at least 100 Myr for the first galaxies to form after Big Bang
+            age_at_z = astropy_cosmo.age(z).value  # in Gyr
+            age_lim = age_at_z - 0.1  # in Gyr
+
+            if ((0.01 <= age <= age_lim) and \
+                (-3.0 <= logtau <= 2.0) and \
+                (0.0 <= av <= 5.0)):
+
+                # Gaussian prior on redshift
+                ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+
+                return ln_pz
+    
+    else:
+
+        if (0.0001 <= z <= 6.0):
+    
+            # Make sure model is not older than the Universe
+            # Allowing at least 100 Myr for the first galaxies to form after Big Bang
+            age_at_z = astropy_cosmo.age(z).value  # in Gyr
+            age_lim = age_at_z - 0.1  # in Gyr
+
+            if ((0.01 <= age <= age_lim) and \
+                (-3.0 <= logtau <= 2.0) and \
+                (0.0 <= av <= 5.0)):
+
+                return 0.0
+
+    return -np.inf
+"""
+
+def logprior_host(theta):
+
+    z, age, logtau = theta
     #print("\nParameter vector given:", theta)
 
     if (0.0001 <= z <= 6.0):
@@ -119,21 +163,17 @@ def logprior_host(theta, zprior, zprior_sigma):
         age_lim = age_at_z - 0.1  # in Gyr
 
         if ((0.01 <= age <= age_lim) and \
-            (-3.0 <= logtau <= 2.0) and \
-            (0.0 <= av <= 5.0)):
+            (-3.0 <= logtau <= 2.0)):
 
-            # Gaussian prior on redshift
-            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            return 0.0
 
-            return ln_pz
-    
     return -np.inf
 
 def loglike_host(theta, x, data, err):
     
-    z, age, logtau, av = theta
+    z, age, logtau = theta
 
-    y = model_host(x, z, age, logtau, av)
+    y = model_host(x, z, age, logtau)
     #print("Model func result:", y)
 
     # ------- Clip all arrays to where grism sensitivity is >= 25%
@@ -185,7 +225,7 @@ def loglike_host(theta, x, data, err):
 
     return lnLike
 
-def model_host(x, z, age, logtau, av):
+def model_host(x, z, age, logtau):
     """
     Expects to get the following arguments
     
@@ -238,13 +278,13 @@ def model_host(x, z, age, logtau, av):
     model_llam = models_arr[model_idx]
 
     # ------ Apply dust extinction
-    model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
+    #model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
 
     # ------ Multiply luminosity by stellar mass
     #model_dusty_llam = model_dusty_llam * 10**ms
 
     # ------ Apply redshift
-    model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_dusty_llam, z)
+    model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_llam, z)
     Lsol = 3.826e33
     model_flam_z = Lsol * model_flam_z
 
@@ -255,30 +295,30 @@ def model_host(x, z, age, logtau, av):
     model_mod = griddata(points=model_lam_z, values=model_lsfconv, xi=x)
 
     model_err = np.zeros(len(x))
-    model_cont_norm, model_err_cont_norm = divcont(x, model_mod, model_err, z, showplot=False)
+    model_cont_norm, model_err_cont_norm = divcont(x, model_mod, model_err, showplot=False)
 
     return model_cont_norm
 
-def divcont(wav, flux, ferr, zprior, showplot=False):
+def divcont(wav, flux, ferr, showplot=False):
 
     # Normalize flux levels to approx 1.0
     flux_norm = flux / np.mean(flux)
     ferr_norm = ferr / np.mean(flux)
 
     # Mask lines
-    mask_indices = get_mask_indices(wav, zprior)
+    #mask_indices = get_mask_indices(wav, zprior)
 
     # Make sure masking indices are consistent with array to be masked
-    remove_mask_idx = np.where(mask_indices >= len(wav))[0]
-    mask_indices = np.delete(arr=mask_indices, obj=remove_mask_idx)
+    #remove_mask_idx = np.where(mask_indices >= len(wav))[0]
+    #mask_indices = np.delete(arr=mask_indices, obj=remove_mask_idx)
 
-    weights = np.ones(len(wav))
+    #weights = np.ones(len(wav))
     #mask_indices = np.array([483, 484, 485, 486, 487, 488, 489])
     # the above indices are manually done as a test for masking H-beta
-    weights[mask_indices] = 0
+    #weights[mask_indices] = 0
 
     # SciPy smoothing spline fit
-    spl = splrep(x=wav, y=flux_norm, w=weights, s=0.5)
+    spl = splrep(x=wav, y=flux_norm, k=3, s=5.0)
     wav_plt = np.arange(wav[0], wav[-1], 1.0)
     spl_eval = splev(wav_plt, spl)
 
@@ -337,7 +377,7 @@ def gen_balmer_lines():
         energy_levels_term = (1/4) - (1/lvl**2)
         lam_vac = (1/rydberg_const) * (1/energy_levels_term)
 
-        lam_vac_ang = lam_vac*1e10
+        lam_vac_ang = lam_vac*1e10  # meters to angstroms # since the rydberg const above is in (1/m)
 
         #print("Transition:", lvl, "--> 2,       wavelength in vacuum [Angstroms]:", "{:.3f}".format(lam_vac_ang))
 
@@ -426,12 +466,14 @@ def main():
     host_ferr = noise_level * host_flam
 
     # ---- fitting
-    zprior = 1.95
-    zprior_sigma = 0.02
-    rhost_init = np.array([zprior, 1.0, 1.1, 0.0])
+    #zprior = 1.95
+    #zprior_sigma = 0.02
+    rhost_init = np.array([1.96, 1.0, 1.1, 0.0])
 
     # Divide by continuum
-    host_flam_cont_norm, host_ferr_cont_norm = divcont(host_wav, host_flam, host_ferr, zprior, showplot=False)
+    # In this call you want to see the plot showing the fit
+    # because you need the assess how good your redshift prior is
+    host_flam_cont_norm, host_ferr_cont_norm = divcont(host_wav, host_flam, host_ferr, showplot=True)
 
     """
     # Test figure showing pdf for redshift prior
@@ -479,7 +521,7 @@ def main():
         pos_host[i] = rh
 
     # Setup arguments for posterior function
-    args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma]
+    args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm]
 
     print("Running on:", hostid)
 
