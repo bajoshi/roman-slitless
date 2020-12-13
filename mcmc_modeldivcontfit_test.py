@@ -92,9 +92,9 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def logpost_host(theta, x, data, err):
+def logpost_host(theta, x, data, err, zprior, zprior_sigma):
 
-    lp = logprior_host(theta)
+    lp = logprior_host(theta, zprior, zprior_sigma)
     #print("Prior HOST:", lp)
     
     if not np.isfinite(lp):
@@ -150,12 +150,12 @@ def logprior_host(theta, *priorargs, zprior_flag=False):
     return -np.inf
 """
 
-def logprior_host(theta):
+def logprior_host(theta, zprior, zprior_sigma):
 
     z, age, logtau = theta
     #print("\nParameter vector given:", theta)
 
-    if (0.0001 <= z <= 6.0):
+    if (zprior - 3*zprior_sigma <= z <= zprior + 3*zprior_sigma):
     
         # Make sure model is not older than the Universe
         # Allowing at least 100 Myr for the first galaxies to form after Big Bang
@@ -198,10 +198,10 @@ def loglike_host(theta, x, data, err):
     #y = y * alpha
 
     # ------- log likelihood
-    chi2 = np.nansum( (y-data)**2/err**2 ) / len(y)
-    #lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) - 0.5 * np.nansum( np.log(2 * np.pi * err**2) )
-    stretch_fac = 10.0
-    lnLike = -0.5 * (1 + stretch_fac) * chi2
+    #chi2 = np.nansum( (y-data)**2/err**2 ) / len(y)
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) - 0.5 * np.nansum( np.log(2 * np.pi * err**2) )
+    #stretch_fac = 0.0
+    #lnLike = -0.5 * (1 + stretch_fac) * chi2
 
     #print("Pure chi2 term:", np.nansum( (y-data)**2/err**2 ))
     #print("Second error term:", np.nansum( np.log(2 * np.pi * err**2) ))
@@ -466,9 +466,9 @@ def main():
     host_ferr = noise_level * host_flam
 
     # ---- fitting
-    #zprior = 1.95
-    #zprior_sigma = 0.02
-    rhost_init = np.array([1.95, 1.0, 1.1])
+    zprior = 1.95
+    zprior_sigma = 0.02
+    rhost_init = np.array([zprior, 1.0, 1.1])
 
     # Divide by continuum
     # In this call you want to see the plot showing the fit
@@ -521,7 +521,7 @@ def main():
         pos_host[i] = rh
 
     # Setup arguments for posterior function
-    args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm]
+    args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma]
 
     # Get truths
     # ---- HOST
