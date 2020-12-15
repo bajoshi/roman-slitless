@@ -613,8 +613,8 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend, \
-            moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
+        #moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
         sampler.run_mcmc(pos, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
@@ -1426,8 +1426,6 @@ def main():
 
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
-
-            sys.exit(0)
 
             rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
