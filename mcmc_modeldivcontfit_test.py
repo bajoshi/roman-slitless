@@ -155,7 +155,8 @@ def logprior_host(theta, zprior, zprior_sigma):
     z, age, logtau = theta
     #print("\nParameter vector given:", theta)
 
-    if (zprior - 3*zprior_sigma <= z <= zprior + 3*zprior_sigma):
+    # (0.0 <= z <= 6.0): #(zprior - 3*zprior_sigma <= z <= zprior + 3*zprior_sigma):
+    if (zprior - 5*zprior_sigma <= z <= zprior + 5*zprior_sigma):
     
         # Make sure model is not older than the Universe
         # Allowing at least 100 Myr for the first galaxies to form after Big Bang
@@ -199,7 +200,7 @@ def loglike_host(theta, x, data, err):
 
     # ------- log likelihood
     #chi2 = np.nansum( (y-data)**2/err**2 ) / len(y)
-    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) - 0.5 * np.nansum( np.log(2 * np.pi * err**2) )
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) # - 0.5 * np.nansum( np.log(2 * np.pi * err**2) )
     #stretch_fac = 0.0
     #lnLike = -0.5 * (1 + stretch_fac) * chi2
 
@@ -467,7 +468,7 @@ def main():
 
     # ---- fitting
     zprior = 1.95
-    zprior_sigma = 0.02
+    zprior_sigma = 0.03
     rhost_init = np.array([zprior, 1.0, 1.1])
 
     # Divide by continuum
