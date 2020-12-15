@@ -128,9 +128,9 @@ def logprior_host(theta, zprior, zprior_sigma):
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
-            #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
 
-            return 0.0
+            return ln_pz
     
     return -np.inf
 
@@ -1407,7 +1407,7 @@ def main():
             #sys.exit(0)
 
             if hostid == 207:
-                zprior = 1.96
+                zprior = 1.95
                 rhost_init = np.array([zprior, 13.3,  1.0, 1.1, 0.0])
             elif hostid == 475:
                 zprior = 0.44
@@ -1419,7 +1419,7 @@ def main():
                 zprior = 0.92
                 rhost_init = np.array([zprior, 11.3, 1.0, 1.0, 0.0])
 
-            zprior_sigma = 0.05  # standard deviation for the Gaussian prior on redshift
+            zprior_sigma = 0.02  # standard deviation for the Gaussian prior on redshift
 
             args_sn = [sn_wav, sn_flam, sn_ferr]
             args_host = [host_wav, host_flam, host_ferr, zprior, zprior_sigma]
