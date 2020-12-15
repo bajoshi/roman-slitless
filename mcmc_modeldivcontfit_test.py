@@ -92,9 +92,9 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def logpost_host(theta, x, data, err, zprior, zprior_sigma):
+def logpost_host(theta, x, data, err):
 
-    lp = logprior_host(theta, zprior, zprior_sigma)
+    lp = logprior_host(theta)
     #print("Prior HOST:", lp)
     
     if not np.isfinite(lp):
@@ -150,13 +150,13 @@ def logprior_host(theta, *priorargs, zprior_flag=False):
     return -np.inf
 """
 
-def logprior_host(theta, zprior, zprior_sigma):
+def logprior_host(theta):
 
     z, age, logtau = theta
     #print("\nParameter vector given:", theta)
 
     # (0.0 <= z <= 6.0): #(zprior - 3*zprior_sigma <= z <= zprior + 3*zprior_sigma):
-    if (zprior - 5*zprior_sigma <= z <= zprior + 5*zprior_sigma):
+    if (0.0 <= z <= 6.0):
     
         # Make sure model is not older than the Universe
         # Allowing at least 100 Myr for the first galaxies to form after Big Bang
@@ -468,7 +468,7 @@ def main():
 
     # ---- fitting
     zprior = 1.95
-    zprior_sigma = 0.03
+    #zprior_sigma = 0.03
     rhost_init = np.array([zprior, 1.0, 1.1])
 
     # Divide by continuum
@@ -522,7 +522,7 @@ def main():
         pos_host[i] = rh
 
     # Setup arguments for posterior function
-    args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma]
+    args_host = [host_wav, host_flam_cont_norm, host_ferr_cont_norm]
 
     # Get truths
     # ---- HOST
@@ -545,6 +545,8 @@ def main():
     # ------
     print("Running on:", hostid)
     print("Starting position for ball of walkers:", rhost_init)
+    print("logpost at starting position for HOST galaxy:", \
+        logpost_host(rhost_init, host_wav, host_flam_cont_norm, host_ferr_cont_norm))
 
     # ----------- Set up the HDF5 file to incrementally save progress to
     emcee_savefile = emcee_diagnostics_dir +'emcee_sampler_' + str(hostid) + '_contdivtest.h5'
