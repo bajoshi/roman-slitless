@@ -122,15 +122,15 @@ def logprior_host(theta, zprior, zprior_sigma):
         age_at_z = astropy_cosmo.age(z).value  # in Gyr
         age_lim = age_at_z - 0.1  # in Gyr
 
-        if ((0.0 <= ms <= 14.0) and \
+        if ((13.0 <= ms <= 14.0) and \
             (0.01 <= age <= age_lim) and \
             (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
-            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
 
-            return ln_pz
+            return 0.0
     
     return -np.inf
 
@@ -164,7 +164,7 @@ def loglike_host(theta, x, data, err):
 
     # ------- log likelihood
     #chi2 = np.nansum( (y-data)**2/err**2 ) / len(y)
-    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) - 0.5 * np.nansum( np.log(2 * np.pi * err**2) )
+    lnLike = -0.5 * np.nansum( (y-data)**2/err**2 )# - 0.5 * np.nansum( np.log(2 * np.pi * err**2) )
     #stretch_fac = 10.0
     #lnLike = -0.5 * (1 + stretch_fac) * chi2
 
@@ -621,6 +621,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
 
     print("Done with fitting.")
+    print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
 
     return None
 
@@ -647,7 +648,6 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     thinning_steps = int(0.5 * np.min(tau))
 
     print(f"{bcolors.WARNING}")
-    #print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
     print("Average Tau:", np.mean(tau))
     print("Burn-in:", burn_in)
     print("Thinning steps:", thinning_steps)
@@ -736,11 +736,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
     #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
 
-    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7, \
-        range=[(1.952, 1.954), (12.5, 13.2), (0.5, 1.0), (-0.6, 0.6), (0.5, 0.9)] )
+        verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7)#, \
+    #range=[(1.952, 1.954), (12.5, 13.2), (0.5, 1.0), (-0.6, 0.6), (0.5, 0.9)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -1426,6 +1426,8 @@ def main():
 
             print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
+
+            sys.exit(0)
 
             rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")

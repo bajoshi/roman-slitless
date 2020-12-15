@@ -224,7 +224,7 @@ def loglike_host(theta, x, data, err):
     plt.show()
     sys.exit(0)
     """
-    
+
     return lnLike
 
 def model_host(x, z, age, logtau, av):
@@ -552,6 +552,7 @@ def main():
     # ----------- Set up the HDF5 file to incrementally save progress to
     emcee_savefile = emcee_diagnostics_dir +'emcee_sampler_' + str(hostid) + '_contdivtest.h5'
 
+    """
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim)
 
@@ -565,7 +566,8 @@ def main():
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
 
     print("Done with fitting.")
-    print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
+    print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+    """
 
     # ---------------------------------------- Plot results
     #  r'$\mathrm{log(M_s/M_\odot)}$',
@@ -613,7 +615,7 @@ def main():
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7, \
-        range=[(1.952, 1.954), (0.0, 4.0), (0.4, 2.0)] )
+        range=[(1.952, 1.954), (0.0, 0.6), (-1.0, 2.0), (0.5, 1.1)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + str(hostid) + '_' + img_suffix + '_contdivtest.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -629,7 +631,7 @@ def main():
     for ind in inds:
         sample = flat_samples[ind]
 
-        m = model_host(host_wav, sample[0], sample[1], sample[2])
+        m = model_host(host_wav, sample[0], sample[1], sample[2], sample[3])
 
         # ------- Clip all arrays to where grism sensitivity is >= 25%
         x0 = np.where( (host_wav >= grism_sens_wav[grism_wav_idx][0]  ) &
