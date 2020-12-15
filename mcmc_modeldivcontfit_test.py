@@ -152,10 +152,10 @@ def logprior_host(theta, *priorargs, zprior_flag=False):
 
 def logprior_host(theta):
 
-    z, age, logtau = theta
+    z, age, logtau, av = theta
     #print("\nParameter vector given:", theta)
 
-    # (0.0 <= z <= 6.0): #(zprior - 3*zprior_sigma <= z <= zprior + 3*zprior_sigma):
+    # (0.0 <= z <= 6.0): #(zprior - 5*zprior_sigma <= z <= zprior + 5*zprior_sigma):
     if (0.0 <= z <= 6.0):
     
         # Make sure model is not older than the Universe
@@ -164,7 +164,8 @@ def logprior_host(theta):
         age_lim = age_at_z - 0.1  # in Gyr
 
         if ((0.01 <= age <= age_lim) and \
-            (-3.0 <= logtau <= 2.0)):
+            (-3.0 <= logtau <= 2.0)  and \
+            (0.0 <= av <= 5.0)):
 
             return 0.0
 
@@ -172,9 +173,9 @@ def logprior_host(theta):
 
 def loglike_host(theta, x, data, err):
     
-    z, age, logtau = theta
+    z, age, logtau, av = theta
 
-    y = model_host(x, z, age, logtau)
+    y = model_host(x, z, age, logtau, av)
     #print("Model func result:", y)
 
     # ------- Clip all arrays to where grism sensitivity is >= 25%
@@ -223,10 +224,10 @@ def loglike_host(theta, x, data, err):
     plt.show()
     sys.exit(0)
     """
-
+    
     return lnLike
 
-def model_host(x, z, age, logtau):
+def model_host(x, z, age, logtau, av):
     """
     Expects to get the following arguments
     
@@ -279,13 +280,13 @@ def model_host(x, z, age, logtau):
     model_llam = models_arr[model_idx]
 
     # ------ Apply dust extinction
-    #model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
+    model_dusty_llam = get_dust_atten_model(model_lam, model_llam, av)
 
     # ------ Multiply luminosity by stellar mass
     #model_dusty_llam = model_dusty_llam * 10**ms
 
     # ------ Apply redshift
-    model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_llam, z)
+    model_lam_z, model_flam_z = cosmo.apply_redshift(model_lam, model_dusty_llam, z)
     Lsol = 3.826e33
     model_flam_z = Lsol * model_flam_z
 
@@ -469,7 +470,7 @@ def main():
     # ---- fitting
     zprior = 1.95
     #zprior_sigma = 0.03
-    rhost_init = np.array([zprior, 1.0, 1.1])
+    rhost_init = np.array([zprior, 1.0, 1.1, 0.0])
 
     # Divide by continuum
     # In this call you want to see the plot showing the fit
@@ -499,7 +500,7 @@ def main():
     #logpost_host(rhost_init, host_wav, host_flam_cont_norm, host_ferr_cont_norm, zprior, zprior_sigma)
 
     # --------------------------------- Emcee run
-    nwalkers, ndim = 300, 3
+    nwalkers, ndim = 300, 4
 
     # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
     pos_host = np.zeros(shape=(nwalkers, ndim))
@@ -507,7 +508,7 @@ def main():
     jump_size_z = 0.01
     jump_size_age = 0.1  # in gyr
     jump_size_logtau = 0.01  # tau in gyr
-    #jump_size_av = 0.1  # magnitudes
+    jump_size_av = 0.1  # magnitudes
 
     for i in range(nwalkers):
 
@@ -515,9 +516,9 @@ def main():
         rh0 = float(rhost_init[0] + jump_size_z * np.random.normal(size=1))
         rh1 = float(rhost_init[1] + jump_size_age * np.random.normal(size=1))
         rh2 = float(rhost_init[2] + jump_size_logtau * np.random.normal(size=1))
-        #rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
+        rh3 = float(rhost_init[3] + jump_size_av * np.random.normal(size=1))
 
-        rh = np.array([rh0, rh1, rh2])#, rh3])
+        rh = np.array([rh0, rh1, rh2, rh3])
 
         pos_host[i] = rh
 
@@ -564,6 +565,7 @@ def main():
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
 
     print("Done with fitting.")
+    print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
 
     # ---------------------------------------- Plot results
     #  r'$\mathrm{log(M_s/M_\odot)}$',
@@ -582,7 +584,7 @@ def main():
     thinning_steps = int(0.5 * np.min(tau))
 
     print(f"{bcolors.WARNING}")
-    #print("Acceptance Fraction:", sampler.acceptance_fraction, "\n")
+    print("Tau array:", tau)
     print("Average Tau:", np.mean(tau))
     print("Burn-in:", burn_in)
     print("Thinning steps:", thinning_steps)
@@ -607,11 +609,11 @@ def main():
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
 
-    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7)#, \
-    #range=[(1.952, 1.954), (12.5, 13.2), (0.5, 1.0), (-0.6, 0.6), (0.5, 0.9)] )
+        verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7, \
+        range=[(1.952, 1.954), (0.0, 4.0), (0.4, 2.0)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + str(hostid) + '_' + img_suffix + '_contdivtest.pdf', \
         dpi=200, bbox_inches='tight')
 
