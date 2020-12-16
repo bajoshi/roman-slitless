@@ -90,10 +90,12 @@ for oldf in glob.glob('*_flt.fits'):
         # update the science extension with random noise
         hdul[('SCI',1)].data = sci + np.random.normal(loc=0., scale=sig, size=size)
 
+        # Handling of pixels with negative signal
+        neg_idx = np.where(hdul[('SCI',1)].data < 0.0)
+        hdul[('SCI',1)].data[neg_idx] = 0.0  # This is wrong but should allow the rest of the program to work for now
+
         # update the uncertainty extension with the sigma
         err = np.sqrt(sci) / exptime
-
-         = np.where(sci < 0.0)
 
         hdul[('ERR',1)].data = err  # np.full_like(sci, sig)
 
