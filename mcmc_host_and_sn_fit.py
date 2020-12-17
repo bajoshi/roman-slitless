@@ -122,15 +122,15 @@ def logprior_host(theta, zprior, zprior_sigma):
         age_at_z = astropy_cosmo.age(z).value  # in Gyr
         age_lim = age_at_z - 0.1  # in Gyr
 
-        if ((13.0 <= ms <= 14.0) and \
+        if ((9.0 <= ms <= 12.5) and \
             (0.01 <= age <= age_lim) and \
             (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
-            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
 
-            return ln_pz
+            return 0.0
     
     return -np.inf
 
@@ -615,7 +615,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
         #moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
-        sampler.run_mcmc(pos, 1000, progress=True)
+        sampler.run_mcmc(pos, 2000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -965,7 +965,7 @@ def main():
             print("Host input z:", host_z)
             print("Host input stellar mass [log(Ms/Msol)]:", host_ms)
             print("Host input age [Gyr]:", host_age)
-            print("Host input tau [Gyr]:", host_tau)
+            print("Host input tau [Gyr] and log(tau [Gyr]):", host_tau, "{:.3f}".format(np.log10(host_tau)))
             print("Host input metallicity:", host_met)
             print("Host input Av [mag]:", host_av)
 
@@ -998,6 +998,11 @@ def main():
             host_ferr = noise_level * host_flam
             sn_ferr = noise_level * sn_flam
 
+            # Manual mod to check if it'll get the correct 
+            # stellar mass if the flux scaling is correct.
+            host_flam /= 260.0
+            host_ferr /= 260.0
+
             #host_flam_norm = host_flam / np.median(host_flam)
             #host_ferr_norm = noise_level * host_flam_norm
 
@@ -1014,7 +1019,7 @@ def main():
 
             # plot extracted spectrum
             ax.plot(host_wav, host_flam, color='k', lw=2, \
-                label='pyLINEAR extraction (sky noise added; no stat noise)')
+                label='pyLINEAR extraction (div. const.) (sky noise added; no stat noise)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
             #ax.errorbar(host_wav, host_flam, yerr=host_ferr, marker='o', \
@@ -1027,11 +1032,11 @@ def main():
                                 (host_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
             m = m[host_x0]
 
-            a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
-            print("HOST a:", "{:.3e}".format(a))
-            m = a*m
+            #a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
+            #print("HOST a:", "{:.3e}".format(a))
+            #m = a*m
             chi2_good = np.nansum( (m - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(m)
-            print("HOST base model reduced chi2:", chi2_good)
+            print("HOST base model chi2:", chi2_good)
 
             ax.plot(host_wav[host_x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
 
@@ -1039,19 +1044,22 @@ def main():
             if 'plffsn2' not in socket.gethostname():
                 h_path = h_path.replace('/home/bajoshi/', '/Users/baj/')
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
-            ax.plot(host_template['lam'], 50 * host_template['flux'], lw=1.0, \
-                color='tab:green', zorder=1, label='model given to pyLINEAR (+constant)')
+            ax.plot(host_template['lam'], host_template['flux'], lw=1.0, \
+                color='tab:green', zorder=1, label='model given to pyLINEAR')
 
-            #ax.set_xlim(9000, 20000)
-            #host_fig_ymin = np.min(host_flam)
-            #host_fig_ymax = np.max(host_flam)
-            #ax.set_ylim(host_fig_ymin * 0.2, host_fig_ymax * 1.2)
+            ax.set_xlim(9000, 20000)
+            host_fig_ymin = np.min(host_flam)
+            host_fig_ymax = np.max(host_flam)
+            ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
 
-            #ax.legend(loc=0, frameon=False)
+            ax.legend(loc=0, fontsize=12, frameon=False)
 
-            #plt.show()
-            #sys.exit(0)
+            plt.show()
+            sys.exit(0)
+            """
 
+
+            """
             # plot some other template that is NOT a good fit
             bad_model = model_host(host_wav, 1.95, 1.0, 13.0, 1.0, 3.0)
             bad_model = bad_model[host_x0]
@@ -1408,7 +1416,7 @@ def main():
 
             if hostid == 207:
                 zprior = 1.95
-                rhost_init = np.array([zprior, 13.3,  1.0, 1.1, 0.0])
+                rhost_init = np.array([zprior, 10.86, 0.73, 0.65, 0.66])
             elif hostid == 475:
                 zprior = 0.44
                 rhost_init = np.array([zprior, 10.7, 2.0, 0.5, 3.5])
