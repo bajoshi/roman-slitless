@@ -62,13 +62,14 @@ if 'plffsn2' in socket.gethostname():
     modeldir = extdir + 'bc03_output_dir/'
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
-    modeldir = extdir + 'bc03_output_dir/m62/'
+    modeldir = extdir + 'bc03_output_dir/'
 
 assert os.path.isdir(modeldir)
 
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
 model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
 
+"""
 all_m62_models = []
 tau_low = 0
 tau_high = 20
@@ -80,6 +81,19 @@ for t in range(tau_low, tau_high, 1):
 
 # load models with large tau separately
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
+"""
+
+all_m22_models = []
+tau_low = 0
+tau_high = 20
+for t in range(tau_low, tau_high, 1):
+    tau_str = "{:.3f}".format(t).replace('.', 'p')
+    a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m22_chab.npy', mmap_mode='r')
+    all_m22_models.append(a)
+    del a
+
+# load models with large tau separately
+#all_m22_models.append(np.load(modeldir + 'bc03_all_tau20p000_m22_chab.npy', mmap_mode='r'))
 
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
@@ -124,13 +138,13 @@ def logprior_host(theta, zprior, zprior_sigma):
 
         if ((9.0 <= ms <= 12.5) and \
             (0.01 <= age <= age_lim) and \
-            (-3.0 <= logtau <= 2.0) and \
+            (-3.0 <= logtau <= 1.29) and \
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
-            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
 
-            return ln_pz
+            return 0.0
     
     return -np.inf
 
@@ -204,9 +218,9 @@ def model_host(x, z, ms, age, logtau, av):
     av: visual dust extinction
     """
 
+    """
     metals = 0.02
 
-    """
     # Get the metallicity in the format that BC03 needs
     if metals == 0.0001:
         metallicity = 'm22'
@@ -235,7 +249,7 @@ def model_host(x, z, ms, age, logtau, av):
         model_idx = tau_int_idx * len(model_ages)  +  age_idx
 
         models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
-        models_arr = all_m62_models[models_taurange_idx]
+        models_arr = all_m22_models[models_taurange_idx]
 
         #print("Tau int and age index:", tau_int_idx, age_idx)
         #print("Tau and age from index:", models_taurange_idx+tau_int_idx/1e3, model_ages[age_idx]/1e9)
