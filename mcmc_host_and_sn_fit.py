@@ -128,9 +128,9 @@ def logprior_host(theta, zprior, zprior_sigma):
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
-            #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
 
-            return 0.0
+            return ln_pz
     
     return -np.inf
 
@@ -185,7 +185,7 @@ def loglike_host(theta, x, data, err):
 
     ax.set_xscale('log')
     plt.show()
-    sys.exit(0)
+    #sys.exit(0)
     """
 
     return lnLike
@@ -562,8 +562,8 @@ def add_noise(sig_arr, noise_level):
             if (iter_count >= max_iters) and (spec_noise[k] < 0):
                 spec_noise[k] = sig_arr[k]
 
-        # err_arr[k] = np.sqrt(spec_noise[k])
-        err_arr[k] = 4 * noise_level * spec_noise[k]
+        #err_arr[k] = np.sqrt(spec_noise[k])
+        err_arr[k] = noise_level * spec_noise[k]
 
     return spec_noise, err_arr
 
@@ -613,9 +613,9 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
-        #moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
-        sampler.run_mcmc(pos, 2000, progress=True)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend, \
+            moves=emcee.moves.MHmove())
+        sampler.run_mcmc(pos, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -631,10 +631,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     pkl_path = emcee_diagnostics_dir + checkdir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
     #sampler = pickle.load(open(pkl_path, 'rb'))
 
-    sampler = emcee.backends.HDFBackend(pkl_path.replace('.pkl','.h5'))
+    h5_path = pkl_path.replace('.pkl','.h5')
+    sampler = emcee.backends.HDFBackend(h5_path)
 
     samples = sampler.get_chain()
-    print(f"{bcolors.CYAN}\nRead in sampler:", pkl_path, f"{bcolors.ENDC}")
+    print(f"{bcolors.CYAN}\nRead in sampler:", h5_path, f"{bcolors.ENDC}")
     print("Samples shape:", samples.shape)
 
     #reader = emcee.backends.HDFBackend(pkl_path.replace('.pkl', '.h5'))
@@ -736,11 +737,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
     #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
 
-    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.7, smooth1d=0.7)#, \
-    #range=[(1.952, 1.954), (12.5, 13.2), (0.5, 1.0), (-0.6, 0.6), (0.5, 0.9)] )
+        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8, \
+        range=[(1.9525, 1.9535), (9.8, 11.5), (0.2, 1.6), (-0.7, 1.4), (0.5, 0.9)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -1416,7 +1417,7 @@ def main():
 
             if hostid == 207:
                 zprior = 1.95
-                rhost_init = np.array([zprior, 11.15, 1.5, 1.1, 0.5])
+                rhost_init = np.array([zprior, 10.8, 0.7, 0.6, 0.65])
             elif hostid == 475:
                 zprior = 0.44
                 rhost_init = np.array([zprior, 10.7, 2.0, 0.5, 3.5])
@@ -1432,8 +1433,12 @@ def main():
             args_sn = [sn_wav, sn_flam, sn_ferr]
             args_host = [host_wav, host_flam, host_ferr, zprior, zprior_sigma]
 
-            print(f"{bcolors.GREEN}Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
+            print(f"{bcolors.GREEN}", "Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
+
+            rtrue = np.array([zprior, host_ms, host_age, np.log10(host_tau), host_av])
+            print("logpost at true position for HOST galaxy:", logpost_host(rtrue, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
+            print(f"{bcolors.WARNING}", "Lower log(posterior) probability at true position likely due to metallicity difference.", f"{bcolors.ENDC}")
 
             rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
