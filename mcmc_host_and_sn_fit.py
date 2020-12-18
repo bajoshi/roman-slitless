@@ -627,8 +627,8 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend, \
-            moves=emcee.moves.MHmove())
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
+        #moves=emcee.moves.MHmove())
         sampler.run_mcmc(pos, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
