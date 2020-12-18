@@ -1416,7 +1416,7 @@ def main():
 
             if hostid == 207:
                 zprior = 1.95
-                rhost_init = np.array([zprior, 10.86, 0.73, 0.65, 0.66])
+                rhost_init = np.array([zprior, 11.15, 1.5, 1.1, 0.5])
             elif hostid == 475:
                 zprior = 0.44
                 rhost_init = np.array([zprior, 10.7, 2.0, 0.5, 3.5])
