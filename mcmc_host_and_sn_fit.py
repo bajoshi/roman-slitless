@@ -83,6 +83,7 @@ for t in range(tau_low, tau_high, 1):
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
 """
 
+
 all_m22_models = []
 tau_low = 0
 tau_high = 20
@@ -91,7 +92,6 @@ for t in range(tau_low, tau_high, 1):
     a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m22_chab.npy', mmap_mode='r')
     all_m22_models.append(a)
     del a
-
 # load models with large tau separately
 #all_m22_models.append(np.load(modeldir + 'bc03_all_tau20p000_m22_chab.npy', mmap_mode='r'))
 
@@ -629,7 +629,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
         #moves=emcee.moves.MHmove())
-        sampler.run_mcmc(pos, 1000, progress=True)
+        sampler.run_mcmc(pos, 2000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -751,11 +751,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
     #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
 
-    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8, \
-        range=[(1.9525, 1.9535), (9.8, 11.5), (0.2, 1.6), (-0.7, 1.4), (0.5, 0.9)] )
+        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
+    #range=[(1.9525, 1.9535), (9.8, 11.5), (0.2, 1.6), (-0.7, 1.4), (0.5, 0.9)] )
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -839,17 +839,6 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         dpi=200, bbox_inches='tight')
 
     return None
-
-def model_host_norm(x, z, age, tau, av):
-
-    m = model_host(x, z, age, tau, av, 1.0)
-    m /= np.median(m)
-
-    x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
-                   (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
-    m = m[x0]
-
-    return m
 
 def get_optimal_fit(args_obj, object_type):
 
@@ -1015,17 +1004,14 @@ def main():
 
             # Manual mod to check if it'll get the correct 
             # stellar mass if the flux scaling is correct.
-            host_flam /= 260.0
-            host_ferr /= 260.0
+            host_flam /= 259.2
+            host_ferr /= 259.2
 
             #host_flam_norm = host_flam / np.median(host_flam)
             #host_ferr_norm = noise_level * host_flam_norm
 
             # -------- Test figure for HOST
             """
-            snr_host = host_flam / host_ferr
-            print("Mean of signal to noise array:", np.mean(snr_host))
-
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
@@ -1037,8 +1023,6 @@ def main():
                 label='pyLINEAR extraction (div. const.) (sky noise added; no stat noise)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
-            #ax.errorbar(host_wav, host_flam, yerr=host_ferr, marker='o', \
-            #    markersize=1.5, color='k', ecolor='b', lw=0.2, zorder=1)
 
             m = model_host(host_wav, host_z, host_ms, host_age, np.log10(host_tau), host_av)
 
@@ -1047,8 +1031,8 @@ def main():
                                 (host_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
             m = m[host_x0]
 
-            #a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
-            #print("HOST a:", "{:.3e}".format(a))
+            a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
+            print("HOST a:", "{:.4e}".format(a))
             #m = a*m
             chi2_good = np.nansum( (m - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(m)
             print("HOST base model chi2:", chi2_good)
@@ -1072,7 +1056,6 @@ def main():
             plt.show()
             sys.exit(0)
             """
-
 
             """
             # plot some other template that is NOT a good fit
@@ -1431,7 +1414,7 @@ def main():
 
             if hostid == 207:
                 zprior = 1.95
-                rhost_init = np.array([zprior, 10.8, 0.7, 0.6, 0.65])
+                rhost_init = np.array([zprior, 11.0, 2.5, 1.0, 0.5])
             elif hostid == 475:
                 zprior = 0.44
                 rhost_init = np.array([zprior, 10.7, 2.0, 0.5, 3.5])
@@ -1450,9 +1433,9 @@ def main():
             print(f"{bcolors.GREEN}", "Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
             print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
 
-            rtrue = np.array([zprior, host_ms, host_age, np.log10(host_tau), host_av])
+            rtrue = np.array([host_z, host_ms, host_age, np.log10(host_tau), host_av])
             print("logpost at true position for HOST galaxy:", logpost_host(rtrue, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
-            print(f"{bcolors.WARNING}", "Lower log(posterior) probability at true position likely due to metallicity difference.", f"{bcolors.ENDC}")
+            #print(f"{bcolors.WARNING}", "Lower log(posterior) probability at true position likely due to metallicity difference.", f"{bcolors.ENDC}")
 
             rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")

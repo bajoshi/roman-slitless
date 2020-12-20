@@ -100,7 +100,7 @@ for oldf in glob.glob('*_flt.fits'):
         # update the uncertainty extension with the sigma
         err = np.sqrt(sci) / exptime
 
-        hdul[('ERR',1)].data = err  # np.full_like(sci, sig)
+        hdul[('ERR',1)].data = np.full_like(sci, sig)
 
         # now write to a new file name
         hdul.writeto(oldf, overwrite=True)
