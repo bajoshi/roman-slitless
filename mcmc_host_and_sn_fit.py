@@ -62,14 +62,14 @@ if 'plffsn2' in socket.gethostname():
     modeldir = extdir + 'bc03_output_dir/'
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
-    modeldir = extdir + 'bc03_output_dir/'
+    modeldir = extdir + 'bc03_output_dir/m62/'
 
 assert os.path.isdir(modeldir)
 
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
 model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
 
-"""
+
 all_m62_models = []
 tau_low = 0
 tau_high = 20
@@ -81,9 +81,9 @@ for t in range(tau_low, tau_high, 1):
 
 # load models with large tau separately
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
+
+
 """
-
-
 all_m22_models = []
 tau_low = 0
 tau_high = 20
@@ -94,6 +94,7 @@ for t in range(tau_low, tau_high, 1):
     del a
 # load models with large tau separately
 #all_m22_models.append(np.load(modeldir + 'bc03_all_tau20p000_m22_chab.npy', mmap_mode='r'))
+"""
 
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
@@ -138,7 +139,7 @@ def logprior_host(theta, zprior, zprior_sigma):
 
         if ((9.0 <= ms <= 12.5) and \
             (0.01 <= age <= age_lim) and \
-            (-3.0 <= logtau <= 1.29) and \
+            (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
@@ -249,7 +250,7 @@ def model_host(x, z, ms, age, logtau, av):
         model_idx = tau_int_idx * len(model_ages)  +  age_idx
 
         models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
-        models_arr = all_m22_models[models_taurange_idx]
+        models_arr = all_m62_models[models_taurange_idx]
 
         #print("Tau int and age index:", tau_int_idx, age_idx)
         #print("Tau and age from index:", models_taurange_idx+tau_int_idx/1e3, model_ages[age_idx]/1e9)
@@ -751,11 +752,17 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
     #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
 
-    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
-    #range=[(1.9525, 1.9535), (9.8, 11.5), (0.2, 1.6), (-0.7, 1.4), (0.5, 0.9)] )
+        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8, \
+        range=[(1.9525, 1.9535), (10.5, 11.5), (1.2, 2.4), (0.5, 1.3), (0.4, 0.7)])
+
+    #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
+
+    # redshift is the first axis
+    #corner_axes[0, 0].set_title()
+
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
@@ -813,7 +820,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         flam = flam[x0]
         ferr = ferr[x0]
 
-        ax3.plot(wav, m, color='tab:red', alpha=0.2, zorder=2)
+        ax3.plot(wav, m, color='mediumblue', alpha=0.2, zorder=2)
 
         # ------------------------ print info
         #lnL = logpost_host(sample, wav, flam, ferr)
@@ -832,8 +839,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         #    print("With sample:", sample)
         #    print("Log likelihood for this sample:", lnL)
 
-    ax3.plot(wav, flam, color='k', zorder=3)
-    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
+    ax3.plot(wav, flam, color='k', zorder=1)
+    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
 
     fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
@@ -903,7 +910,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_dec7/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_nov30/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -916,7 +923,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(400, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1004,8 +1011,13 @@ def main():
 
             # Manual mod to check if it'll get the correct 
             # stellar mass if the flux scaling is correct.
-            host_flam /= 259.2
-            host_ferr /= 259.2
+            # for galaxy 207 from dec7 run
+            #host_flam /= 259.2
+            #host_ferr /= 259.2
+
+            # for galaxy 475 from nov30 run
+            host_flam /= 40.2
+            host_ferr /= 40.2
 
             #host_flam_norm = host_flam / np.median(host_flam)
             #host_ferr_norm = noise_level * host_flam_norm
@@ -1049,7 +1061,7 @@ def main():
             ax.set_xlim(9000, 20000)
             host_fig_ymin = np.min(host_flam)
             host_fig_ymax = np.max(host_flam)
-            ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
+            #ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
 
             ax.legend(loc=0, fontsize=12, frameon=False)
 
