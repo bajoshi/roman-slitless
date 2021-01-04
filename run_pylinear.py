@@ -68,8 +68,13 @@ print("Simulation done.")
 print("Adding noise...")
 # check Russell's notes in pylinear notebooks
 # also check WFIRST tech report TR1901
-sig = 0.001    # noise RMS in e-/s 
-exptime = 300
+#sig = 0.001    # noise RMS in e-/s 
+sky = 1.0      # e/s
+
+dark = 0.015   # e/s/pix
+read = 10.0    # electrons
+
+exptime = 300  # seconds
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)
@@ -83,29 +88,41 @@ for oldf in glob.glob('*_flt.fits'):
         sci = hdul[('SCI',1)].data    # the science image
         size = sci.shape              # dimensionality of the image
 
-        # update the science extension with random noise
-        sci = sci + np.random.normal(loc=0., scale=sig, size=size)
+        # update the science extension with sky background and dark current
+        signal = (sci + sky + dark)
 
         # Handling of pixels with negative signal
-        neg_idx = np.where(sci < 0.0)
-        sci[neg_idx] = 0.0  # This is wrong but should allow the rest of the program to work for now
+        #neg_idx = np.where(sci < 0.0)
+        #sci[neg_idx] = 0.0  # This is wrong but should allow the rest of the program to work for now
 
         # Multiply the science image with the exptime
         # sci image originally in electrons/s
-        sci = sci * exptime  # this is now in electrons
+        signal = signal * exptime  # this is now in electrons
+
+        # Randomly vary signal about its mean. Assuming Gaussian distribution
+        # first get the uncertainty
+        variance = signal + read**2
+        sigma = np.sqrt(variance)
+        new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
+
+        # now divide by the exptime and subtract the sky again 
+        # to get back to e/s. LINEAR expects a background subtracted image
+        final_sig = (new_sig / exptime) - sky
 
         # Assign updated sci image to the first [SCI] extension
-        hdul[('SCI',1)].data = sci
+        hdul[('SCI',1)].data = final_sig
 
         # update the uncertainty extension with the sigma
-        err = np.sqrt(sci) / exptime
+        err = np.sqrt(signal) / exptime
 
-        hdul[('ERR',1)].data = np.full_like(sci, sig)
+        hdul[('ERR',1)].data = err
 
         # now write to a new file name
         hdul.writeto(oldf, overwrite=True)
 
 print("Noise addition done. Check simulated images.")
+print("Exiting. Check statistics with ds9 and continue with extraction.")
+sys.exit(0)
 
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)

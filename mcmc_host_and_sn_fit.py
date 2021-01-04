@@ -752,11 +752,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
     #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
 
-    print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8, \
-        range=[(1.9525, 1.9535), (10.5, 11.5), (1.2, 2.4), (0.5, 1.3), (0.4, 0.7)])
+        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
+    #range=[(1.9525, 1.9535), (10.5, 11.5), (1.2, 2.4), (0.5, 1.3), (0.4, 0.7)])
 
     #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
 
@@ -820,7 +820,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         flam = flam[x0]
         ferr = ferr[x0]
 
-        ax3.plot(wav, m, color='mediumblue', alpha=0.2, zorder=2)
+        ax3.plot(wav, m, color='mediumblue', lw=0.8, alpha=0.1, zorder=2)
 
         # ------------------------ print info
         #lnL = logpost_host(sample, wav, flam, ferr)
@@ -839,7 +839,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         #    print("With sample:", sample)
         #    print("Log likelihood for this sample:", lnL)
 
-    ax3.plot(wav, flam, color='k', zorder=1)
+    ax3.plot(wav, flam, color='k', lw=2.0, zorder=1)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
 
     fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
@@ -898,6 +898,7 @@ def main():
 
     print(f"{bcolors.WARNING}")
     print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
+    print("* * * *   [TODO]: When plotting \"best-fit\" models, only plot those that are within +- 1-sigma of the values from corner.  * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"
@@ -910,7 +911,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_nov30/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_dec7/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -923,7 +924,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(400, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1012,12 +1013,12 @@ def main():
             # Manual mod to check if it'll get the correct 
             # stellar mass if the flux scaling is correct.
             # for galaxy 207 from dec7 run
-            #host_flam /= 259.2
-            #host_ferr /= 259.2
+            host_flam /= 259.2
+            host_ferr /= 259.2
 
             # for galaxy 475 from nov30 run
-            host_flam /= 40.2
-            host_ferr /= 40.2
+            #host_flam /= 40.2
+            #host_ferr /= 40.2
 
             #host_flam_norm = host_flam / np.median(host_flam)
             #host_ferr_norm = noise_level * host_flam_norm
