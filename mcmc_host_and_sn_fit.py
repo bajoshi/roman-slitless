@@ -640,7 +640,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     return None
 
-def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, objid, img_suffix, verbose=False):
+def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, objid, img_suffix):
 
     checkdir = '' #'generic_11112020/'
     pkl_path = emcee_diagnostics_dir + checkdir + object_type + '_' + str(objid) + '_emcee_sampler.pkl'
@@ -663,7 +663,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     burn_in = int(2 * np.max(tau))
     thinning_steps = int(0.5 * np.min(tau))
 
-    print(f"{bcolors.WARNING}")
+    print(f"{bcolors.CYAN}")
     print("Average Tau:", np.mean(tau))
     print("Burn-in:", burn_in)
     print("Thinning steps:", thinning_steps)
@@ -689,61 +689,10 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     print("\nFlat samples shape:", flat_samples.shape)
 
     # plot corner plot
-    # compute weights for the samples first
-    # only doing this because I noticed that 
-    # some LSF values in the samples are negative
-    corner_weights = np.zeros(len(flat_samples))
 
-    if verbose:
-
-        print("\nSample number:", j)
-        print(f"{wcol}Weight: ", corner_weights[j], f"{bcolors.ENDC}")
-        print("Parameter vector:", s)
-        if object_type == 'host':
-            lnL = logpost_host(s, args_obj[0], args_obj[1], args_obj[2])
-        else:
-            lnL = logpost_sn(s, args_obj[0], args_obj[1], args_obj[2], args_obj[3])
-        print("ln(likelihood): ", lnL)
-
-        # Now plot model and data to compare
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        
-        x = args_obj[0]
-        d = args_obj[1]
-        e = args_obj[2]
-        y = model_host(x, s[0], s[1], s[2], s[3], s[4])
-
-        # ------- Clip all arrays to where grism sensitivity is >= 25%
-        # then get the log likelihood
-        x0 = np.where( (x >= grism_sens_wav[grism_wav_idx][0]  ) &
-                       (x <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
-
-        x = x[x0]
-        y = y[x0]
-        d = d[x0]
-        e = e[x0]
-
-        # ------- Vertical scaling factor
-        a = np.nansum(d * y / e**2) / np.nansum(y**2 / e**2)
-        print("Alpha HOST recomputed:", "{:.2e}".format(a))
-
-        y = y * a
-
-        print(f"{bcolors.CYAN}Reduced chi2 (pure chi2 NOT ln(likelihood)):", np.nansum( (y-d)**2/e**2 ) / len(y), f"{bcolors.ENDC}")
-        chi2_expl = 0
-        for w in range(len(x)):
-            chi2_expl += (y[w]-d[w])**2/e[w]**2
-        print("Explicitly summed chi2:", chi2_expl)
-
-        ax.plot(x, d)
-        ax.plot(x, y)
-
-        plt.show()
-        plt.clf()
-        plt.close()
-
-    # These need to be built from the truth arrays.
+    # assign ranges to parameters
+    # These need to be built from the corner quantile arrays.
+    # For the test galaxies truth values can be used.
     # However, it seems like you cannot input the truth 
     # value (+- some padding) directly into the tuples in the range list.
     # For some unknown reason corner freezes when that is done.
