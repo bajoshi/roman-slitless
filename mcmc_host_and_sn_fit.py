@@ -630,7 +630,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
         #moves=emcee.moves.MHmove())
-        sampler.run_mcmc(pos, 2000, progress=True)
+        sampler.run_mcmc(pos, 1000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -784,8 +784,6 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         print(f"{bcolors.ENDC}")
 
     # ------------ Plot 100 random models from the parameter space
-    inds = np.random.randint(len(flat_samples), size=100)
-
     # first pull out required stuff from args
     wav = args_obj[0]
     flam = args_obj[1]
@@ -797,7 +795,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
     ax3.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
 
-    for ind in inds:
+    model_count = 0
+
+    while model_count <= 100:
+
+        ind = np.random.randint(len(flat_samples), size=1)
         sample = flat_samples[ind]
         #print("\nAt random index:", ind)
 
@@ -806,38 +808,51 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         #    print("Negative LSF ....")
         #    sample[-1] = 1.0
 
-        if object_type == 'host':
-            m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4])
-        elif object_type == 'sn':
-            m = model_sn(wav, sample[0], sample[1], sample[2])
+        # Check that the model is within +-1 sigma
+        # of value inferred by corner contours
+        model_z = sample[0]
+        if (model_z >= cq_z[0]) and (model_z <= cq_z[2]) and \
+           (model_ms >= cq_ms[0]) and (model_ms <= cq_ms[2]) and \
+           (model_age >= cq_age[0]) and (model_age <= cq_age[2]) and \
+           (model_tau >= cq_tau[0]) and (model_tau <= cq_tau[2]) and \
+           (model_av >= cq_av[0]) and (model_av <= cq_av[2]):
 
-        # ------- Clip all arrays to where grism sensitivity is >= 25%
-        x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
-                       (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+            model_params = sample[0], sample[1], sample[2], sample[3], sample[4]
 
-        m = m[x0]
-        wav = wav[x0]
-        flam = flam[x0]
-        ferr = ferr[x0]
+            if object_type == 'host':
+                m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4])
+            elif object_type == 'sn':
+                m = model_sn(wav, sample[0], sample[1], sample[2])
 
-        ax3.plot(wav, m, color='mediumblue', lw=0.8, alpha=0.1, zorder=2)
+            # ------- Clip all arrays to where grism sensitivity is >= 25%
+            x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                           (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
 
-        # ------------------------ print info
-        #lnL = logpost_host(sample, wav, flam, ferr)
-        #if sample[0] > 1.97:
-        #    print(f"{bcolors.FAIL}")
-        #    print("With sample:", sample)
-        #    print("Log likelihood for this sample:", lnL)
-        #    print(f"{bcolors.ENDC}")
+            m = m[x0]
+            wav = wav[x0]
+            flam = flam[x0]
+            ferr = ferr[x0]
 
-        #    ax3.plot(wav, flam, color='k', zorder=3)
-        #    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
-        #    plt.show()
-        #    sys.exit(0)
+            ax3.plot(wav, m, color='mediumblue', lw=0.8, alpha=0.1, zorder=2)
 
-        #else:
-        #    print("With sample:", sample)
-        #    print("Log likelihood for this sample:", lnL)
+            # ------------------------ print info
+            #lnL = logpost_host(sample, wav, flam, ferr)
+            #if sample[0] > 1.97:
+            #    print(f"{bcolors.FAIL}")
+            #    print("With sample:", sample)
+            #    print("Log likelihood for this sample:", lnL)
+            #    print(f"{bcolors.ENDC}")
+
+            #    ax3.plot(wav, flam, color='k', zorder=3)
+            #    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=3)
+            #    plt.show()
+            #    sys.exit(0)
+
+            #else:
+            #    print("With sample:", sample)
+            #    print("Log likelihood for this sample:", lnL)
+
+            model_count += 1
 
     ax3.plot(wav, flam, color='k', lw=2.0, zorder=1)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
@@ -911,7 +926,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_dec7/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_nov30/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -924,7 +939,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(700, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1013,12 +1028,20 @@ def main():
             # Manual mod to check if it'll get the correct 
             # stellar mass if the flux scaling is correct.
             # for galaxy 207 from dec7 run
-            host_flam /= 259.2
-            host_ferr /= 259.2
+            #host_flam /= 259.2
+            #host_ferr /= 259.2
 
             # for galaxy 475 from nov30 run
             #host_flam /= 40.2
             #host_ferr /= 40.2
+
+            # for galaxy 548 from nov30 run
+            #host_flam /= 700
+            #host_ferr /= 700
+
+            # for galaxy 755 from nov30 run
+            host_flam /= 85.5
+            host_ferr /= 85.5
 
             #host_flam_norm = host_flam / np.median(host_flam)
             #host_ferr_norm = noise_level * host_flam_norm
@@ -1062,7 +1085,7 @@ def main():
             ax.set_xlim(9000, 20000)
             host_fig_ymin = np.min(host_flam)
             host_fig_ymax = np.max(host_flam)
-            #ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
+            ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
 
             ax.legend(loc=0, fontsize=12, frameon=False)
 
@@ -1433,10 +1456,10 @@ def main():
                 rhost_init = np.array([zprior, 11.25, 2.0, 0.5, 3.5])
             elif hostid == 548:
                 zprior = 1.59
-                rhost_init = np.array([zprior, 11.8, 3.5, 2.0, 0.0])
+                rhost_init = np.array([zprior, 10.7, 3.5, 1.0, 0.0])
             elif hostid == 755:
                 zprior = 0.92
-                rhost_init = np.array([zprior, 11.3, 1.0, 1.0, 0.0])
+                rhost_init = np.array([zprior, 11.1, 2.0, 0.5, 0.0])
 
             zprior_sigma = 0.02  # standard deviation for the Gaussian prior on redshift
 
