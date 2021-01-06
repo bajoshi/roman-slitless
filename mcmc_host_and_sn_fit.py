@@ -752,20 +752,6 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #range_list = [(1.585, 1.6), (12.5, 15.5), (0.0, 4.5), (-0.4, 2.0), (0.0, 2.2)]  # for 548
     #range_list = [(0.0, 2.0), (10.2, 15.5), (0.0, 10.0), (-2.2, 2.0), (0.0, 2.2)]  # for 755
 
-    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
-    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
-        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
-    #range=[(1.9525, 1.9535), (10.5, 11.5), (1.2, 2.4), (0.5, 1.3), (0.4, 0.7)])
-
-    #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
-
-    # redshift is the first axis
-    #corner_axes[0, 0].set_title()
-
-    fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
-        dpi=200, bbox_inches='tight')
-
     if object_type == 'host':
         cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
         cq_ms = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
@@ -783,6 +769,20 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         print("Visual extinction [mag]:", cq_av)
         print(f"{bcolors.ENDC}")
 
+    #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
+        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
+        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
+    #range=[(1.9525, 1.9535), (10.5, 11.5), (1.2, 2.4), (0.5, 1.3), (0.4, 0.7)])
+
+    #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
+
+    # redshift is the first axis
+    #corner_axes[0, 0].set_title()
+
+    fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+        dpi=200, bbox_inches='tight')
+
     # ------------ Plot 100 random models from the parameter space
     # first pull out required stuff from args
     wav = args_obj[0]
@@ -796,11 +796,15 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     ax3.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
 
     model_count = 0
+    ind_list = []
 
     while model_count <= 100:
 
-        ind = np.random.randint(len(flat_samples), size=1)
+        ind = int(np.random.randint(len(flat_samples), size=1))
+        ind_list.append(ind)
+        # make sure sample has correct shape
         sample = flat_samples[ind]
+        sample = sample.reshape(5)
         #print("\nAt random index:", ind)
 
         # Check that LSF is not negative
@@ -811,13 +815,16 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         # Check that the model is within +-1 sigma
         # of value inferred by corner contours
         model_z = sample[0]
+        model_ms = sample[1]
+        model_age = sample[2]
+        model_tau = sample[3]
+        model_av = sample[4]
+
         if (model_z >= cq_z[0]) and (model_z <= cq_z[2]) and \
            (model_ms >= cq_ms[0]) and (model_ms <= cq_ms[2]) and \
            (model_age >= cq_age[0]) and (model_age <= cq_age[2]) and \
            (model_tau >= cq_tau[0]) and (model_tau <= cq_tau[2]) and \
            (model_av >= cq_av[0]) and (model_av <= cq_av[2]):
-
-            model_params = sample[0], sample[1], sample[2], sample[3], sample[4]
 
             if object_type == 'host':
                 m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4])
@@ -833,7 +840,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             flam = flam[x0]
             ferr = ferr[x0]
 
-            ax3.plot(wav, m, color='mediumblue', lw=0.8, alpha=0.1, zorder=2)
+            ax3.plot(wav, m, color='royalblue', lw=0.8, alpha=0.05, zorder=2)
 
             # ------------------------ print info
             #lnL = logpost_host(sample, wav, flam, ferr)
@@ -853,6 +860,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             #    print("Log likelihood for this sample:", lnL)
 
             model_count += 1
+
+    print("List of randomly chosen indices:", ind_list)
 
     ax3.plot(wav, flam, color='k', lw=2.0, zorder=1)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
