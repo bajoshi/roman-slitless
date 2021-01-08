@@ -69,7 +69,6 @@ assert os.path.isdir(modeldir)
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
 model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
 
-
 all_m62_models = []
 tau_low = 0
 tau_high = 20
@@ -81,7 +80,6 @@ for t in range(tau_low, tau_high, 1):
 
 # load models with large tau separately
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
-
 
 """
 all_m22_models = []
@@ -810,7 +808,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
             model_count += 1
 
-    print("List of randomly chosen indices:", ind_list)
+    print("\nList of randomly chosen indices:", ind_list)
 
     ax3.plot(wav, flam, color='k', lw=2.0, zorder=1)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
@@ -884,7 +882,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_nov30/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan5/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -998,14 +996,13 @@ def main():
             #host_ferr /= 700
 
             # for galaxy 755 from nov30 run
-            host_flam /= 85.5
-            host_ferr /= 85.5
+            #host_flam /= 85.5
+            #host_ferr /= 85.5
 
             #host_flam_norm = host_flam / np.median(host_flam)
             #host_ferr_norm = noise_level * host_flam_norm
 
             # -------- Test figure for HOST
-            """
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
@@ -1049,7 +1046,6 @@ def main():
 
             plt.show()
             sys.exit(0)
-            """
 
             """
             # plot some other template that is NOT a good fit
