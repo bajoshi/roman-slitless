@@ -882,7 +882,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan5/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan8/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -895,7 +895,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(700, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
