@@ -75,7 +75,7 @@ sky = 1.0      # e/s
 dark = 0.015   # e/s/pix
 read = 10.0    # electrons
 
-exptime = 10800  # seconds
+exptime = 8 * 3600  # seconds
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)

@@ -5,6 +5,7 @@ import corner
 import scipy
 from scipy.interpolate import griddata
 from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter1d
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
@@ -882,7 +883,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan8/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -1014,6 +1015,10 @@ def main():
                 label='pyLINEAR extraction (div. const.) (sky noise added; no stat noise)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
+
+            # see if filtering helps
+            #host_flam_filt = scipy.ndimage.gaussian_filter(host_flam, 5.0)
+            #ax.plot(host_wav, host_flam_filt, color='gray', lw=1.5)
 
             m = model_host(host_wav, host_z, host_ms, host_age, np.log10(host_tau), host_av)
 
