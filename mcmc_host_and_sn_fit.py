@@ -392,7 +392,6 @@ def loglike_sn(theta, x, data, err):
     # ------- Vertical scaling factor
     alpha = np.nansum(data * y / err**2) / np.nansum(y**2 / err**2)
     #print("Alpha SN:", "{:.2e}".format(alpha))
-
     y = y * alpha
 
     lnLike = -0.5 * np.nansum( (y-data)**2/err**2 ) #  +  np.log(2 * np.pi * err**2))
@@ -416,12 +415,13 @@ def loglike_sn(theta, x, data, err):
     plt.show()
     #sys.exit(0)
     """
-    
+
     return lnLike
 
 def logprior_sn(theta):
 
     z, day, av = theta
+    #print("\nParameter vector given:", theta)
 
     if ( 0.0001 <= z <= 6.0  and  -19 <= day <= 50  and  0.0 <= av <= 5.0):
         return 0.0
@@ -446,7 +446,9 @@ def logpost_sn(theta, x, data, err):
 def model_sn(x, z, day, sn_av):
 
     # pull out spectrum for the chosen day
-    day_idx = np.where(salt2_spec['day'] == day)[0]
+    day_arr = np.arange(-19,50,1)
+    day_idx_ = np.argmin(abs(day_arr - day))
+    day_idx = np.where(salt2_spec['day'] == day_arr[day_idx_])[0]
 
     sn_spec_llam = salt2_spec['flam'][day_idx]
     sn_spec_lam = salt2_spec['lam'][day_idx]
@@ -463,25 +465,7 @@ def model_sn(x, z, day, sn_av):
     #lsf_sigma = 0.5
     #sn_flam_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_z, sigma=lsf_sigma)
 
-    # ------ Downgrade to grism resolution
-    sn_mod = np.zeros(len(x))
-
-    ### Zeroth element
-    lam_step = x[1] - x[0]
-    idx = np.where((sn_lam_z >= x[0] - lam_step) & (sn_lam_z < x[0] + lam_step))[0]
-    sn_mod[0] = np.mean(sn_flam_z[idx])
-
-    ### all elements in between
-    for j in range(1, len(x) - 1):
-        idx = np.where((sn_lam_z >= x[j-1]) & (sn_lam_z < x[j+1]))[0]
-        sn_mod[j] = np.mean(sn_flam_z[idx])
-    
-    ### Last element
-    lam_step = x[-1] - x[-2]
-    idx = np.where((sn_lam_z >= x[-1] - lam_step) & (sn_lam_z < x[-1] + lam_step))[0]
-    sn_mod[-1] = np.mean(sn_flam_z[idx])
-
-    #sn_mod = griddata(points=sn_lam_z, values=sn_flam_z, xi=x)
+    sn_mod = griddata(points=sn_lam_z, values=sn_flam_z, xi=x)
 
     # ------ combine host light
     # some fraction to account for host contamination
@@ -628,8 +612,7 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
     # ----------- Emcee 
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
-        #moves=emcee.moves.MHmove())
-        sampler.run_mcmc(pos, 1000, progress=True)
+        sampler.run_mcmc(pos, 2000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
     pickle.dump(sampler, open(emcee_savefile.replace('.h5','.pkl'), 'wb'))
@@ -717,10 +700,23 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
         print("Visual extinction [mag]:", cq_av)
         print(f"{bcolors.ENDC}")
 
+    elif object_type == 'sn':
+        cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
+        cq_day = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
+        cq_av = corner.quantile(x=flat_samples[:, 2], q=[0.16, 0.5, 0.84])
+
+        # print parameter estimates
+        print(f"{bcolors.CYAN}")
+        print("Parameter estimates:")
+        print("Redshift: ", cq_z)
+        print("Supernova phase [day]:", cq_day)
+        print("Visual extinction [mag]:", cq_av)
+        print(f"{bcolors.ENDC}")
+
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
+        verbose=True, truth_color='tab:red')#, smooth=0.8, smooth1d=0.8)#, \
     #range=[(1.9525, 1.9535), (10.5, 11.5), (1.2, 2.4), (0.5, 1.3), (0.4, 0.7)])
 
     #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
@@ -750,29 +746,50 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
         ind = int(np.random.randint(len(flat_samples), size=1))
         ind_list.append(ind)
-        # make sure sample has correct shape
-        sample = flat_samples[ind]
-        sample = sample.reshape(5)
         #print("\nAt random index:", ind)
 
-        # Check that LSF is not negative
-        #if sample[-1] < 0.0:
-        #    print("Negative LSF ....")
-        #    sample[-1] = 1.0
+        # make sure sample has correct shape
+        sample = flat_samples[ind]
+        
+        model_okay = 0
+        if object_type == 'host':
+            sample = sample.reshape(5)
 
-        # Check that the model is within +-1 sigma
-        # of value inferred by corner contours
-        model_z = sample[0]
-        model_ms = sample[1]
-        model_age = sample[2]
-        model_tau = sample[3]
-        model_av = sample[4]
+            # Get the parameters of the sample
+            model_z = sample[0]
+            model_ms = sample[1]
+            model_age = sample[2]
+            model_tau = sample[3]
+            model_av = sample[4]
 
-        if (model_z >= cq_z[0]) and (model_z <= cq_z[2]) and \
-           (model_ms >= cq_ms[0]) and (model_ms <= cq_ms[2]) and \
-           (model_age >= cq_age[0]) and (model_age <= cq_age[2]) and \
-           (model_tau >= cq_tau[0]) and (model_tau <= cq_tau[2]) and \
-           (model_av >= cq_av[0]) and (model_av <= cq_av[2]):
+            # Check that the model is within +-1 sigma
+            # of value inferred by corner contours
+            if (model_z >= cq_z[0]) and (model_z <= cq_z[2]) and \
+               (model_ms >= cq_ms[0]) and (model_ms <= cq_ms[2]) and \
+               (model_age >= cq_age[0]) and (model_age <= cq_age[2]) and \
+               (model_tau >= cq_tau[0]) and (model_tau <= cq_tau[2]) and \
+               (model_av >= cq_av[0]) and (model_av <= cq_av[2]):
+
+               model_okay = 1
+
+        elif object_type == 'sn':
+            sample = sample.reshape(3)
+
+            # Get the parameters of the sample
+            model_z = sample[0]
+            model_day = sample[1]
+            model_av = sample[2]
+
+            # Check that the model is within +-1 sigma
+            # of value inferred by corner contours
+            if (model_z >= cq_z[0]) and (model_z <= cq_z[2]) and \
+               (model_day >= cq_day[0]) and (model_day <= cq_day[2]) and \
+               (model_av >= cq_av[0]) and (model_av <= cq_av[2]):
+
+               model_okay = 1
+
+        # Now plot if the model is okay
+        if model_okay:
 
             if object_type == 'host':
                 m = model_host(wav, sample[0], sample[1], sample[2], sample[3], sample[4])
@@ -788,7 +805,11 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
             flam = flam[x0]
             ferr = ferr[x0]
 
-            ax3.plot(wav, m, color='royalblue', lw=0.8, alpha=0.05, zorder=2)
+            if object_type == 'sn':
+                a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
+                m = m * a
+
+            ax3.plot(wav, m, color='royalblue', lw=1.8, alpha=0.05, zorder=2)
 
             # ------------------------ print info
             #lnL = logpost_host(sample, wav, flam, ferr)
@@ -811,7 +832,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     print("\nList of randomly chosen indices:", ind_list)
 
-    ax3.plot(wav, flam, color='k', lw=2.0, zorder=1)
+    ax3.plot(wav, flam, color='k', lw=2.2, zorder=1)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
 
     fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
@@ -883,7 +904,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -1004,6 +1025,7 @@ def main():
             #host_ferr_norm = noise_level * host_flam_norm
 
             # -------- Test figure for HOST
+            """
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
@@ -1051,6 +1073,7 @@ def main():
 
             plt.show()
             sys.exit(0)
+            """
 
             """
             # plot some other template that is NOT a good fit
@@ -1158,20 +1181,13 @@ def main():
             # plot spectrum without host light addition
             ax1.plot(sn_wav[sn_x0], msn, color='tab:green', label='SN template only', zorder=2)
 
-            # Some dummy line
-            #msn_and_line = msn + (sn_wav[sn_x0] * (5e-17 / 2500)  +  1e-17)
-            #ax1.plot(sn_wav[sn_x0], msn_and_line, color='tab:red', label='SN template and line', zorder=2)
-
-            #print("\nSN downgraded model spectrum mean:", np.nanmean(msn))
-            #print("Obs host galaxy spectrum mean:", np.mean(host_flam))
-            #print("Obs SN spectrum mean:", np.mean(sn_flam))
-            #print("Host fraction manual:", host_frac)
-
             ax1.legend(loc=0)
 
             plt.show()
             sys.exit(0)
+            """
 
+            """
             # ADD host light in
             # The observed spectrum has the supernova light COMBINED with the host galaxy light
             new_mm = mm + host_frac * host_flam
@@ -1432,9 +1448,12 @@ def main():
             print("logpost at true position for HOST galaxy:", logpost_host(rtrue, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
             #print(f"{bcolors.WARNING}", "Lower log(posterior) probability at true position likely due to metallicity difference.", f"{bcolors.ENDC}")
 
-            rsn_init = np.array([1.8, 1, 0.2])  # redshift, day relative to peak, and dust extinction
+            rsn_init = np.array([1.95, 13, 1.0])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
             print("logpost at starting position for SN:", logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
+            rsn_true = np.array([sn_z, sn_day, sn_av])
+            print("True SN position:", rsn_true)
+            print("logpost at true position for SN:", logpost_sn(rsn_true, sn_wav, sn_flam, sn_ferr))
 
             # Setup dims and walkers
             nwalkers = 300
@@ -1444,8 +1463,6 @@ def main():
             # generating ball of walkers about initial position defined above
             pos_host = np.zeros(shape=(nwalkers, ndim_host))
             pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
-
-            #z_init = np.linspace(0.001, 3.0, nwalkers)
 
             for i in range(nwalkers):
 
@@ -1489,10 +1506,10 @@ def main():
             else:
                 # Call emcee
                 #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
-                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
-                run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
-                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
+                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
             sys.exit(0)
 
