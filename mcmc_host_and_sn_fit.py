@@ -716,7 +716,10 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red')#, smooth=0.8, smooth1d=0.8)#, \
+        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
+    #range=[(0.9, 1.05), (7, 50), (4.5, 5.0)])  # for SN 753
+    #range=[(1.59, 1.6), (22, 25), (0.15, 0.45)])  # for SN 547
+    #range=[(0.4, 0.45), (-1, 3), (0.0, 0.2)])  # for SN 481
     #range=[(1.9525, 1.9535), (10.5, 11.5), (1.2, 2.4), (0.5, 1.3), (0.4, 0.7)])
 
     #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
@@ -917,7 +920,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(700, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1029,8 +1032,8 @@ def main():
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
-            ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-            ax.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=15)
+            ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=16)
+            ax.set_ylabel(r'$\mathrm{f_\lambda\ [cgs]}$', fontsize=16)
 
             # plot extracted spectrum
             ax.plot(host_wav, host_flam, color='k', lw=2, \
@@ -1039,8 +1042,8 @@ def main():
                 color='grey', alpha=0.5, zorder=1)
 
             # see if filtering helps
-            #host_flam_filt = scipy.ndimage.gaussian_filter(host_flam, 5.0)
-            #ax.plot(host_wav, host_flam_filt, color='gray', lw=1.5)
+            host_flam_filt = scipy.ndimage.gaussian_filter(host_flam, 2.0)
+            ax.plot(host_wav, host_flam_filt, color='gray', lw=1.5)
 
             m = model_host(host_wav, host_z, host_ms, host_age, np.log10(host_tau), host_av)
 
@@ -1051,7 +1054,7 @@ def main():
 
             a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
             print("HOST a:", "{:.4e}".format(a))
-            #m = a*m
+            m = a*m
             chi2_good = np.nansum( (m - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(m)
             print("HOST base model chi2:", chi2_good)
 
@@ -1514,7 +1517,7 @@ def main():
                 #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
                 #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
-            #sys.exit(0)
+            sys.exit(0)
 
     return None
 
