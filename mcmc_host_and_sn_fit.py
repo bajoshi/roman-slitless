@@ -1426,15 +1426,19 @@ def main():
             if hostid == 207:
                 zprior = 1.95
                 rhost_init = np.array([zprior, 11.0, 2.5, 1.0, 0.5])
+                rsn_init = np.array([zprior, 13, 1.0])  # redshift, day relative to peak, and dust extinction
             elif hostid == 475:
                 zprior = 0.44
                 rhost_init = np.array([zprior, 11.25, 2.0, 0.5, 3.5])
+                rsn_init = np.array([zprior, 13, 1.0])
             elif hostid == 548:
                 zprior = 1.59
                 rhost_init = np.array([zprior, 10.7, 3.5, 1.0, 0.0])
+                rsn_init = np.array([zprior, 13, 1.0])
             elif hostid == 755:
                 zprior = 0.92
                 rhost_init = np.array([zprior, 11.1, 2.0, 0.5, 0.0])
+                rsn_init = np.array([zprior, 13, 1.0])
 
             zprior_sigma = 0.02  # standard deviation for the Gaussian prior on redshift
 
@@ -1448,7 +1452,6 @@ def main():
             print("logpost at true position for HOST galaxy:", logpost_host(rtrue, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
             #print(f"{bcolors.WARNING}", "Lower log(posterior) probability at true position likely due to metallicity difference.", f"{bcolors.ENDC}")
 
-            rsn_init = np.array([1.95, 13, 1.0])  # redshift, day relative to peak, and dust extinction
             print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
             print("logpost at starting position for SN:", logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
             rsn_true = np.array([sn_z, sn_day, sn_av])
@@ -1505,13 +1508,13 @@ def main():
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
             else:
                 # Call emcee
-                #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
+                run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
                 read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
                 #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
                 #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
-            sys.exit(0)
+            #sys.exit(0)
 
     return None
 
