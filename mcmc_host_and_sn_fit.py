@@ -730,7 +730,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
-    # ------------ Plot 100 random models from the parameter space
+    # ------------ Plot 100 random models from the parameter space within +-1sigma of corner estimates
     # first pull out required stuff from args
     wav = args_obj[0]
     flam = args_obj[1]
@@ -894,7 +894,6 @@ def main():
 
     print(f"{bcolors.WARNING}")
     print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
-    print("* * * *   [TODO]: When plotting \"best-fit\" models, only plot those that are within +- 1-sigma of the values from corner.  * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim1"
