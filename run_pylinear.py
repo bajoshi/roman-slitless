@@ -29,12 +29,6 @@ img_suffix = 'Y106_11_1'
 # Define list files and other preliminary stuff
 segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
 
-# changing img_suffix can only be done after segfile is defined 
-# because of the way segfile is named. Needs to be cleaned up.
-hostname = socket.gethostname()
-if 'plffsn2' in hostname:
-    img_suffix = 'plffsn2_' + img_suffix
-
 obslst = pylinear_lst_dir + 'obs_' + img_suffix + '.lst'
 wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
 sedlst = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
@@ -49,6 +43,14 @@ assert os.path.isfile(obslst)
 assert os.path.isfile(sedlst)
 assert os.path.isfile(wcslst)
 assert os.path.isfile(fltlst)
+
+print("Using the following paths to lst files and segmap:")
+print("Segmentation map:", segfile)
+print("OBS LST:", obslst)
+print("SED LST:", sedlst)
+print("WCS LST:", wcslst)
+print("FLT LST:", fltlst)
+sys.exit(0)
 
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)

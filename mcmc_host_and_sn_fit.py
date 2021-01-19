@@ -906,7 +906,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + ext_root + '_ext_x1d.fits' #'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + '_ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -919,7 +919,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(700, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1027,7 +1027,6 @@ def main():
             #host_ferr_norm = noise_level * host_flam_norm
 
             # -------- Test figure for HOST
-            """
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
@@ -1075,7 +1074,6 @@ def main():
 
             plt.show()
             sys.exit(0)
-            """
 
             """
             # plot some other template that is NOT a good fit
