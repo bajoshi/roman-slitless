@@ -60,6 +60,7 @@ print("FLT LST:", fltlst)
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
+sys.exit(0)
 
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
