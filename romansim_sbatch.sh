@@ -9,12 +9,14 @@
 # Typically need the large memory node because pyLINEAR is memory intensive
 # Use --partition=express while testing code
 
+echo "Starting SLURM script"
+
 set -e
 
-module restore    # Always restore/purge modules to ensure a consistent environment
+module restore
 
 module load python/3.7-anaconda
 conda activate /home-1/bjoshi5@jhu.edu/data/conda_envs/romanslitless
 
-print("Starting python code from sbatch script...")
+echo "Starting python code from sbatch script..."
 python run_pylinear.py
