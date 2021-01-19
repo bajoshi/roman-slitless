@@ -50,7 +50,6 @@ print("OBS LST:", obslst)
 print("SED LST:", sedlst)
 print("WCS LST:", wcslst)
 print("FLT LST:", fltlst)
-sys.exit(0)
 
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
@@ -72,12 +71,13 @@ print("Adding noise...")
 # check Russell's notes in pylinear notebooks
 # also check WFIRST tech report TR1901
 #sig = 0.001    # noise RMS in e-/s 
-sky = 1.0      # e/s
+sky = 0.1      # e/s
 
 dark = 0.015   # e/s/pix
 read = 10.0    # electrons
 
-exptime = 2 * 3600  # seconds
+exptime_hours = 3
+exptime = exptime_hours * 3600  # seconds
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)
