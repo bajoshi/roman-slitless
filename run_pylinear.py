@@ -17,11 +17,17 @@ print("Starting at:", dt.datetime.now())
 
 # Change directory to make sure results go in the right place
 home = os.getenv('HOME')
-os.chdir(home + '/Documents/roman_slitless_sims_results/')
 
-# Define directories for imaging and lst files
-pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
-direct_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
+if 'bc-login' in socket.gethostname():
+    os.chdir(home + '/data/roman_slitless_sims_results/')
+    # Define directories for imaging and lst files
+    pylinear_lst_dir = home + '/data/GitHub/roman-slitless/pylinear_lst_files/'
+    direct_img_dir = home + '/data/roman_direct_sims/K_akari_rotate_subset/'
+elif 'plffsn2' in socket.gethostname():
+    os.chdir(home + '/Documents/roman_slitless_sims_results/')
+    # Define directories for imaging and lst files
+    pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
+    direct_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
 
 # Figure out the correct filenames depending on which machine is being used
 img_suffix = 'Y106_11_1'
