@@ -18,6 +18,8 @@ print("Starting at:", dt.datetime.now())
 # Change directory to make sure results go in the right place
 home = os.getenv('HOME')
 
+print("Running on host:", socket.gethostname())
+
 if 'bc-login' in socket.gethostname():
     os.chdir(home + '/data/roman_slitless_sims_results/')
     # Define directories for imaging and lst files

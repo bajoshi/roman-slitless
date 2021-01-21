@@ -1,0 +1,32 @@
+Starting SLURM script
+/bin/bash
+Resetting modules to system default
+
+CommandNotFoundError: Your shell has not been properly configured to use 'conda deactivate'.
+To initialize your shell, run
+
+    $ conda init <SHELL_NAME>
+
+Currently supported shells are:
+  - bash
+  - fish
+  - tcsh
+  - xonsh
+  - zsh
+  - powershell
+
+See 'conda init --help' for more information and options.
+
+IMPORTANT: You may need to close and restart your shell after running 'conda init'.
+
+
+
+Currently Loaded Modules:
+  1) centos7/current   3) openmpi/3.1         5) anaconda/2019.03
+  2) intel/18.0        4) MARCC/summer-2018
+Starting python code from sbatch script...
+Traceback (most recent call last):
+  File "run_pylinear.py", line 36, in <module>
+    segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
+NameError: name 'direct_img_dir' is not defined
+Starting at: 2021-01-21 10:38:03.903855
