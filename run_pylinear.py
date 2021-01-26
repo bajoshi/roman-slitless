@@ -81,14 +81,14 @@ print("Simulation done.")
 print("Adding noise...")
 # check Russell's notes in pylinear notebooks
 # also check WFIRST tech report TR1901
-#sig = 0.001    # noise RMS in e-/s 
-sky = 0.1      # e/s
+sky = 1.1      # e/s
+npix = 4096 * 4096
+sky /= npix
 
 dark = 0.015   # e/s/pix
 read = 10.0    # electrons
 
-exptime_hours = 3
-exptime = exptime_hours * 3600  # seconds
+exptime = 900  # seconds
 
 for oldf in glob.glob('*_flt.fits'):
     print("Working on...", oldf)
@@ -151,7 +151,7 @@ print('\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'.f
 # Set extraction params
 sources.update_extraction_parameters(**extraction_parameters)
 method = 'golden'  # single
-root = 'romansim1_ext'
+root = 'romansim_' + img_suffix
 logdamp = [-7, -1, 0.1]  # logdamp = -np.inf
 
 print("Extracting...")
