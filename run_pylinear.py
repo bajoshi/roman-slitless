@@ -136,6 +136,8 @@ for oldf in glob.glob('*_flt.fits'):
 
 print("Noise addition done. Check simulated images.")
 print("Exiting. Check statistics with ds9 and continue with extraction.")
+ts = time.time()
+print("Time taken for simulation:", "{:d}".format(ts - start), "seconds.")
 sys.exit(0)
 
 # ---------------------- Extraction
@@ -158,6 +160,8 @@ print("Extracting...")
 pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, group=False)
 
 print("Simulation and extraction done.")
+te = time.time() - ts
+print("Time taken for extraction:", "{:d}".format(te), "seconds.")
 print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 
 sys.exit(0)
