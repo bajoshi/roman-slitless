@@ -46,7 +46,7 @@ sedlst = pylinear_lst_dir + 'sed_' + img_suffix + obsstr + '.lst'
 beam = '+1'
 maglim = 99.0
 
-fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '.lst'
+fltlst = pylinear_lst_dir + 'flt_' + img_suffix + obsstr + '.lst'
 
 # make sure the files exist
 assert os.path.isfile(segfile)
