@@ -18,18 +18,21 @@ print("Starting at:", dt.datetime.now())
 # Change directory to make sure results go in the right place
 home = os.getenv('HOME')
 
-print("Running on host:", socket.gethostname())
-
-if 'bc-login' in socket.gethostname():
-    os.chdir(home + '/data/roman_slitless_sims_results/')
+if 'compute' in socket.gethostname():
+    os.chdir(home + '/scratch/roman_slitless_sims_results/')
     # Define directories for imaging and lst files
-    pylinear_lst_dir = home + '/data/GitHub/roman-slitless/pylinear_lst_files/'
-    direct_img_dir = home + '/data/roman_direct_sims/K_akari_rotate_subset/'
+    pylinear_lst_dir = home + '/scratch/roman-slitless/pylinear_lst_files/'
+    direct_img_dir = home + '/scratch/roman_direct_sims/K_akari_rotate_subset/'
+    
+    obsstr = '_marcc'
+
 elif 'plffsn2' in socket.gethostname():
     os.chdir(home + '/Documents/roman_slitless_sims_results/')
     # Define directories for imaging and lst files
     pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
     direct_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
+
+    obsstr = '_plffsn2'
 
 # Figure out the correct filenames depending on which machine is being used
 img_suffix = 'Y106_11_1'
@@ -37,7 +40,7 @@ img_suffix = 'Y106_11_1'
 # Define list files and other preliminary stuff
 segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
 
-obslst = pylinear_lst_dir + 'obs_' + img_suffix + '.lst'
+obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr  + '.lst'
 wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
 sedlst = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
 beam = '+1'
@@ -62,7 +65,6 @@ print("FLT LST:", fltlst)
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
-sys.exit(0)
 
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
@@ -133,8 +135,8 @@ for oldf in glob.glob('*_flt.fits'):
         hdul.writeto(oldf, overwrite=True)
 
 print("Noise addition done. Check simulated images.")
-#print("Exiting. Check statistics with ds9 and continue with extraction.")
-#sys.exit(0)
+print("Exiting. Check statistics with ds9 and continue with extraction.")
+sys.exit(0)
 
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
