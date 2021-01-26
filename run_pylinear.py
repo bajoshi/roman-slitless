@@ -40,9 +40,9 @@ img_suffix = 'Y106_11_1'
 # Define list files and other preliminary stuff
 segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
 
-obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr  + '.lst'
+obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
 wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
-sedlst = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+sedlst = pylinear_lst_dir + 'sed_' + img_suffix + obsstr + '.lst'
 beam = '+1'
 maglim = 99.0
 
