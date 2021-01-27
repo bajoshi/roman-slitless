@@ -65,7 +65,6 @@ print("FLT LST:", fltlst)
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
-"""
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
@@ -83,7 +82,7 @@ print("Adding noise...")
 # also check WFIRST tech report TR1901
 sky = 1.1      # e/s
 npix = 4096 * 4096
-sky /= npix
+sky /= npix    # e/s/pix
 
 dark = 0.015   # e/s/pix
 read = 10.0    # electrons
@@ -138,8 +137,6 @@ print("Noise addition done. Check simulated images.")
 print("Exiting. Check statistics with ds9 and continue with extraction.")
 ts = time.time()
 print("Time taken for simulation:", "{:d}".format(ts - start), "seconds.")
-sys.exit(0)
-"""
 
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
@@ -158,7 +155,7 @@ root = 'romansim_' + img_suffix
 logdamp = [-7, -1, 0.1]  # logdamp = -np.inf
 
 print("Extracting...")
-pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, group=False)
+pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, ncpu=0, group=False)
 
 print("Simulation and extraction done.")
 te = time.time() - ts
