@@ -65,7 +65,7 @@ print("FLT LST:", fltlst)
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
-
+"""
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
@@ -139,6 +139,7 @@ print("Exiting. Check statistics with ds9 and continue with extraction.")
 ts = time.time()
 print("Time taken for simulation:", "{:d}".format(ts - start), "seconds.")
 sys.exit(0)
+"""
 
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
