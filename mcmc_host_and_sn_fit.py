@@ -10,6 +10,8 @@ from scipy.ndimage import gaussian_filter1d
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
+from specutils.analysis import snr_derived
+from specutils import Spectrum1D
 
 from multiprocessing import Pool
 import pickle
@@ -906,9 +908,8 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'romansim_Y106_11_1_x1d.fits'
     #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan8_1hrPA_exptime/' + ext_root + 'ext_x1d.fits'
-    #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + 'ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + 'ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -921,7 +922,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(200, len(sedlst)):
+    for i in range(700, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1029,6 +1030,7 @@ def main():
             #host_ferr_norm = noise_level * host_flam_norm
 
             # -------- Test figure for HOST
+            """
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
@@ -1040,10 +1042,6 @@ def main():
                 label='pyLINEAR extraction (div. const.) (sky noise added; no stat noise)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
-
-            from specutils.analysis import snr_derived
-            from astropy import units as u
-            from specutils import Spectrum1D
 
             spectrum1d_wav = host_wav * u.AA
             spectrum1d_flux = host_flam * u.erg / (u.cm * u.cm * u.s * u.AA)
@@ -1086,6 +1084,7 @@ def main():
 
             plt.show()
             sys.exit(0)
+            """
 
             """
             # plot some other template that is NOT a good fit
@@ -1165,6 +1164,7 @@ def main():
             """
 
             # test figure for SN
+            """
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
 
@@ -1174,10 +1174,6 @@ def main():
             ax1.plot(sn_wav, sn_flam, lw=1.0, color='k', label='Obs SN data', zorder=2)
             ax1.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
                 color='grey', alpha=0.5, zorder=2)
-
-            from specutils.analysis import snr_derived
-            from astropy import units as u
-            from specutils import Spectrum1D
 
             spectrum1d_wav = sn_wav * u.AA
             spectrum1d_flux = sn_flam * u.erg / (u.cm * u.cm * u.s * u.AA)
@@ -1206,6 +1202,7 @@ def main():
 
             plt.show()
             sys.exit(0)
+            """
 
             """
             # ADD host light in
@@ -1528,7 +1525,7 @@ def main():
                 read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
             else:
                 # Call emcee
-                run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
+                #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
                 read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
                 #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
