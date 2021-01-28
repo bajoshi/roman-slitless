@@ -155,7 +155,7 @@ root = 'romansim_' + img_suffix
 logdamp = [-7, -1, 0.1]  # logdamp = -np.inf
 
 print("Extracting...")
-pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, ncpu=0, group=False)
+pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, ncpu=16, group=False)
 
 print("Simulation and extraction done.")
 te = time.time() - ts

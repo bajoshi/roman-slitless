@@ -896,17 +896,19 @@ def main():
     print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
     print(f"{bcolors.ENDC}")
 
-    ext_root = "romansim_"
+    ext_root = "romansim1_"
     img_suffix = 'Y106_11_1'
 
     # Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
-    sedlst_path = roman_slitless_dir + 'pylinear_lst_files/' + 'sed_plffsn2_' + img_suffix + '.lst'
+    sedlst_path = roman_slitless_dir + 'pylinear_lst_files/' + 'sed_' + img_suffix + '_plffsn2' + '.lst'
     sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + '_x1d.fits' #'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + '_ext_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'romansim_Y106_11_1_x1d.fits'
+    #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan8_1hrPA_exptime/' + ext_root + 'ext_x1d.fits'
+    #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + 'ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -919,7 +921,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(len(sedlst)):
+    for i in range(200, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -1039,6 +1041,16 @@ def main():
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
 
+            from specutils.analysis import snr_derived
+            from astropy import units as u
+            from specutils import Spectrum1D
+
+            spectrum1d_wav = host_wav * u.AA
+            spectrum1d_flux = host_flam * u.erg / (u.cm * u.cm * u.s * u.AA)
+            spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
+
+            print("Signal to noise for this spectrum:", snr_derived(spec1d))
+
             # see if filtering helps
             host_flam_filt = scipy.ndimage.gaussian_filter(host_flam, 2.0)
             ax.plot(host_wav, host_flam_filt, color='gray', lw=1.5)
@@ -1153,7 +1165,6 @@ def main():
             """
 
             # test figure for SN
-            """
             fig1 = plt.figure()
             ax1 = fig1.add_subplot(111)
 
@@ -1163,6 +1174,16 @@ def main():
             ax1.plot(sn_wav, sn_flam, lw=1.0, color='k', label='Obs SN data', zorder=2)
             ax1.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, \
                 color='grey', alpha=0.5, zorder=2)
+
+            from specutils.analysis import snr_derived
+            from astropy import units as u
+            from specutils import Spectrum1D
+
+            spectrum1d_wav = sn_wav * u.AA
+            spectrum1d_flux = sn_flam * u.erg / (u.cm * u.cm * u.s * u.AA)
+            spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
+
+            print("Signal to noise for this spectrum:", snr_derived(spec1d))
 
             # Add host light
             #host_frac = 0.4  # some fraction to account for host contamination
@@ -1185,7 +1206,6 @@ def main():
 
             plt.show()
             sys.exit(0)
-            """
 
             """
             # ADD host light in
