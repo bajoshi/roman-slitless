@@ -908,8 +908,9 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
+    ext_spec_filename = ext_spectra_dir + 'romansim_' + img_suffix + '_x1d.fits'
     #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan8_1hrPA_exptime/' + ext_root + 'ext_x1d.fits'
-    ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + 'ext_x1d.fits'
+    #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + 'ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -922,7 +923,7 @@ def main():
     host_segids = np.array([475, 755, 548, 207])
     sn_segids = np.array([481, 753, 547, 241])
 
-    for i in range(700, len(sedlst)):
+    for i in range(200, len(sedlst)):
 
         # Get info
         segid = sedlst['segid'][i]
@@ -999,6 +1000,12 @@ def main():
             sn_wav = ext_hdu[('SOURCE', segid)].data['wavelength']
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
+            spectrum1d_wav = host_wav * u.AA
+            spectrum1d_flux = host_flam * u.erg / (u.cm * u.cm * u.s * u.AA)
+            spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
+
+            print("Signal to noise for host galaxy spectrum:", snr_derived(spec1d))
+
             # ---- Apply noise and get dummy noisy spectra
             noise_level = 0.03  # relative to signal
             # First assign noise to each point
@@ -1013,6 +1020,9 @@ def main():
             # for galaxy 207 from dec7 run
             #host_flam /= 259.2
             #host_ferr /= 259.2
+            
+            host_flam /= 315.6
+            host_ferr /= 315.6
 
             # for galaxy 475 from nov30 run
             #host_flam /= 40.2
@@ -1042,12 +1052,6 @@ def main():
                 label='pyLINEAR extraction (div. const.) (sky noise added; no stat noise)')
             ax.fill_between(host_wav, host_flam - host_ferr, host_flam + host_ferr, \
                 color='grey', alpha=0.5, zorder=1)
-
-            spectrum1d_wav = host_wav * u.AA
-            spectrum1d_flux = host_flam * u.erg / (u.cm * u.cm * u.s * u.AA)
-            spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
-
-            print("Signal to noise for this spectrum:", snr_derived(spec1d))
 
             # see if filtering helps
             host_flam_filt = scipy.ndimage.gaussian_filter(host_flam, 2.0)
@@ -1526,10 +1530,10 @@ def main():
             else:
                 # Call emcee
                 #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
-                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
-                #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
-                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
+                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
             sys.exit(0)
 
