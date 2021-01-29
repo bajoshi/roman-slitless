@@ -718,7 +718,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
-        verbose=True, truth_color='tab:red', smooth=0.8, smooth1d=0.8)#, \
+        verbose=True, truth_color='tab:red', smooth=1.0, smooth1d=1.0, \
+        range=[(1.952, 1.9535), (11.0, 12.0), (0.0, 2.0), (0.5, 1.7), (0.6, 1.8)])
     #range=[(0.9, 1.05), (7, 50), (4.5, 5.0)])  # for SN 753
     #range=[(1.59, 1.6), (22, 25), (0.15, 0.45)])  # for SN 547
     #range=[(0.4, 0.45), (-1, 3), (0.0, 0.2)])  # for SN 481
@@ -892,6 +893,14 @@ def get_optimal_fit(args_obj, object_type):
 
     return np.array([best_z, best_age, best_tau, best_av, 1.0])
 
+def get_snr(wav, flux):
+
+    spectrum1d_wav = wav * u.AA
+    spectrum1d_flux = flam * u.erg / (u.cm * u.cm * u.s * u.AA)
+    spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
+
+    return snr_derived(spec1d)
+
 def main():
 
     print(f"{bcolors.WARNING}")
@@ -909,7 +918,6 @@ def main():
 
     # Read in the extracted spectra
     ext_spec_filename = ext_spectra_dir + 'romansim_' + img_suffix + '_x1d.fits'
-    #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan8_1hrPA_exptime/' + ext_root + 'ext_x1d.fits'
     #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + 'ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
@@ -1000,11 +1008,8 @@ def main():
             sn_wav = ext_hdu[('SOURCE', segid)].data['wavelength']
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-            spectrum1d_wav = host_wav * u.AA
-            spectrum1d_flux = host_flam * u.erg / (u.cm * u.cm * u.s * u.AA)
-            spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
-
-            print("Signal to noise for host galaxy spectrum:", snr_derived(spec1d))
+            print("Signal to noise for host galaxy spectrum:", get_snr(host_wav, host_flam))
+            print("Signal to noise for SN spectrum:", get_snr(sn_wav, sn_flam))
 
             # ---- Apply noise and get dummy noisy spectra
             noise_level = 0.03  # relative to signal
@@ -1015,14 +1020,14 @@ def main():
             host_ferr = noise_level * host_flam
             sn_ferr = noise_level * sn_flam
 
+            host_flam /= 315.6
+            host_ferr /= 315.6
+
             # Manual mod to check if it'll get the correct 
             # stellar mass if the flux scaling is correct.
             # for galaxy 207 from dec7 run
             #host_flam /= 259.2
             #host_ferr /= 259.2
-            
-            host_flam /= 315.6
-            host_ferr /= 315.6
 
             # for galaxy 475 from nov30 run
             #host_flam /= 40.2
@@ -1524,16 +1529,20 @@ def main():
             host_h5 = emcee_diagnostics_dir + checkdir + 'host_' + str(hostid) + '_emcee_sampler.h5'
             sn_h5 = emcee_diagnostics_dir + 'sn_' + str(segid) + '_emcee_sampler.h5'
 
+            read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+
+            sys.exit(0)
+
             if os.path.isfile(host_h5):
-                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
-                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
             else:
                 # Call emcee
                 #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
-                #read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
 
-                run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
-                read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
+                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
 
             sys.exit(0)
 

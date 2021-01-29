@@ -134,7 +134,7 @@ for oldf in glob.glob('*_flt.fits'):
         hdul.writeto(oldf, overwrite=True)
 
 print("Noise addition done. Check simulated images.")
-print("Exiting. Check statistics with ds9 and continue with extraction.")
+print("Check statistics with ds9 and continue with extraction.")
 ts = time.time()
 print("Time taken for simulation:", "{:d}".format(ts - start), "seconds.")
 
