@@ -136,7 +136,7 @@ for oldf in glob.glob('*_flt.fits'):
 print("Noise addition done. Check simulated images.")
 print("Check statistics with ds9 and continue with extraction.")
 ts = time.time()
-print("Time taken for simulation:", "{:d}".format(ts - start), "seconds.")
+print("Time taken for simulation:", "{:.1f}".format(ts - start), "seconds.")
 
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
