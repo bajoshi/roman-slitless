@@ -19,7 +19,7 @@ print("Starting at:", dt.datetime.now())
 import subprocess 
 
 lscpu = subprocess.Popen(['lscpu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-nproc = subprocess.Popen(['nproc'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+nproc = subprocess.Popen(['vmstat', '-s'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 lscpu_out, lscpu_err = lscpu.communicate()
 nproc_out, nproc_err = nproc.communicate()
