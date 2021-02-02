@@ -15,6 +15,22 @@ import socket
 start = time.time()
 print("Starting at:", dt.datetime.now())
 
+
+import subprocess 
+
+lscpu = subprocess.Popen(['lscpu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+nproc = subprocess.Popen(['nproc'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+lscpu_out, lscpu_err = lscpu.communicate()
+nproc_out, nproc_err = nproc.communicate()
+
+print(lscpu_out)
+print(lscpu_err)
+print(nproc_out)
+print(nproc_err)
+
+sys.exit(0)
+
 # Change directory to make sure results go in the right place
 home = os.getenv('HOME')
 
