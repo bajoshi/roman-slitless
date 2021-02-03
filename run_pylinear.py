@@ -15,7 +15,7 @@ import socket
 start = time.time()
 print("Starting at:", dt.datetime.now())
 
-
+"""
 import subprocess 
 
 lscpu = subprocess.Popen(['lscpu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -30,6 +30,7 @@ print(nproc_out)
 print(nproc_err)
 
 sys.exit(0)
+"""
 
 # Change directory to make sure results go in the right place
 home = os.getenv('HOME')
