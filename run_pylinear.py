@@ -40,6 +40,8 @@ if 'compute' in socket.gethostname():
     # Define directories for imaging and lst files
     pylinear_lst_dir = home + '/scratch/roman-slitless/pylinear_lst_files/'
     direct_img_dir = home + '/scratch/roman_direct_sims/K_akari_rotate_subset/'
+
+    path = home + '/scratch/roman_slitless_sims_results/tables'
     
     obsstr = '_marcc'
 
@@ -48,6 +50,8 @@ elif 'plffsn2' in socket.gethostname():
     # Define directories for imaging and lst files
     pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
     direct_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
+
+    path = home + '/Documents/roman_slitless_sims_results/tables'
 
     obsstr = '_plffsn2'
 
@@ -158,7 +162,7 @@ print("Time taken for simulation:", "{:.1f}".format(ts - start), "seconds.")
 """
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-path = home + '/Documents/roman_slitless_sims_results/tables'
+#path = home + '/Documents/roman_slitless_sims_results/tables'
 tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
 tabnames = tabulate.run(grisms, sources, beam)
 
