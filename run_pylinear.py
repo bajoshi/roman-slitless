@@ -85,7 +85,6 @@ print("FLT LST:", fltlst)
 
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
-
 """
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
@@ -163,8 +162,8 @@ print("Time taken for simulation:", "{:.1f}".format(ts - start), "seconds.")
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 #path = home + '/Documents/roman_slitless_sims_results/tables'
-tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
-tabnames = tabulate.run(grisms, sources, beam)
+#tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
+#tabnames = tabulate.run(grisms, sources, beam)
 
 extraction_parameters = grisms.get_default_extraction()
 
