@@ -85,7 +85,7 @@ print("FLT LST:", fltlst)
 
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
-"""
+
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
@@ -158,7 +158,7 @@ print("Noise addition done. Check simulated images.")
 print("Check statistics with ds9 and continue with extraction.")
 ts = time.time()
 print("Time taken for simulation:", "{:.1f}".format(ts - start), "seconds.")
-"""
+
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 #path = home + '/Documents/roman_slitless_sims_results/tables'
