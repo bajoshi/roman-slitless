@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --partition=shared              # Partiton requested
-#SBATCH -c 16                           # number of cores
-#SBATCH --time=00-12:00:00              # Max time for task. Format is DD-HH:MM:SS
+#SBATCH -c 24                           # number of cores
+#SBATCH --time=01-00:00:00              # Max time for task. Format is DD-HH:MM:SS
 #SBATCH --mail-type=ALL                 # Send a notification when the job starts, stops, or fails
 #SBATCH --mail-user=bjoshi5@jhu.edu     # send-to address
 #SBATCH -o slurm.romansim.%j.out        # STDOUT (%j = JobId)

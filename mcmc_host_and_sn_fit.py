@@ -1008,8 +1008,8 @@ def main():
             sn_wav = ext_hdu[('SOURCE', segid)].data['wavelength']
             sn_flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-            print("Signal to noise for host galaxy spectrum:", get_snr(host_wav, host_flam))
-            print("Signal to noise for SN spectrum:", get_snr(sn_wav, sn_flam))
+            #print("Signal to noise for host galaxy spectrum:", get_snr(host_wav, host_flam))
+            #print("Signal to noise for SN spectrum:", get_snr(sn_wav, sn_flam))
 
             # ---- Apply noise and get dummy noisy spectra
             noise_level = 0.03  # relative to signal
@@ -1045,7 +1045,6 @@ def main():
             #host_ferr_norm = noise_level * host_flam_norm
 
             # -------- Test figure for HOST
-            """
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot()
 
@@ -1081,19 +1080,19 @@ def main():
             if 'plffsn2' not in socket.gethostname():
                 h_path = h_path.replace('/home/bajoshi/', '/Users/baj/')
             host_template = np.genfromtxt(h_path, dtype=None, names=True, encoding='ascii')
+            print(host_template['flux'])
             ax.plot(host_template['lam'], host_template['flux'], lw=1.0, \
                 color='tab:green', zorder=1, label='model given to pyLINEAR')
 
             ax.set_xlim(9000, 20000)
             host_fig_ymin = np.min(host_flam)
             host_fig_ymax = np.max(host_flam)
-            ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
+            #ax.set_ylim(host_fig_ymin * 0.4, host_fig_ymax * 1.2)
 
             ax.legend(loc=0, fontsize=12, frameon=False)
 
             plt.show()
             sys.exit(0)
-            """
 
             """
             # plot some other template that is NOT a good fit

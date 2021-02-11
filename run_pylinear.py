@@ -86,6 +86,7 @@ print("FLT LST:", fltlst)
 # ---------------------- Get sources
 sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
+"""
 # Set up and tabulate
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
@@ -157,7 +158,8 @@ for oldf in glob.glob('*_flt.fits'):
 print("Noise addition done. Check simulated images.")
 print("Check statistics with ds9 and continue with extraction.")
 ts = time.time()
-print("Time taken for simulation:", "{:.1f}".format(ts - start), "seconds.")
+print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
+"""
 
 # ---------------------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
@@ -179,8 +181,12 @@ print("Extracting...")
 pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, ncpu=16, group=False)
 
 print("Simulation and extraction done.")
-te = time.time() - ts
-print("Time taken for extraction:", "{:d}".format(te), "seconds.")
+try:
+    te = time.time() - ts
+    print("Time taken for extraction:", "{:.2f}".format(te), "seconds.")
+except NameError:
+    pass
+
 print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 
 sys.exit(0)
