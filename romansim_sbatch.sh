@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --partition=shared              # Partiton requested
+#SBATCH --partition=parallel              # Partiton requested
 #SBATCH -c 24                           # number of cores
 #SBATCH --time=01-00:00:00              # Max time for task. Format is DD-HH:MM:SS
 #SBATCH --mail-type=ALL                 # Send a notification when the job starts, stops, or fails
