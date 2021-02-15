@@ -56,7 +56,7 @@ elif 'plffsn2' in socket.gethostname():
     obsstr = '_plffsn2'
 
 # Figure out the correct filenames depending on which machine is being used
-img_suffix_list = ['Y106_11_1', 'Y106_11_2']
+img_suffix_list = ['Y106_11_1']
 exptime_list = [300, 600, 900, 1800, 3600]
 
 sim_count = 0
@@ -74,21 +74,17 @@ for img in img_suffix_list:
     beam = '+1'
     maglim = 99.0
 
-    fltlst = pylinear_lst_dir + 'flt_' + img_suffix + obsstr + '.lst'
-
     # make sure the files exist
     assert os.path.isfile(segfile)
     assert os.path.isfile(obslst)
     assert os.path.isfile(sedlst)
     assert os.path.isfile(wcslst)
-    assert os.path.isfile(fltlst)
 
     print("Using the following paths to lst files and segmap:")
     print("Segmentation map:", segfile)
     print("OBS LST:", obslst)
     print("SED LST:", sedlst)
     print("WCS LST:", wcslst)
-    print("FLT LST:", fltlst)
 
     # ---------------------- Get sources
     sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
@@ -163,7 +159,7 @@ for img in img_suffix_list:
                 hdul[('ERR',1)].data = err
 
                 # now write to a new file name
-                newfilename = oldf.replace('_flt', '_flt_' + img_suffix + '_' str(exptime) + 's')
+                newfilename = oldf.replace('_flt', str(exptime) + 's' + '_flt')
                 hdul.writeto(newfilename, overwrite=True)
 
         print("Noise addition done. Check simulated images.")
@@ -171,6 +167,10 @@ for img in img_suffix_list:
         print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
 
         # ---------------------- Extraction
+        fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's_' + obsstr + '.lst'
+        assert os.path.isfile(fltlst)
+        print("FLT LST:", fltlst)
+
         grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 
         extraction_parameters = grisms.get_default_extraction()
@@ -179,9 +179,9 @@ for img in img_suffix_list:
 
         # Set extraction params
         sources.update_extraction_parameters(**extraction_parameters)
-        method = 'golden'  # single
+        method = 'golden'  # golden, grid, or single
         root = 'romansim_' + img_suffix + '_' str(exptime) + 's'
-        logdamp = [-7, -1, 0.1]  # logdamp = -np.inf
+        logdamp = [-7, -1, 0.1]
 
         print("Extracting...")
         pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, ncpu=0, group=False)
