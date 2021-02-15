@@ -102,7 +102,7 @@ for img in img_suffix_list:
 
     for e in range(len(exptime_list)):
 
-        """
+        
         # ---------------------- Add noise
         print("Adding noise...")
         # check Russell's notes in pylinear notebooks
@@ -116,6 +116,7 @@ for img in img_suffix_list:
 
         exptime = exptime_list[e]  # seconds
 
+        """
         for oldf in glob.glob('*_flt.fits'):
             print("Working on...", oldf)
             print("Putting in an exposure time of:", exptime, "seconds.")
@@ -162,6 +163,7 @@ for img in img_suffix_list:
                 # now write to a new file name
                 newfilename = oldf.replace('_flt', str(exptime) + 's' + '_flt')
                 hdul.writeto(newfilename, overwrite=True)
+                print("Written:", newfilename)
 
         print("Noise addition done. Check simulated images.")
         ts = time.time()
@@ -169,7 +171,7 @@ for img in img_suffix_list:
         """
 
         # ---------------------- Extraction
-        fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's_' + obsstr + '.lst'
+        fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's' + obsstr + '.lst'
         assert os.path.isfile(fltlst)
         print("FLT LST:", fltlst)
 
