@@ -101,7 +101,6 @@ for img in img_suffix_list:
     #print("Simulation done.")
 
     for e in range(len(exptime_list)):
-
         
         # ---------------------- Add noise
         print("Adding noise...")
@@ -161,9 +160,10 @@ for img in img_suffix_list:
                 hdul[('ERR',1)].data = err
 
                 # now write to a new file name
-                newfilename = oldf.replace('_flt', str(exptime) + 's' + '_flt')
+                newfilename = oldf.replace('_flt', '_' + str(exptime) + 's' + '_flt')
                 hdul.writeto(newfilename, overwrite=True)
-                print("Written:", newfilename)
+                
+            print("Written:", newfilename)
 
         print("Noise addition done. Check simulated images.")
         ts = time.time()
@@ -176,6 +176,9 @@ for img in img_suffix_list:
         print("FLT LST:", fltlst)
 
         grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+        path = home + '/Documents/roman_slitless_sims_results/tables'
+        tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
+        tabnames = tabulate.run(grisms, sources, beam)
 
         extraction_parameters = grisms.get_default_extraction()
 
