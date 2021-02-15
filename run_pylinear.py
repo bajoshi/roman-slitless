@@ -180,7 +180,7 @@ for img in img_suffix_list:
         # Set extraction params
         sources.update_extraction_parameters(**extraction_parameters)
         method = 'golden'  # golden, grid, or single
-        root = 'romansim_' + img_suffix + '_' str(exptime) + 's'
+        root = 'romansim_' + img_suffix + '_' + str(exptime) + 's'
         logdamp = [-7, -1, 0.1]
 
         print("Extracting...")
