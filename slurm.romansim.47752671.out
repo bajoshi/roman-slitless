@@ -1,0 +1,66 @@
+Starting SLURM script to test pylinear versions
+Starting pylinear run on a few sources from sbatch script...
+
+This code exists to compare speeds between versions of pylinear.
+See stuff in folder $HOME/Documents/roman_slitless_sims_results/few_sources_testrun/
+Starting at: 2021-02-17 11:50:38.384949
+Using the following paths to lst files and segmap:
+Segmentation map: /home-1/bjoshi5@jhu.edu/scratch/roman_slitless_sims_results/few_sources_testrun/akari_match_Y106_11_1_segmap_sourceclip.fits
+OBS LST: /home-1/bjoshi5@jhu.edu/scratch/roman_slitless_sims_results/few_sources_testrun/obs_fewsources_marcc.lst
+SED LST: /home-1/bjoshi5@jhu.edu/scratch/roman_slitless_sims_results/few_sources_testrun/sed_fewsources_marcc.lst
+WCS LST: /home-1/bjoshi5@jhu.edu/scratch/roman_slitless_sims_results/few_sources_testrun/wcs_fewsources_marcc.lst
+[32;1minfo>[00m[32m Loading source catalog[00m
+[32;1minfo>[00m[32m Loading an observational catalog[00m
+[34;1mdebug>[00m[34m [3mimplement source filtering[00m
+[32;1minfo>[00m[32m Loading sources from CLASSIC segmentation map[00m
+[32;1minfo>[00m[32m Loading broadband photometry[00m
+[32;1minfo>[00m[32m Loaded 3 sources[00m
+[32;1minfo>[00m[32m Loading grism collection[00m
+[32;1minfo>[00m[32m Loading simulated grism images[00m
+[32;1minfo>[00m[32m Loaded 3 images[00m
+[32;1minfo>[00m[32m Parallel Processing: 22 processes[00m
+Simulating...
+[32;1minfo>[00m[32m Parallel Processing: 22 processes[00m
+Simulation done.
+Adding noise...
+Working on... romansim2_fewsources_flt.fits
+Putting in an exposure time of: 900 seconds.
+Written: romansim2_fewsources_flt.fits
+Working on... romansim1_fewsources_flt.fits
+Putting in an exposure time of: 900 seconds.
+Written: romansim1_fewsources_flt.fits
+Working on... romansim3_fewsources_flt.fits
+Putting in an exposure time of: 900 seconds.
+Written: romansim3_fewsources_flt.fits
+Noise addition done. Check simulated images.
+Time taken for simulation: 82.88 seconds.
+FLT LST: /home-1/bjoshi5@jhu.edu/scratch/roman_slitless_sims_results/few_sources_testrun/flt_fewsources_marcc.lst
+[32;1minfo>[00m[32m Loading grism collection[00m
+[32;1minfo>[00m[32m Loading observed grism images[00m
+[32;1minfo>[00m[32m Loaded 3 images[00m
+
+Default parameters: range = 9500.0, 19000.0 A, sampling = 10.0 A
+[32;1minfo>[00m[32m updating extraction parameters.[00m
+Extracting...
+[32;1minfo>[00m[32m Building the matrix: 3 images, 3 sources.[00m
+[32;1minfo>[00m[32m Compressing the indices[00m
+[32;1minfo>[00m[32m Building a damping target[00m
+[32;1minfo>[00m[32m Running LSQR with l=1.2654536051252702e-05[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.0024776633396024063[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.06463238169320928[00m
+[32;1minfo>[00m[32m Running LSQR with l=12.654536051252704[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.4851079169988261[00m
+[32;1minfo>[00m[32m Running LSQR with l=1.686001764875384[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.22463106823118223[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.7807095374296531[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.361510524206758[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.5817977902226081[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.6509622137593658[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.5427777981778301[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.6073035047900128[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.6236229076507123[00m
+[32;1minfo>[00m[32m Running LSQR with l=0.5974318059119773[00m
+Simulation and extraction done.
+Time taken for extraction: 198.79 seconds.
+Total time taken: 281.67 seconds.
+Finished at: 2021-02-17 11:55:20.060004
