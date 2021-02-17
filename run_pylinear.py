@@ -175,7 +175,6 @@ for img in img_suffix_list:
         print("FLT LST:", fltlst)
 
         grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-        path = home + '/Documents/roman_slitless_sims_results/tables'
         tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
         tabnames = tabulate.run(grisms, sources, beam)
 
