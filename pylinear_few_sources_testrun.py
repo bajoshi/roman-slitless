@@ -12,7 +12,6 @@ import shutil
 # ---------------------- Preliminary stuff
 print("\nThis code exists to compare speeds between versions of pylinear.")
 print("See stuff in folder $HOME/Documents/roman_slitless_sims_results/few_sources_testrun/")
-print("This code will only work on the laptop; NOT PLFFSN2 or MARCC.\n")
 
 # Get starting time
 start = time.time()
@@ -21,16 +20,29 @@ print("Starting at:", dt.datetime.now())
 # Change directory to make sure results go in the right place
 home = os.getenv('HOME')
 
-testdir = home + '/Documents/roman_slitless_sims_results/few_sources_testrun/'
-os.chdir(testdir)
+if 'compute' in socket.gethostname():
+    testdir = home + '/scratch/roman_slitless_sims_results/few_sources_testrun/'
+    os.chdir(testdir)
+
+    path = home + '/scratch/roman_slitless_sims_results/few_sources_testrun/tables'
+    
+    obsstr = '_marcc'
+
+else:
+    testdir = home + '/Documents/roman_slitless_sims_results/few_sources_testrun/'
+    os.chdir(testdir)
+
+    path = home + '/Documents/roman_slitless_sims_results/few_sources_testrun/tables'
+
+    obsstr = ''
 
 # Define list files and other preliminary stuff
 img_suffix = 'Y106_11_1'
 segfile = testdir + 'akari_match_' + img_suffix + '_segmap_sourceclip.fits'
 
-obslst = testdir + 'obs_fewsources.lst'
-wcslst = testdir + 'wcs_fewsources.lst'
-sedlst = testdir + 'sed_fewsources.lst'
+obslst = testdir + 'obs_fewsources' + obsstr + '.lst'
+wcslst = testdir + 'wcs_fewsources' + obsstr + '.lst'
+sedlst = testdir + 'sed_fewsources' + obsstr + '.lst'
 beam = '+1'
 maglim = 99.0
 
@@ -121,12 +133,11 @@ ts = time.time()
 print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
 
 # ---------------------- Extraction
-fltlst = testdir + 'flt_fewsources.lst'
+fltlst = testdir + 'flt_fewsources' + obsstr + '.lst'
 assert os.path.isfile(fltlst)
 print("FLT LST:", fltlst)
 
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-path = home + '/Documents/roman_slitless_sims_results/few_sources_testrun/tables'
 
 extraction_parameters = grisms.get_default_extraction()
 
