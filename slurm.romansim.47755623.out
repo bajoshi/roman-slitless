@@ -1,0 +1,37 @@
+Starting SLURM script
+Starting python code from sbatch script...
+Starting at: 2021-02-17 14:30:04.694340
+Using the following paths to lst files and segmap:
+Segmentation map: /home-1/bjoshi5@jhu.edu/scratch/roman_direct_sims/K_akari_rotate_subset/akari_match_Y106_11_1_segmap.fits
+OBS LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/obs_Y106_11_1_marcc.lst
+SED LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/sed_Y106_11_1_marcc.lst
+WCS LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/wcs_Y106_11_1.lst
+[32;1minfo>[00m[32m Loading source catalog[00m
+[32;1minfo>[00m[32m Loading an observational catalog[00m
+[34;1mdebug>[00m[34m [3mimplement source filtering[00m
+[32;1minfo>[00m[32m Loading sources from CLASSIC segmentation map[00m
+[32;1minfo>[00m[32m Loading broadband photometry[00m
+[32;1minfo>[00m[32m Loaded 1130 sources[00m
+[32;1minfo>[00m[32m Loading grism collection[00m
+[32;1minfo>[00m[32m Loading simulated grism images[00m
+[32;1minfo>[00m[32m Loaded 3 images[00m
+[32;1minfo>[00m[32m Parallel Processing: 22 processes[00m
+Simulating...
+[32;1minfo>[00m[32m Parallel Processing: 22 processes[00m
+Simulation done.
+Adding noise...
+Working on... romansim2_Y106_11_1_flt.fits
+Putting in an exposure time of: 300 seconds.
+Written: romansim2_Y106_11_1_300s_flt.fits
+Working on... romansim1_Y106_11_1_flt.fits
+Putting in an exposure time of: 300 seconds.
+Written: romansim1_Y106_11_1_300s_flt.fits
+Working on... romansim3_Y106_11_1_flt.fits
+Putting in an exposure time of: 300 seconds.
+Written: romansim3_Y106_11_1_300s_flt.fits
+Noise addition done. Check simulated images.
+Time taken for simulation: 2335.62 seconds.
+FLT LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/flt_Y106_11_1_300s_marcc.lst
+[32;1minfo>[00m[32m Loading grism collection[00m
+[32;1minfo>[00m[32m Loading observed grism images[00m
+[32;1minfo>[00m[32m Loaded 3 images[00m
