@@ -8,6 +8,7 @@ import time
 import datetime as dt
 import glob
 import shutil
+import socket
 
 # ---------------------- Preliminary stuff
 print("\nThis code exists to compare speeds between versions of pylinear.")
