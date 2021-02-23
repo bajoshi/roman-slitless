@@ -189,7 +189,8 @@ for img in img_suffix_list:
         logdamp = [-7, -1, 0.1]
 
         print("Extracting...")
-        pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, ncpu=0, group=False)
+        pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, \
+            inverter='lsmr', ncpu=0, group=False)
 
         print("Simulation and extraction done.")
         try:
