@@ -164,11 +164,11 @@ for img in img_suffix_list:
                 hdul.writeto(newfilename, overwrite=True)
                 
             print("Written:", newfilename)
+        
+        print("Noise addition done. Check simulated images.")
+        ts = time.time()
+        print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
         """
-        #print("Noise addition done. Check simulated images.")
-        #ts = time.time()
-        #print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
-
         # ---------------------- Extraction
         fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's' + obsstr + '.lst'
         assert os.path.isfile(fltlst)
