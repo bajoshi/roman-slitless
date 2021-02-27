@@ -190,7 +190,7 @@ for img in img_suffix_list:
 
         print("Extracting...")
         pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, method, root, path, \
-            inverter='lsmr', ncpu=0, group=False)
+            inverter='lsqr', ncpu=0, group=False, usehdf5=True)
 
         print("Simulation and extraction done.")
         try:

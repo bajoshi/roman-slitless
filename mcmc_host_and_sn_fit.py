@@ -907,8 +907,9 @@ def main():
     print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
     print(f"{bcolors.ENDC}")
 
-    ext_root = "romansim1_"
+    ext_root = "romansim_"
     img_suffix = 'Y106_11_1'
+    exptime = '_300s'
 
     # Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
@@ -917,7 +918,7 @@ def main():
     print("Read in sed.lst from:", sedlst_path)
 
     # Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + 'romansim_' + img_suffix + '_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + 'lsmr_run/' + ext_root + img_suffix + exptime + '_x1d.fits'
     #ext_spec_filename = ext_spectra_dir + 'plffsn2_run_jan9_3hrPA_exptime/' + ext_root + 'ext_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
