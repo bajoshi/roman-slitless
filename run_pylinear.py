@@ -90,15 +90,15 @@ for img in img_suffix_list:
     sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
     # Set up and tabulate
-    #grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-    #tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
-    #tabnames = tabulate.run(grisms, sources, beam)
+    grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
+    tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
+    tabnames = tabulate.run(grisms, sources, beam)
 
     ## ---------------------- Simulate
-    #print("Simulating...")
-    #simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
-    #fltnames = simulate.run(grisms, sources, beam)
-    #print("Simulation done.")
+    print("Simulating...")
+    simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
+    fltnames = simulate.run(grisms, sources, beam)
+    print("Simulation done.")
 
     for e in range(len(exptime_list)):
         
@@ -115,7 +115,6 @@ for img in img_suffix_list:
 
         exptime = exptime_list[e]  # seconds
 
-        """
         for oldf in glob.glob('*_flt.fits'):
             print("Working on...", oldf)
             print("Putting in an exposure time of:", exptime, "seconds.")
@@ -168,7 +167,7 @@ for img in img_suffix_list:
         print("Noise addition done. Check simulated images.")
         ts = time.time()
         print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
-        """
+
         # ---------------------- Extraction
         fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's' + obsstr + '.lst'
         assert os.path.isfile(fltlst)
