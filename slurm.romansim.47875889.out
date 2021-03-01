@@ -1,0 +1,156 @@
+Starting SLURM script
+Starting python code from sbatch script...
+Starting at: 2021-02-28 15:46:34.258577
+Using the following paths to lst files and segmap:
+Segmentation map: /home-1/bjoshi5@jhu.edu/scratch/roman_direct_sims/K_akari_rotate_subset/akari_match_Y106_11_1_segmap.fits
+OBS LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/obs_Y106_11_1_marcc.lst
+SED LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/sed_Y106_11_1_marcc.lst
+WCS LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/wcs_Y106_11_1.lst
+[32;1minfo>[00m[32m Loading source catalog[00m
+[32;1minfo>[00m[32m Loading an observational catalog[00m
+[34;1mdebug>[00m[34m [3mimplement source filtering[00m
+[32;1minfo>[00m[32m Loading sources from CLASSIC segmentation map[00m
+[32;1minfo>[00m[32m Loading broadband photometry[00m
+[32;1minfo>[00m[32m Loaded 1130 sources[00m
+[32;1minfo>[00m[32m Loading grism collection[00m
+[32;1minfo>[00m[32m Loading simulated grism images[00m
+[32;1minfo>[00m[32m Loaded 3 images[00m
+[32;1minfo>[00m[32m Parallel Processing: 22 processes[00m
+Simulating...
+[32;1minfo>[00m[32m Parallel Processing: 22 processes[00m
+Simulation done.
+Adding noise...
+Working on... romansim2_Y106_11_1_flt.fits
+Putting in an exposure time of: 300 seconds.
+Written: romansim2_Y106_11_1_300s_flt.fits
+Working on... romansim1_Y106_11_1_flt.fits
+Putting in an exposure time of: 300 seconds.
+Written: romansim1_Y106_11_1_300s_flt.fits
+Working on... romansim3_Y106_11_1_flt.fits
+Putting in an exposure time of: 300 seconds.
+Written: romansim3_Y106_11_1_300s_flt.fits
+Noise addition done. Check simulated images.
+Time taken for simulation: 2128.94 seconds.
+FLT LST: /home-1/bjoshi5@jhu.edu/scratch/roman-slitless/pylinear_lst_files/flt_Y106_11_1_300s_marcc.lst
+[32;1minfo>[00m[32m Loading grism collection[00m
+[32;1minfo>[00m[32m Loading observed grism images[00m
+[32;1minfo>[00m[32m Loaded 3 images[00m
+[32;1minfo>[00m[32m Parallel Processing: 22 processes[00m
+
+Default parameters: range = 9500.0, 19000.0 A, sampling = 10.0 A
+[32;1minfo>[00m[32m updating extraction parameters.[00m
+Extracting...
+Starting 1d extraction.
+Creating a group file.
+Number of groups: 1
+Created extraction object. At: 2021-02-28 16:40:45.364262
+[32;1minfo>[00m[32m Building the matrix: 3 images, 1130 sources.[00m
+[32;1minfo>[00m[32m Compressing the indices[00m
+[32;1minfo>[00m[32m Building a damping target[00m
+Beginning extraction run method.
+At: 2021-02-28 17:52:59.359213
+Starting golden search algorithm.
+At: 2021-02-28 17:52:59.359851
+[32;1minfo>[00m[32m Running LSQR with l=0.0015023351880380398[00m
+Time taken for this lsqr value: 522.1237217423661 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.2941459729634309[00m
+Time taken for this lsqr value: 21.744121746501573 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=7.67309847719007[00m
+Time taken for this lsqr value: 1.2357501502304027 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=1502.33518803804[00m
+Time taken for this lsqr value: 0.04919613349872331 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.03918994955948915[00m
+Time taken for this lsqr value: 97.55782341273347 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=1.0223099070727608[00m
+Time taken for this lsqr value: 7.53601004719579 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=2.2077561819584854[00m
+Time taken for this lsqr value: 3.828960972636317 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.6352306533619355[00m
+Time taken for this lsqr value: 11.373533412177737 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.4733844953712216[00m
+Time taken for this lsqr value: 14.62208194406703 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.7618424219791256[00m
+Time taken for this lsqr value: 9.737429462303407 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.8524106448695543[00m
+Time taken for this lsqr value: 8.844143351268334 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.7107472034262647[00m
+Time taken for this lsqr value: 10.349719713597247 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.6808970294075093[00m
+Time taken for this lsqr value: 10.744324494347287 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.7298463356613463[00m
+Time taken for this lsqr value: 10.161849409132264 minutes.
+[32;1minfo>[00m[32m Running LSQR with l=0.6991940305640904[00m
+Time taken for this lsqr value: 10.566528275601256 minutes.
+[33;1mwarn>[00m[33m 1 was not measured.[00m
+[33;1mwarn>[00m[33m 2 was not measured.[00m
+[33;1mwarn>[00m[33m 5 was not measured.[00m
+[33;1mwarn>[00m[33m 6 was not measured.[00m
+[33;1mwarn>[00m[33m 8 was not measured.[00m
+[33;1mwarn>[00m[33m 9 was not measured.[00m
+[33;1mwarn>[00m[33m 12 was not measured.[00m
+[33;1mwarn>[00m[33m 13 was not measured.[00m
+[33;1mwarn>[00m[33m 15 was not measured.[00m
+[33;1mwarn>[00m[33m 17 was not measured.[00m
+[33;1mwarn>[00m[33m 20 was not measured.[00m
+[33;1mwarn>[00m[33m 24 was not measured.[00m
+[33;1mwarn>[00m[33m 29 was not measured.[00m
+[33;1mwarn>[00m[33m 32 was not measured.[00m
+[33;1mwarn>[00m[33m 34 was not measured.[00m
+[33;1mwarn>[00m[33m 39 was not measured.[00m
+[33;1mwarn>[00m[33m 40 was not measured.[00m
+[33;1mwarn>[00m[33m 45 was not measured.[00m
+[33;1mwarn>[00m[33m 49 was not measured.[00m
+[33;1mwarn>[00m[33m 54 was not measured.[00m
+[33;1mwarn>[00m[33m 59 was not measured.[00m
+[33;1mwarn>[00m[33m 65 was not measured.[00m
+[33;1mwarn>[00m[33m 69 was not measured.[00m
+[33;1mwarn>[00m[33m 102 was not measured.[00m
+[33;1mwarn>[00m[33m 103 was not measured.[00m
+[33;1mwarn>[00m[33m 106 was not measured.[00m
+[33;1mwarn>[00m[33m 125 was not measured.[00m
+[33;1mwarn>[00m[33m 140 was not measured.[00m
+[33;1mwarn>[00m[33m 157 was not measured.[00m
+[33;1mwarn>[00m[33m 176 was not measured.[00m
+[33;1mwarn>[00m[33m 183 was not measured.[00m
+[33;1mwarn>[00m[33m 830 was not measured.[00m
+[33;1mwarn>[00m[33m 831 was not measured.[00m
+[33;1mwarn>[00m[33m 857 was not measured.[00m
+[33;1mwarn>[00m[33m 858 was not measured.[00m
+[33;1mwarn>[00m[33m 864 was not measured.[00m
+[33;1mwarn>[00m[33m 866 was not measured.[00m
+[33;1mwarn>[00m[33m 875 was not measured.[00m
+[33;1mwarn>[00m[33m 876 was not measured.[00m
+[33;1mwarn>[00m[33m 886 was not measured.[00m
+[33;1mwarn>[00m[33m 894 was not measured.[00m
+[33;1mwarn>[00m[33m 948 was not measured.[00m
+[33;1mwarn>[00m[33m 949 was not measured.[00m
+[33;1mwarn>[00m[33m 1060 was not measured.[00m
+[33;1mwarn>[00m[33m 1077 was not measured.[00m
+[33;1mwarn>[00m[33m 1098 was not measured.[00m
+[33;1mwarn>[00m[33m 1118 was not measured.[00m
+[33;1mwarn>[00m[33m 1123 was not measured.[00m
+Runtime for extract1d: 0d13h34m44s
+Saving x1d file now.
+Simulation and extraction done.
+Time taken for extraction: 50012.49 seconds.
+Adding noise...
+Working on... romansim3_Y106_11_1_300s_flt.fits
+Putting in an exposure time of: 600 seconds.
+Written: romansim3_Y106_11_1_300s_600s_flt.fits
+Working on... romansim2_Y106_11_1_flt.fits
+Putting in an exposure time of: 600 seconds.
+Written: romansim2_Y106_11_1_600s_flt.fits
+Working on... romansim1_Y106_11_1_300s_flt.fits
+Putting in an exposure time of: 600 seconds.
+Written: romansim1_Y106_11_1_300s_600s_flt.fits
+Working on... romansim1_Y106_11_1_flt.fits
+Putting in an exposure time of: 600 seconds.
+Written: romansim1_Y106_11_1_600s_flt.fits
+Working on... romansim2_Y106_11_1_300s_flt.fits
+Putting in an exposure time of: 600 seconds.
+Written: romansim2_Y106_11_1_300s_600s_flt.fits
+Working on... romansim3_Y106_11_1_flt.fits
+Putting in an exposure time of: 600 seconds.
+Written: romansim3_Y106_11_1_600s_flt.fits
+Noise addition done. Check simulated images.
+Time taken for simulation: 52158.22 seconds.

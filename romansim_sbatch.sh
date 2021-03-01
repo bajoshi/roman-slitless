@@ -2,7 +2,7 @@
 
 #SBATCH --partition=shared              # Partiton requested
 
-#SBATCH -c 10                           # number of cores
+#SBATCH -c 16                           # number of cores
 #SBATCH --time=01-00:00:00              # Max time for task. Format is DD-HH:MM:SS
 #SBATCH --mail-type=ALL                 # Send a notification when the job starts, stops, or fails
 #SBATCH --mail-user=bjoshi5@jhu.edu     # send-to address
