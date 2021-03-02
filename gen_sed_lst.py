@@ -213,13 +213,13 @@ def get_gal_spec_path(redshift):
 
     return gal_spec_path
 
-def main():
+def gen_sed_lst(img_suffix):
 
     # Set image params
     img_sim_dir = roman_direct_dir + 'K_akari_rotate_subset/'
     img_truth_dir = roman_direct_dir + 'K_akari_rotate_truth/'
     img_basename = 'akari_match_'
-    img_suffix = 'Y106_11_1'
+    #img_suffix = 'Y106_11_1'
 
     # Open empty file for saving sed.lst
     fh = open(roman_slitless_dir + 'sed_' + img_suffix + '.lst', 'w')
@@ -307,6 +307,10 @@ def main():
 
     # Close sed.lst file to save
     fh.close()
+
+    return None
+
+def main():
 
     return None
 
