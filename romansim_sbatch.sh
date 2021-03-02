@@ -2,7 +2,9 @@
 
 #SBATCH --partition=parallel              # Partiton requested
 
-#SBATCH -c 32                           # number of cores
+###SBATCH -c 32                           # number of cores
+#SBATCH --ntasks-per-node=16
+#SBATCH --nodes=2
 #SBATCH --time=02-00:00:00              # Max time for task. Format is DD-HH:MM:SS
 #SBATCH --mail-type=ALL                 # Send a notification when the job starts, stops, or fails
 #SBATCH --mail-user=bjoshi5@jhu.edu     # send-to address
