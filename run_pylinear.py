@@ -64,6 +64,7 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
     sedlst_filename = lst_dir + 'sed_' + img_suffix + machine + '.lst'
 
     if not os.path.isfile(sedlst_basefilename):
+        print("Cannot find file:", sedlst_basefilename)
         print("First run the gen_sed_lst program to generate")
         print("a base sed lst whose paths can then be changed.")
         print("Exiting.")
@@ -195,7 +196,6 @@ def main():
     if 'compute' in socket.gethostname():
         # Define path for results and change to that directory
         result_path = home + '/scratch/roman_slitless_sims_results/'
-        os.chdir(result_path)
         
         # Define directories for imaging and lst files
         pylinear_lst_dir = home + '/scratch/roman-slitless/pylinear_lst_files/'
@@ -213,7 +213,6 @@ def main():
     elif 'plffsn2' in socket.gethostname():
         # Define path for results and change to that directory
         result_path = home + '/Documents/roman_slitless_sims_results/'
-        os.chdir(result_path)
         
         # Define directories for imaging and lst files
         pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
@@ -256,6 +255,11 @@ def main():
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
             dir_img_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
             exptime_list, simroot)
+
+        # Change directory to where the simulation results will go
+        # This MUST be done after creating lst files otherwise
+        # sed lst generation will fail.
+        os.chdir(result_path)
 
         # Define list files and other preliminary stuff
         segfile = dir_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
