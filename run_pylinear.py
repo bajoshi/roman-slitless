@@ -199,7 +199,7 @@ def main():
         
         # Define directories for imaging and lst files
         pylinear_lst_dir = home + '/scratch/roman-slitless/pylinear_lst_files/'
-        direct_img_dir = home + '/scratch/roman_direct_sims/K_akari_rotate_subset/'
+        dir_img_dir = home + '/scratch/roman_direct_sims/K_akari_rotate_subset/'
 
         # Define paths for tables
         tablespath = home + '/scratch/roman_slitless_sims_results/tables/'
@@ -217,7 +217,7 @@ def main():
         
         # Define directories for imaging and lst files
         pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
-        direct_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
+        dir_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
 
         # Define paths for tables
         tablespath = home + '/Documents/roman_slitless_sims_results/tables/'
@@ -233,7 +233,8 @@ def main():
     exptime_list = [300, 600, 900, 1800, 3600]
     roll_angle_ll = [[165.0, 210.0, 260.0], [70.0, 130.0, 190.0]]
 
-    direct_img_filt = 'hst_wfc3_f105w'
+    dir_img_filt = 'hst_wfc3_f105w'
+    dir_img_name = 'akari_match_' + img_suffix + '_sci_counts.fits'
     simroot = 'romansim'
     
     sim_count = 0
@@ -245,16 +246,18 @@ def main():
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
-        create_lst_files('_plffsn2', '/Users/baj/Documents/GitHub/roman-slitless/pylinear_lst_files/', \
-            img_suffix, roll_angle_list, \
-            '/Users/baj/Documents/roman_direct_sims/K_akari_rotate_subset/', direct_img_filt, \
-            'akari_match_Y106_11_1_sci_counts.fits', home + '/Documents/roman_slitless_sims_seds/', \
-            '/Users/baj/Documents/roman_slitless_sims_results/', exptime_list, simroot)
+        # create_lst_files('_plffsn2', '/Users/baj/Documents/GitHub/roman-slitless/pylinear_lst_files/', \
+        #     img_suffix, roll_angle_list, \
+        #     '/Users/baj/Documents/roman_direct_sims/K_akari_rotate_subset/', dir_img_filt, \
+        #     'akari_match_Y106_11_1_sci_counts.fits', home + '/Documents/roman_slitless_sims_seds/', \
+        #     '/Users/baj/Documents/roman_slitless_sims_results/', exptime_list, simroot)
 
-        sys.exit(0)
-    
+        create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
+            dir_img_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
+            exptime_list, simroot)
+
         # Define list files and other preliminary stuff
-        segfile = direct_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
+        segfile = dir_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
     
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
         wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
@@ -303,7 +306,8 @@ def main():
     
             exptime = exptime_list[e]  # seconds
     
-            for oldf in glob.glob('*_flt.fits'):
+            for i in range(len(roll_angle_list)):
+                oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
                 print("Working on...", oldf)
                 print("Putting in an exposure time of:", exptime, "seconds.")
     
@@ -390,6 +394,9 @@ def main():
         # This only increments after all the exptimes 
         # for a given direct image are simulated
         sim_count += 1
+
+        print("Finished with first set of sims. Check results. Exiting.")
+        sys.exit(0)
     
     print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 
