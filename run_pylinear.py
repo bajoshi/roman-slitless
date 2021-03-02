@@ -234,7 +234,6 @@ def main():
     roll_angle_ll = [[165.0, 210.0, 260.0], [70.0, 130.0, 190.0]]
 
     dir_img_filt = 'hst_wfc3_f105w'
-    dir_img_name = 'akari_match_' + img_suffix + '_sci_counts.fits'
     simroot = 'romansim'
     
     sim_count = 0
@@ -243,6 +242,8 @@ def main():
     
         img_suffix = img_suffix_list[sim_count]
         roll_angle_list = roll_angle_ll[sim_count]
+
+        dir_img_name = 'akari_match_' + img_suffix + '_sci_counts.fits'
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
