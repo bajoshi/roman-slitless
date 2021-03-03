@@ -371,7 +371,7 @@ def main():
             print("FLT LST:", fltlst)
     
             grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-            tabulate = pylinear.modules.Tabulate('pdt', path=path, ncpu=0)
+            tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
             tabnames = tabulate.run(grisms, sources, beam)
     
             extraction_parameters = grisms.get_default_extraction()
