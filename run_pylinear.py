@@ -109,7 +109,7 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
             for r in range(len(roll_angle_list)):
 
-                str_to_write = '\n' + result_path + simroot + '_' + img_suffix + '_' + str(t) + 's_flt.fits'
+                str_to_write = '\n' + result_path + simroot + str(r+1) + '_' + img_suffix + '_' + str(t) + 's_flt.fits'
                 fh.write(str_to_write)
 
         print("Written FLT LST:", flt_filename)
