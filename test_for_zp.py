@@ -4,6 +4,8 @@ from astropy.io import fits
 import os
 import sys
 
+import matplotlib.pyplot as plt
+
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
@@ -41,14 +43,10 @@ def main():
     
     img_sim_dir = home + '/Documents/roman_direct_sims/sims2021/sextractor_mag_zp_test/'
     img_basename = 'test_5deg_'
-    img_suffix = 'Y106_1_7'
+    img_suffix = 'Y106_0_1'
     
     truth_dir = home + '/Documents/roman_direct_sims/sims2021/K_5degtruth/'
     truth_basename = '5deg_index_'
-    
-    test_obj_ids = np.arange(100)
-    print("Chosen the following object ids (seg map ids):", test_obj_ids)
-    print("Will check their SExtractor derived mags against truth mags.\n")
     
     # Read in SExtractor catalog
     cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
@@ -56,6 +54,10 @@ def main():
     cat = np.genfromtxt(img_sim_dir + img_basename + img_suffix + '.cat', \
         dtype=None, names=cat_header, encoding='ascii')
     
+    test_obj_ids = np.arange(len(cat))
+    print("Chosen the following object ids (seg map ids):", test_obj_ids)
+    print("Will check their SExtractor derived mags against truth mags.\n")
+
     # Read in truth file
     truth_file = truth_dir + truth_basename + img_suffix + '.fits'
     truth_hdu = fits.open(truth_file)
@@ -64,11 +66,14 @@ def main():
     ra  = truth_hdu[1].data['ra']  * 180/np.pi
     dec = truth_hdu[1].data['dec'] * 180/np.pi
     
-    create_regions_from_truth(ra, dec, truth_file)
-    sys.exit(0)
+    #create_regions_from_truth(ra, dec, truth_file)
+    #sys.exit(0)
     
     # Matching tolerance
     tol = 0.3/3600  # arcseconds expressed in degrees since our ra-decs are in degrees
+
+    # EMpty list ot hold zeropoints
+    zp_list = []
     
     # Now match each object
     for i in range(len(test_obj_ids)):
@@ -119,6 +124,18 @@ def main():
 
         zp = true_mag + 2.5 * np.log10(flux)
         print(f"{bcolors.GREEN}", "ZP for this object:", zp, f"{bcolors.ENDC}")
+
+        zp_list.append(zp)
+
+    # Make a histogram of the zeropoints for all objects in a given image
+    zp = np.asarray(zp_list)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ax.hist(zp, 30, range=(30.5, 32.0))
+
+    plt.show()
 
     return None
 
