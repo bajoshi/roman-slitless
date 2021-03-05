@@ -67,12 +67,12 @@ def main():
     ax = fig.add_subplot(111)
 
     ax.set_xlabel(r'$\mathrm{SNR}$', fontsize=16)
-    ax.set_ylabel(r'$\frac{\Delta z}{1 + z_\mathrm{truth}}$', fontsize=16)
+    ax.set_ylabel(r'$\left|\frac{\Delta z}{1 + z_\mathrm{truth}}\right|$', fontsize=16)
 
-    ax.errorbar(snr_arr_gal, z_acc_gal, yerr=z_err_gal, fmt='o', \
+    ax.errorbar(snr_arr_gal, np.abs(z_acc_gal), yerr=z_err_gal, fmt='o', \
         markersize=5.0, markerfacecolor='k', markeredgecolor='k', ecolor='gray', elinewidth=1.2, label='Galaxies')
 
-    ax.errorbar(snr_arr_sn, z_acc_sn, yerr=z_err_sn, fmt='o', \
+    ax.errorbar(snr_arr_sn, np.abs(z_acc_sn), yerr=z_err_sn, fmt='o', \
         markersize=5.0, markerfacecolor='None', markeredgecolor='k', ecolor='gray', elinewidth=1.2, label='SNe')
     ax.axhline(y=0.0, ls='--', color='gray')
 
