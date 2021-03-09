@@ -8,6 +8,7 @@ astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0
 import os
 import sys
 import subprocess
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 
@@ -245,8 +246,8 @@ def gen_sed_lst():
     pointings = np.arange(191)
     detectors = np.arange(1, 19, 1)
 
-    for pt in pointings:
-        for det in detectors:
+    for pt in tqdm(pointings, desc="Pointing"):
+        for det in tqdm(detectors, desc="Detector", leave=False):
 
             # Open empty file for saving sed.lst
             sed_filename = roman_slitless_dir + 'pylinear_lst_files/' + \
@@ -266,21 +267,29 @@ def gen_sed_lst():
             if not os.path.isfile(cat_filename):
                 print("Cannot file object catalog. SExtractor will be run automatically.")
 
-                # First check that the files from Kevin have been unzipped
-                if not :
-                    
-
                 # Now run SExtractor automatically
                 # Set up sextractor
                 img_filename = img_basename + img_filt + str(pt) + '_' + str(det) + '.fits'
                 checkimage = img_basename + img_filt + str(pt) + '_' + str(det) + '_segmap.fits'
 
-                print(f"{bcolors.GREEN}", "Running:", "sex", img_filename, "-c", "roman_sims_sextractor_config.txt", \
-                    "-CATALOG_NAME", os.path.basename(cat_filename), "-CHECKIMAGE_NAME", checkimage, f"{bcolors.ENDC}")
-
                 # Change directory to images directory
                 os.chdir(img_sim_dir)
 
+                # First check that the files have been unzipped
+                if not os.path.isfile(img_filename):
+                    print("Unzipping file:", img_filename + '.gz')
+                    subprocess.run(['gzip', '-fd', img_filename + '.gz'])
+
+                print(f"{bcolors.GREEN}", "Running:", "sex", img_filename, "-c", "roman_sims_sextractor_config.txt", \
+                    "-CATALOG_NAME", os.path.basename(cat_filename), "-CHECKIMAGE_NAME", checkimage, f"{bcolors.ENDC}")
+
+                # Use subprocess to call sextractor.
+                # The args passed MUST be passed in this way.
+                # i.e., args that would be separated by a space on the 
+                # command line must be passed here separated by commas.
+                # It will not work if you join all of these args in a 
+                # string with spaces where they are supposed to be; 
+                # even if the command looks right when printed out.
                 sextractor = subprocess.run(['sex', img_filename, '-c', 'roman_sims_sextractor_config.txt', \
                     '-CATALOG_NAME', os.path.basename(cat_filename), '-CHECKIMAGE_NAME', checkimage], check=True)
                 
@@ -294,7 +303,14 @@ def gen_sed_lst():
             cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
             # Loop over all objects and assign spectra
-            for i in range(len(cat)):
+            # Read in the truth files first
+            truth_hdu_gal = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '.fits')
+            truth_hdu_sn = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '_sn.fits')
+
+            for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
+
+                # Get object redshift
+                
 
 
 
