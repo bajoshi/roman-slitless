@@ -9,6 +9,7 @@ import os
 import sys
 import subprocess
 from tqdm import tqdm
+import time
 
 import matplotlib.pyplot as plt
 
@@ -231,6 +232,48 @@ def get_gal_spec_path(redshift):
 
     return gal_spec_path
 
+def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
+
+    # Matching tolerance
+    tol = tol_arcsec/3600  # arcseconds expressed in degrees since our ra-decs are in degrees
+
+    radiff = ra_arr - ra_to_check
+    decdiff = dec_arr - dec_to_check
+    idx = np.where( (np.abs(radiff) < tol) & (np.abs(decdiff) < tol) )[0]
+
+    # Find closest match in case of multiple matches
+    if len(idx) > 1:
+        #tqdm.write(f"{bcolors.WARNING}" + "Multiple matches found. Picking closest one." + f"{bcolors.ENDC}")
+
+        ra_two = ra_to_check
+        dec_two = dec_to_check
+
+        dist_list = []
+        for v in range(len(idx)):
+
+            ra_one = ra_arr[idx][v]
+            dec_one = ra_arr[idx][v]
+
+            dist = np.arccos(np.cos(dec_one*np.pi/180) * \
+                np.cos(dec_two*np.pi/180) * np.cos(ra_one*np.pi/180 - ra_two*np.pi/180) + \
+                np.sin(dec_one*np.pi/180) * np.sin(dec_two*np.pi/180))
+            dist_list.append(dist)
+
+        dist_list = np.asarray(dist_list)
+        idx = np.argmin(dist_list)
+
+    elif len(idx) == 1:
+        idx = int(idx)
+
+    # Increase tolerance if no match found at first
+    elif len(idx) == 0:
+        tqdm.write(f"{bcolors.WARNING}" + "No matches found. Redoing search within greater radius." + f"{bcolors.ENDC}")
+        tqdm.write(f"{bcolors.WARNING}" + "This method needs a LOT more testing." + f"{bcolors.ENDC}")
+        #tqdm.write("Search centered on " + str(ra_to_check) + "   " + str(dec_to_check))
+        idx = get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=tol_arcsec+0.1)
+
+    return idx
+
 def gen_sed_lst():
 
     # Set image and truth params
@@ -243,6 +286,10 @@ def gen_sed_lst():
     truth_dir = roman_direct_dir + 'K_5degtruth/'
     truth_basename = '5deg_index_'
 
+    # Read in the large truth arrays
+    truth_match = fits.open(roman_direct_dir + '5deg_truth_gal.fits')
+
+    # Arrays to loop over
     pointings = np.arange(191)
     detectors = np.arange(1, 19, 1)
 
@@ -252,7 +299,7 @@ def gen_sed_lst():
             # Open empty file for saving sed.lst
             sed_filename = roman_slitless_dir + 'pylinear_lst_files/' + \
             'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
-            print("\nWill generate SED file:", sed_filename)
+            tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + sed_filename + f"{bcolors.ENDC}")
 
             fh = open(sed_filename, 'w')
 
@@ -262,10 +309,10 @@ def gen_sed_lst():
 
             # Read in catalog from SExtractor
             cat_filename = img_sim_dir + img_basename + img_filt + str(pt) + '_' + str(det) + '.cat'
-            print("Checking for catalog:", cat_filename)
+            tqdm.write("Checking for catalog: " + cat_filename)
 
             if not os.path.isfile(cat_filename):
-                print("Cannot file object catalog. SExtractor will be run automatically.")
+                tqdm.write("Cannot file object catalog. SExtractor will be run automatically.")
 
                 # Now run SExtractor automatically
                 # Set up sextractor
@@ -277,11 +324,11 @@ def gen_sed_lst():
 
                 # First check that the files have been unzipped
                 if not os.path.isfile(img_filename):
-                    print("Unzipping file:", img_filename + '.gz')
+                    tqdm.write(f"{bcolors.GREEN}" + "Unzipping file: " + img_filename + ".gz" + f"{bcolors.ENDC}")
                     subprocess.run(['gzip', '-fd', img_filename + '.gz'])
 
-                print(f"{bcolors.GREEN}", "Running:", "sex", img_filename, "-c", "roman_sims_sextractor_config.txt", \
-                    "-CATALOG_NAME", os.path.basename(cat_filename), "-CHECKIMAGE_NAME", checkimage, f"{bcolors.ENDC}")
+                tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
+                    " -CATALOG_NAME " + os.path.basename(cat_filename) + " -CHECKIMAGE_NAME " + checkimage + f"{bcolors.ENDC}")
 
                 # Use subprocess to call sextractor.
                 # The args passed MUST be passed in this way.
@@ -293,7 +340,7 @@ def gen_sed_lst():
                 sextractor = subprocess.run(['sex', img_filename, '-c', 'roman_sims_sextractor_config.txt', \
                     '-CATALOG_NAME', os.path.basename(cat_filename), '-CHECKIMAGE_NAME', checkimage], check=True)
                 
-                print("Finished SExtractor run. Check cat and segmap if needed.")
+                tqdm.write("Finished SExtractor run. Check cat and segmap if needed.")
 
                 # Go back to roman-slitless directory
                 os.chdir(roman_slitless_dir)
@@ -307,47 +354,45 @@ def gen_sed_lst():
             truth_hdu_gal = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '.fits')
             truth_hdu_sn = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '_sn.fits')
 
+            # assign arrays
+            ra_gal  = truth_hdu_gal[1].data['ra']  * 180/np.pi
+            dec_gal = truth_hdu_gal[1].data['dec'] * 180/np.pi
+
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
-                # Get object redshift
-                
-
-
-
-                sys.exit(0)
-
-
-    # Redshift array to choose redshift from
-    redshift_arr = np.arange(0.001, 3.001, 0.001)
-
-    # Read in SN truth file
-    #sn_truth = fits.open(img_truth_dir + img_basename + 'index_' + img_suffix + '_sn.fits')
-
-    # Assign SN ra and dec to arrays
-    #sn_ra = sn_truth[1].data['ra']
-    #sn_dec = sn_truth[1].data['dec']
-
-    # --------- Dummy stuff for now --------- # 
-    # This has to be automated later.
-    # Right now the SN truth tables seem to indicate on SNe within 
-    # the observed image. The SN coordinates seem to be far away from image coords.
-    # Identify some dummy host and SNe segmentation IDs for now.
-    # This is eyeballed using ds9 by looking for pairs of close objects.
-    #sn_ra = np.array([71.0194361, ])
-    #sn_dec = np.array([-53.6042292, ])
-
-    #host_ra = np.array([71.0192822, ])
-    #host_dec = np.array([-53.6038719, ])
-
-    # For Y106_11_1
-    host_segids = np.array([475, 755, 548, 207])
-    sn_segids = np.array([481, 753, 547, 241])
+                # First match object
+                current_id = int(cat['NUMBER'][i])
     
-    # For Y106_11_2
-    #host_segids = np.array([623, 441, 725, 390, 1051])
-    #sn_segids = np.array([626, 456, 729, 388, 1040])
+                # The -1 in the index is needed because the SExtractor 
+                # catalog starts counting object ids from 1.
+                ra_to_check = cat['ALPHA_J2000'][current_id - 1]
+                dec_to_check = cat['DELTA_J2000'][current_id - 1]
+    
+                # Now match and get corresponding entry in the larger truth file
+                idx = get_match(ra_gal, dec_gal, ra_to_check, dec_to_check)
 
-    # --------- End dummy defs --------- #
+                #tqdm.write("Matched idx: " + str(idx))
+
+                id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
+                #tqdm.write("ID to fetch from truth file: " + str(id_fetch))
+
+                truth_idx = np.where(truth_match[1].data['gind'] == id_fetch)[0]
+
+                # Get object redshift
+                z = float(truth_match[1].data['z'][truth_idx])
+                #tqdm.write("Object z: " + str(z))
+
+                # Check if it is a SN host galaxy or SN itself
+
+            sn_spec_path = get_sn_spec_path(chosen_redshift)
+            gal_spec_path = get_gal_spec_path(chosen_redshift)
+
+            fh.write(str(current_id) + " " + sn_spec_path)
+            fh.write("\n")
+            fh.write(str(hostid) + " " + gal_spec_path)
+            fh.write("\n")
+
+            sys.exit(0)
 
     # Loop over all objects and assign spectra
     for i in range(len(cat)):
