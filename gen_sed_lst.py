@@ -1,22 +1,39 @@
 import numpy as np
 from astropy.io import fits
-from astropy.cosmology import Planck15
+
+from astropy.cosmology import FlatLambdaCDM
+import astropy.units as u
+astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
 import os
 import sys
+import subprocess
 
 import matplotlib.pyplot as plt
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-roman_direct_dir = home + "/Documents/roman_direct_sims/"
+roman_direct_dir = home + "/Documents/roman_direct_sims/sims2021/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_codes/"
 
 sys.path.append(stacking_util_codes)
 import proper_and_lum_dist as cosmo
 from dust_utils import get_dust_atten_model
-from bc03_utils import get_bc03_spectrum
+#from bc03_utils import get_bc03_spectrum
+
+# This class came from stackoverflow
+# SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
+class bcolors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 def get_sn_spec_path(redshift):
     """
@@ -213,26 +230,76 @@ def get_gal_spec_path(redshift):
 
     return gal_spec_path
 
-def gen_sed_lst(img_suffix):
+def gen_sed_lst():
 
-    # Set image params
-    img_sim_dir = roman_direct_dir + 'K_akari_rotate_subset/'
-    img_truth_dir = roman_direct_dir + 'K_akari_rotate_truth/'
-    img_basename = 'akari_match_'
-    #img_suffix = 'Y106_11_1'
+    # Set image and truth params
+    dir_img_part = 'part1'
 
-    # Open empty file for saving sed.lst
-    fh = open(roman_slitless_dir + 'sed_' + img_suffix + '.lst', 'w')
+    img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+    img_basename = '5deg_'
+    img_filt = 'Y106_'
 
-    # Write header
-    fh.write("# 1: SEGMENTATION ID" + "\n")
-    fh.write("# 2: SED FILE" + "\n")
+    truth_dir = roman_direct_dir + 'K_5degtruth/'
+    truth_basename = '5deg_index_'
 
-    # Read in catalog from SExtractor
-    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
-    'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
-    cat = np.genfromtxt(img_sim_dir + img_basename + img_suffix + '.cat', \
-        dtype=None, names=cat_header, skip_header=11, encoding='ascii')
+    pointings = np.arange(191)
+    detectors = np.arange(1, 19, 1)
+
+    for pt in pointings:
+        for det in detectors:
+
+            # Open empty file for saving sed.lst
+            sed_filename = roman_slitless_dir + 'pylinear_lst_files/' + \
+            'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
+            print("\nWill generate SED file:", sed_filename)
+
+            fh = open(sed_filename, 'w')
+
+            # Write header
+            fh.write("# 1: SEGMENTATION ID" + "\n")
+            fh.write("# 2: SED FILE" + "\n")
+
+            # Read in catalog from SExtractor
+            cat_filename = img_sim_dir + img_basename + img_filt + str(pt) + '_' + str(det) + '.cat'
+            print("Checking for catalog:", cat_filename)
+
+            if not os.path.isfile(cat_filename):
+                print("Cannot file object catalog. SExtractor will be run automatically.")
+
+                # First check that the files from Kevin have been unzipped
+                if not :
+                    
+
+                # Now run SExtractor automatically
+                # Set up sextractor
+                img_filename = img_basename + img_filt + str(pt) + '_' + str(det) + '.fits'
+                checkimage = img_basename + img_filt + str(pt) + '_' + str(det) + '_segmap.fits'
+
+                print(f"{bcolors.GREEN}", "Running:", "sex", img_filename, "-c", "roman_sims_sextractor_config.txt", \
+                    "-CATALOG_NAME", os.path.basename(cat_filename), "-CHECKIMAGE_NAME", checkimage, f"{bcolors.ENDC}")
+
+                # Change directory to images directory
+                os.chdir(img_sim_dir)
+
+                sextractor = subprocess.run(['sex', img_filename, '-c', 'roman_sims_sextractor_config.txt', \
+                    '-CATALOG_NAME', os.path.basename(cat_filename), '-CHECKIMAGE_NAME', checkimage], check=True)
+                
+                print("Finished SExtractor run. Check cat and segmap if needed.")
+
+                # Go back to roman-slitless directory
+                os.chdir(roman_slitless_dir)
+
+            cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
+            'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
+            cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+
+            # Loop over all objects and assign spectra
+            for i in range(len(cat)):
+
+
+
+                sys.exit(0)
+
 
     # Redshift array to choose redshift from
     redshift_arr = np.arange(0.001, 3.001, 0.001)
@@ -311,6 +378,8 @@ def gen_sed_lst(img_suffix):
     return None
 
 def main():
+    
+    gen_sed_lst()
 
     return None
 

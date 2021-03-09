@@ -43,7 +43,7 @@ def main():
     
     img_sim_dir = home + '/Documents/roman_direct_sims/sims2021/sextractor_mag_zp_test/'
     img_basename = 'test_5deg_'
-    img_suffix = 'Y106_0_1'
+    img_suffix = 'Y106_1_7'
     
     truth_dir = home + '/Documents/roman_direct_sims/sims2021/K_5degtruth/'
     truth_basename = '5deg_index_'
@@ -133,7 +133,10 @@ def main():
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    ax.hist(zp, 30, range=(30.5, 32.0))
+    ax.set_xlabel('ZP', fontsize=15)
+    ax.set_ylabel('\# objects', fontsize=15)
+
+    ax.hist(zp, 30, range=(30.5, 32.0), histtype='step', color='k', lw=2.5)
 
     plt.show()
 
