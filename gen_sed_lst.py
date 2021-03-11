@@ -10,6 +10,9 @@ import sys
 import subprocess
 from tqdm import tqdm
 import time
+import socket
+
+from numba import jit
 
 import matplotlib.pyplot as plt
 
@@ -21,8 +24,31 @@ stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_cod
 
 sys.path.append(stacking_util_codes)
 import proper_and_lum_dist as cosmo
-from dust_utils import get_dust_atten_model
-#from bc03_utils import get_bc03_spectrum
+import dust_utils as du
+
+if 'plffsn2' in socket.gethostname():
+    extdir = '/astro/ffsn/Joshi/'
+    modeldir = extdir + 'bc03_output_dir/'
+else:
+    extdir = '/Volumes/Joshi_external_HDD/Roman/'
+    modeldir = extdir + 'bc03_output_dir/m62/'
+
+assert os.path.isdir(modeldir)
+
+model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
+model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
+
+all_m62_models = []
+tau_low = 0
+tau_high = 20
+for t in range(tau_low, tau_high, 1):
+    tau_str = "{:.3f}".format(t).replace('.', 'p')
+    a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m62_chab.npy', mmap_mode='r')
+    all_m62_models.append(a)
+    del a
+
+# load models with large tau separately
+all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
 
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
@@ -98,9 +124,44 @@ def get_sn_spec_path(redshift):
 
     return sn_spec_path
 
+def get_bc03_spec(age, logtau):
+
+    tau = 10**logtau  # logtau is log of tau in gyr
+
+    if tau < 20.0:
+
+        tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
+        age_idx = np.argmin(abs(model_ages - age*1e9))
+        model_idx = tau_int_idx * len(model_ages)  +  age_idx
+
+        models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
+        models_arr = all_m62_models[models_taurange_idx]
+
+    elif tau >= 20.0:
+        
+        logtau_arr = np.arange(1.30, 2.01, 0.01)
+        logtau_idx = np.argmin(abs(logtau_arr - logtau))
+
+        age_idx = np.argmin(abs(model_ages - age*1e9))
+        model_idx = logtau_idx * len(model_ages) + age_idx
+
+        models_arr = all_m62_models[-1]
+
+    model_llam = models_arr[model_idx]
+
+    return np.array(model_llam, dtype=np.float64)
+
 def get_gal_spec_path(redshift):
     """
-    This function will
+    This function will generate a template SED assuming
+    a composite stellar population using BC03. 
+    -- SFH is assumed to be exponential.
+       -- where tau is in between 0.01 to 15.0 (in Gyr)
+    -- Age is dependent on z and only allows for models that are 
+       at least 100 Myr younger than the Universe.
+    -- Dust is applied assuming a Calzetti form for the dust extinction law.
+    -- Metallicity is one of the six options in BC03.
+    -- Log of stellar mass/M_sol is between 10.0 to 11.5
     """
 
     plot_tocheck = False
@@ -119,7 +180,7 @@ def get_gal_spec_path(redshift):
     # Now choose age consistent with given redshift
     # i.e., make sure model is not older than the Universe
     # Allowing at least 100 Myr for the first galaxies to form after Big Bang
-    age_at_z = Planck15.age(redshift).value  # in Gyr
+    age_at_z = astropy_cosmo.age(redshift).value  # in Gyr
     age_lim = age_at_z - 0.1  # in Gyr
 
     chosen_age = np.random.choice(age_arr)
@@ -141,19 +202,36 @@ def get_gal_spec_path(redshift):
     # While the newer 2016 version has an additional metallicity
     # referred to as "m82", the documentation never specifies the 
     # actual metallicity associated with it. So I'm ignoring that one.
-    metals = np.random.choice(metals_arr)
+    metals = 0.02 # np.random.choice(metals_arr)
+
+    # Get hte metallicity string
+    if metals == 0.0001:
+        metallicity = 'm22'
+    elif metals == 0.0004:
+        metallicity = 'm32'
+    elif metals == 0.004:
+        metallicity = 'm42'
+    elif metals == 0.008:
+        metallicity = 'm52'
+    elif metals == 0.02:
+        metallicity = 'm62'
+    elif metals == 0.05:
+        metallicity = 'm72'
 
     # ----------- CALL BC03 -----------
     # The BC03 generated spectra will always be at redshift=0 and dust free.
     # This code will apply dust extinction and redshift effects manually
-    outdir = home + '/Documents/bc03_output_dir/'
-    bc03_spec_wav, bc03_spec_llam = get_bc03_spectrum(chosen_age, chosen_tau, metals, outdir)
+    #outdir = home + '/Documents/bc03_output_dir/'
+    #gen_bc03_spectrum(chosen_tau, metals, outdir)
+    logtau = np.log10(chosen_tau)
+    bc03_spec_wav = np.array(model_lam, dtype=np.float64)
+    bc03_spec_llam = get_bc03_spec(chosen_age, logtau)
 
     # Apply Calzetti dust extinction depending on av value chosen
     av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
     chosen_av = np.random.choice(av_arr)
 
-    bc03_dusty_llam = get_dust_atten_model(bc03_spec_wav, bc03_spec_llam, chosen_av)
+    bc03_dusty_llam = du.get_dust_atten_model(bc03_spec_wav, bc03_spec_llam, chosen_av)
 
     # Multiply flux by stellar mass
     bc03_dusty_llam = bc03_dusty_llam * 10**log_stellar_mass_chosen
@@ -204,17 +282,17 @@ def get_gal_spec_path(redshift):
     ".txt"
 
     # Print info to screen
-    print("\n")
-    print("--------------------------------------------------")
-    print("Randomly chosen redshift:", redshift)
-    print("Age limit at redshift [Gyr]:", age_lim)
-    print("\nRandomly chosen stellar population parameters:")
-    print("Age [Gyr]:", chosen_age)
-    print("log(stellar mass) [log(Ms/M_sol)]:", log_stellar_mass_chosen)
-    print("Tau [exp. decl. timescale, Gyr]:", chosen_tau)
-    print("Metallicity (abs. frac.):", metals)
-    print("Dust extinction in V-band (mag):", chosen_av)
-    print("\nWill save to file:", gal_spec_path)
+    # print("\n")
+    # print("--------------------------------------------------")
+    # print("Randomly chosen redshift:", redshift)
+    # print("Age limit at redshift [Gyr]:", age_lim)
+    # print("\nRandomly chosen stellar population parameters:")
+    # print("Age [Gyr]:", chosen_age)
+    # print("log(stellar mass) [log(Ms/M_sol)]:", log_stellar_mass_chosen)
+    # print("Tau [exp. decl. timescale, Gyr]:", chosen_tau)
+    # print("Metallicity (abs. frac.):", metals)
+    # print("Dust extinction in V-band (mag):", chosen_av)
+    # print("\nWill save to file:", gal_spec_path)
 
     # Save individual spectrum file if it doesn't already exist
     if not os.path.isfile(gal_spec_path):
@@ -262,13 +340,10 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
         dist_list = np.asarray(dist_list)
         idx = np.argmin(dist_list)
 
-    elif len(idx) == 1:
-        idx = int(idx)
-
     # Increase tolerance if no match found at first
     elif len(idx) == 0:
-        tqdm.write(f"{bcolors.WARNING}" + "No matches found. Redoing search within greater radius." + f"{bcolors.ENDC}")
-        tqdm.write(f"{bcolors.WARNING}" + "This method needs a LOT more testing." + f"{bcolors.ENDC}")
+        #tqdm.write(f"{bcolors.WARNING}" + "No matches found. Redoing search within greater radius.")
+        #tqdm.write("CAUTION: This method needs a LOT more testing." + f"{bcolors.ENDC}")
         #tqdm.write("Search centered on " + str(ra_to_check) + "   " + str(dec_to_check))
         idx = get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=tol_arcsec+0.1)
 
@@ -300,6 +375,13 @@ def gen_sed_lst():
             sed_filename = roman_slitless_dir + 'pylinear_lst_files/' + \
             'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
             tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + sed_filename + f"{bcolors.ENDC}")
+
+            # Check if the file exists 
+            if os.path.isfile(sed_filename):
+                # Now check that it isn't empty
+                sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
+                if sed_filesize > 40:  # I chose this limit somewhat randomly after looking at file sizes by eye
+                    continue
 
             fh = open(sed_filename, 'w')
 
@@ -354,45 +436,76 @@ def gen_sed_lst():
             truth_hdu_gal = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '.fits')
             truth_hdu_sn = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '_sn.fits')
 
+            #print(truth_hdu_sn[1].header)
+            #print(truth_hdu_sn[1].data)
+
+            hostids = truth_hdu_sn[1].data['hostid']
+            #print("Host galaxy IDs (corresponding to Kevin's IDs NOT SExtractor ID):")
+            #print(hostids)
+
             # assign arrays
             ra_gal  = truth_hdu_gal[1].data['ra']  * 180/np.pi
             dec_gal = truth_hdu_gal[1].data['dec'] * 180/np.pi
 
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
-                # First match object
-                current_id = int(cat['NUMBER'][i])
+                # -------------- First match object -------------- #
+                current_sextractor_id = int(cat['NUMBER'][i])
     
                 # The -1 in the index is needed because the SExtractor 
                 # catalog starts counting object ids from 1.
-                ra_to_check = cat['ALPHA_J2000'][current_id - 1]
-                dec_to_check = cat['DELTA_J2000'][current_id - 1]
+                ra_to_check = cat['ALPHA_J2000'][current_sextractor_id - 1]
+                dec_to_check = cat['DELTA_J2000'][current_sextractor_id - 1]
     
                 # Now match and get corresponding entry in the larger truth file
                 idx = get_match(ra_gal, dec_gal, ra_to_check, dec_to_check)
-
                 #tqdm.write("Matched idx: " + str(idx))
 
                 id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
                 #tqdm.write("ID to fetch from truth file: " + str(id_fetch))
 
                 truth_idx = np.where(truth_match[1].data['gind'] == id_fetch)[0]
+                # -------------- Matching done -------------- #
 
-                # Get object redshift
+                # -------------- Get object redshift
                 z = float(truth_match[1].data['z'][truth_idx])
                 #tqdm.write("Object z: " + str(z))
 
-                # Check if it is a SN host galaxy or SN itself
+                # -------------- Check if it is a SN host galaxy or SN itself
+                # If it is then also call the sn SED path generation
+                if id_fetch in hostids:
+                    # Now you must find the corresponding SExtractor ID for the SN
+                    sn_ra = truth_hdu_sn[1].data['ra'] * 180/np.pi
+                    sn_dec = truth_hdu_sn[1].data['dec'] * 180/np.pi
 
-            sn_spec_path = get_sn_spec_path(chosen_redshift)
-            gal_spec_path = get_gal_spec_path(chosen_redshift)
+                    sn_idx = get_match(cat['ALPHA_J2000'], cat['DELTA_J2000'], sn_ra, sn_dec)
 
-            fh.write(str(current_id) + " " + sn_spec_path)
-            fh.write("\n")
-            fh.write(str(hostid) + " " + gal_spec_path)
-            fh.write("\n")
+                    snid = cat['NUMBER'][sn_idx]
 
-            sys.exit(0)
+                    sn_spec_path = get_sn_spec_path(z)
+                    gal_spec_path = get_gal_spec_path(z)
+
+                    fh.write(str(snid) + " " + sn_spec_path + "\n")
+                    fh.write(str(current_sextractor_id) + " " + gal_spec_path + "\n")
+
+                    tqdm.write("SN SExtractor ID:" + str(snid))
+                    tqdm.write("HOST SExtractor ID:" + str(current_sextractor_id))
+
+                else:  # i.e., for a generic galaxy
+                    spec_path = get_gal_spec_path(z)
+
+                    fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
+
+            fh.close()
+
+        sys.exit(0)
+
+
+
+
+
+
+
 
     # Loop over all objects and assign spectra
     for i in range(len(cat)):
