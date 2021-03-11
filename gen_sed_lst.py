@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-roman_direct_dir = home + "/Documents/roman_direct_sims/sims2021/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_codes/"
 
@@ -33,7 +32,9 @@ else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
 
+roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 assert os.path.isdir(modeldir)
+assert os.path.isdir(roman_direct_dir)
 
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
 model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
@@ -355,6 +356,13 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
 def gen_sed_lst():
 
+    print(f"{bcolors.WARNING}")
+    print("TODO: 1. What about the case in Y106_0_3 where there are 3 SN")
+    print("but only two end up in the SED lst file? Probably the code checking")
+    print("<if id_fetch in hostids> should be <for i in hostids> and loop instead of checking.")
+    print("2. Make this code run on multiple cores.")
+    print(f"{bcolors.ENDC}")
+
     # Set image and truth params
     dir_img_part = 'part1'
 
@@ -440,12 +448,29 @@ def gen_sed_lst():
             truth_hdu_gal = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '.fits')
             truth_hdu_sn = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '_sn.fits')
 
-            #print(truth_hdu_sn[1].header)
+            #print(repr(truth_hdu_gal[1].header))
+            #print("-------------------------------------")
+            #print(repr(truth_hdu_sn[1].header))
+            
+            #print("-------------------------------------")
             #print(truth_hdu_sn[1].data)
 
-            hostids = truth_hdu_sn[1].data['hostid']
+            #print("SN RAs:", truth_hdu_sn[1].data['ra'] * 180/np.pi)
+            #print("SN DECs:", truth_hdu_sn[1].data['dec'] * 180/np.pi)
+
+            #hostids = truth_hdu_sn[1].data['hostid']
             #print("Host galaxy IDs (corresponding to Kevin's IDs NOT SExtractor ID):")
             #print(hostids)
+
+            #for hi in hostids:
+            #    t = np.where(truth_hdu_gal[1].data['ind'] == hi)[0]
+            #    print("Host index:", t)
+            #    print("Host RA", truth_hdu_gal[1].data['ra'][t] * 180/np.pi)
+            #    print("Host DEC", truth_hdu_gal[1].data['dec'][t] * 180/np.pi)
+
+            #sys.exit(0)
+
+            hostids = truth_hdu_sn[1].data['hostid']
 
             # assign arrays
             ra_gal  = truth_hdu_gal[1].data['ra']  * 180/np.pi
@@ -494,14 +519,24 @@ def gen_sed_lst():
 
                     snid = cat['NUMBER'][sn_idx]
 
-                    sn_spec_path = get_sn_spec_path(z)
-                    gal_spec_path = get_gal_spec_path(z)
+                    # This means that the SN and host matched to the same location
+                    # i.e., the SN is bright enough that it outshines the host 
+                    if snid == current_sextractor_id:
+                        sn_spec_path = get_sn_spec_path(z)
+                        fh.write(str(snid) + " " + sn_spec_path + "\n")
+                        tqdm.write("Only SN detected. SN SExtractor ID: " + str(snid))
+                        tqdm.write("SN mag: " + str(cat['MAG_AUTO'][sn_idx]))
+                        
+                    elif snid != current_sextractor_id:
+                        sn_spec_path = get_sn_spec_path(z)
+                        gal_spec_path = get_gal_spec_path(z)
 
-                    fh.write(str(snid) + " " + sn_spec_path + "\n")
-                    fh.write(str(current_sextractor_id) + " " + gal_spec_path + "\n")
+                        fh.write(str(snid) + " " + sn_spec_path + "\n")
+                        fh.write(str(current_sextractor_id) + " " + gal_spec_path + "\n")
 
-                    tqdm.write("SN SExtractor ID:" + str(snid))
-                    tqdm.write("HOST SExtractor ID:" + str(current_sextractor_id))
+                        tqdm.write("SN SExtractor ID: " + str(snid))
+                        tqdm.write("HOST SExtractor ID: " + str(current_sextractor_id))
+                        tqdm.write("SN and HOST mags respectively: " + str(cat['MAG_AUTO'][sn_idx]) + "   " + str(cat['MAG_AUTO'][i]))
 
                 else:  # i.e., for a generic galaxy
                     spec_path = get_gal_spec_path(z)
