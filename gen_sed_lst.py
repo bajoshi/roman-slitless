@@ -361,6 +361,8 @@ def gen_sed_lst():
     print("but only two end up in the SED lst file? Probably the code checking")
     print("<if id_fetch in hostids> should be <for i in hostids> and loop instead of checking.")
     print("2. Make this code run on multiple cores.")
+    print("3. How is the simulated magnitude taken into account?")
+    print("4. Why are so many SNe matches not found?")
     print(f"{bcolors.ENDC}")
 
     # Set image and truth params
@@ -544,8 +546,6 @@ def gen_sed_lst():
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
             fh.close()
-
-        sys.exit(0)
 
     return None
 
