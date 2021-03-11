@@ -60,7 +60,7 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
 
     # After a base sed lst has been generated edit the 
     # paths so that they will work on different machines.
-    sedlst_basefilename = 'sed_' + img_suffix + '.lst'
+    sedlst_basefilename = lst_dir + 'sed_' + img_suffix + '.lst'
     sedlst_filename = lst_dir + 'sed_' + img_suffix + machine + '.lst'
 
     if not os.path.isfile(sedlst_basefilename):
@@ -166,6 +166,23 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 
     return None
 
+def gen_img_suffixes():
+
+    # Arrays to loop over
+    pointings = np.arange(191)
+    detectors = np.arange(1, 19, 1)
+
+    img_filt = 'Y106_'
+
+    img_suffix_list = []
+
+    for pt in pointings:
+        for det in detectors:
+
+            img_suffix_list.append(img_filt + str(pt) + '_' + str(det))
+
+    return img_suffix_list
+
 def main():
 
     # ---------------------- Preliminary stuff
@@ -192,20 +209,25 @@ def main():
     
     # Change directory to make sure results go in the right place
     home = os.getenv('HOME')
-    
+
+    # Set image params
+    dir_img_part = 'part1'
+    img_basename = '5deg_'
+    img_filt = 'Y106_'
+
     if 'compute' in socket.gethostname():
         # Define path for results and change to that directory
-        result_path = home + '/scratch/roman_slitless_sims_results/'
+        result_path = home + '/work/roman_slitless_sims_results/'
         
         # Define directories for imaging and lst files
-        pylinear_lst_dir = home + '/scratch/roman-slitless/pylinear_lst_files/'
-        dir_img_dir = home + '/scratch/roman_direct_sims/K_akari_rotate_subset/'
+        pylinear_lst_dir = home + '/work/roman-slitless/pylinear_lst_files/'
+        roman_direct_dir = home + '/work/roman_direct_sims/sims2021/'
 
         # Define paths for tables
-        tablespath = home + '/scratch/roman_slitless_sims_results/tables/'
+        tablespath = home + '/work/roman_slitless_sims_results/tables/'
 
         # Define path for SEDs
-        seds_path = home + '/scratch/roman_slitless_sims_seds/'
+        seds_path = home + '/work/roman_slitless_sims_seds/'
         
         # Define identifier for machine
         obsstr = '_marcc'
@@ -216,7 +238,7 @@ def main():
         
         # Define directories for imaging and lst files
         pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
-        dir_img_dir = home + '/Documents/roman_direct_sims/K_akari_rotate_subset/'
+        roman_direct_dir = home + '/Documents/roman_direct_sims/sims2021/'
 
         # Define paths for tables
         tablespath = home + '/Documents/roman_slitless_sims_results/tables/'
@@ -226,11 +248,20 @@ def main():
         
         # Define identifier for machine
         obsstr = '_plffsn2'
+
+    else:  # only for testing on laptop
+        roman_direct_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/'
+        pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
+        seds_path = home + '/Documents/roman_slitless_sims_seds/'
+        result_path = home + '/Documents/roman_slitless_sims_results/'
     
+    # Set imaging sims dir
+    img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+
     # Figure out the correct filenames depending on which machine is being used
-    img_suffix_list = ['Y106_11_1', 'Y106_11_2']
+    img_suffix_list = gen_img_suffixes()
     exptime_list = [300, 600, 900, 1800, 3600]
-    roll_angle_ll = [[165.0, 210.0, 260.0], [70.0, 130.0, 190.0]]
+    roll_angle_list = [70.0, 130.0, 190.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
     simroot = 'romansim'
@@ -240,20 +271,19 @@ def main():
     for img in img_suffix_list:
     
         img_suffix = img_suffix_list[sim_count]
-        roll_angle_list = roll_angle_ll[sim_count]
 
-        dir_img_name = 'akari_match_' + img_suffix + '_sci_counts.fits'
+        dir_img_name = img_basename + img_suffix + '.fits'
+        print("Working on direct image:", dir_img_name)
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
-        # create_lst_files('_plffsn2', '/Users/baj/Documents/GitHub/roman-slitless/pylinear_lst_files/', \
-        #     img_suffix, roll_angle_list, \
-        #     '/Users/baj/Documents/roman_direct_sims/K_akari_rotate_subset/', dir_img_filt, \
-        #     'akari_match_Y106_11_1_sci_counts.fits', home + '/Documents/roman_slitless_sims_seds/', \
-        #     '/Users/baj/Documents/roman_slitless_sims_results/', exptime_list, simroot)
+        #create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, \
+        #    img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
+        #    exptime_list, simroot)
+        #sys.exit(0)
 
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
-            dir_img_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
+            img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
             exptime_list, simroot)
 
         # Change directory to where the simulation results will go
@@ -262,7 +292,7 @@ def main():
         os.chdir(result_path)
 
         # Define list files and other preliminary stuff
-        segfile = dir_img_dir + 'akari_match_' + img_suffix + '_segmap.fits'
+        segfile = img_sim_dir + 'akari_match_' + img_suffix + '_segmap.fits'
     
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
         wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
