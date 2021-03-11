@@ -99,7 +99,7 @@ def get_sn_spec_path(redshift):
     av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
     chosen_av = np.random.choice(av_arr)
 
-    sn_dusty_llam = get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
+    sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
 
     # Apply redshift
     sn_wav_z, sn_flux = cosmo.apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
@@ -340,12 +340,16 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
         dist_list = np.asarray(dist_list)
         idx = np.argmin(dist_list)
 
+    elif len(idx) == 1:
+        idx = int(idx)
+
     # Increase tolerance if no match found at first
     elif len(idx) == 0:
         #tqdm.write(f"{bcolors.WARNING}" + "No matches found. Redoing search within greater radius.")
         #tqdm.write("CAUTION: This method needs a LOT more testing." + f"{bcolors.ENDC}")
         #tqdm.write("Search centered on " + str(ra_to_check) + "   " + str(dec_to_check))
-        idx = get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=tol_arcsec+0.1)
+        #idx = get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=tol_arcsec+0.1)
+        idx = -99
 
     return idx
 
@@ -380,7 +384,7 @@ def gen_sed_lst():
             if os.path.isfile(sed_filename):
                 # Now check that it isn't empty
                 sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
-                if sed_filesize > 40:  # I chose this limit somewhat randomly after looking at file sizes by eye
+                if sed_filesize > 30:  # I chose this limit somewhat randomly after looking at file sizes by eye
                     continue
 
             fh = open(sed_filename, 'w')
@@ -394,7 +398,7 @@ def gen_sed_lst():
             tqdm.write("Checking for catalog: " + cat_filename)
 
             if not os.path.isfile(cat_filename):
-                tqdm.write("Cannot file object catalog. SExtractor will be run automatically.")
+                tqdm.write("Cannot find object catalog. SExtractor will be run automatically.")
 
                 # Now run SExtractor automatically
                 # Set up sextractor
@@ -460,6 +464,8 @@ def gen_sed_lst():
                 # Now match and get corresponding entry in the larger truth file
                 idx = get_match(ra_gal, dec_gal, ra_to_check, dec_to_check)
                 #tqdm.write("Matched idx: " + str(idx))
+                if idx == -99:
+                    continue
 
                 id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
                 #tqdm.write("ID to fetch from truth file: " + str(id_fetch))
@@ -475,10 +481,16 @@ def gen_sed_lst():
                 # If it is then also call the sn SED path generation
                 if id_fetch in hostids:
                     # Now you must find the corresponding SExtractor ID for the SN
-                    sn_ra = truth_hdu_sn[1].data['ra'] * 180/np.pi
-                    sn_dec = truth_hdu_sn[1].data['dec'] * 180/np.pi
+
+                    sn_idx0 = np.where(hostids == id_fetch)[0]
+
+                    sn_ra = truth_hdu_sn[1].data['ra'][sn_idx0] * 180/np.pi
+                    sn_dec = truth_hdu_sn[1].data['dec'][sn_idx0] * 180/np.pi
 
                     sn_idx = get_match(cat['ALPHA_J2000'], cat['DELTA_J2000'], sn_ra, sn_dec)
+                    if sn_idx == -99:
+                        tqdm.write(f"{bcolors.FAIL}" + "Match not found for SN with hostid " + str(id_fetch) + f"{bcolors.ENDC}")
+                        continue
 
                     snid = cat['NUMBER'][sn_idx]
 
@@ -499,55 +511,6 @@ def gen_sed_lst():
             fh.close()
 
         sys.exit(0)
-
-
-
-
-
-
-
-
-    # Loop over all objects and assign spectra
-    for i in range(len(cat)):
-
-        #mag = cat['MAG_AUTO'][i]
-
-        # Match with the SN positions in the 
-        # truth files and assign spectra
-        #np.argmin(abs())
-
-        # Choose random redshift
-        chosen_redshift = np.random.choice(redshift_arr)
-
-        current_id = cat['NUMBER'][i]
-
-        # Now make sure that the SN and the host galaxy get the same redshift
-        if current_id in sn_segids:
-            hostid = int(host_segids[np.where(sn_segids == current_id)[0]])
-            sn_spec_path = get_sn_spec_path(chosen_redshift)
-            gal_spec_path = get_gal_spec_path(chosen_redshift)
-
-            fh.write(str(current_id) + " " + sn_spec_path)
-            fh.write("\n")
-            fh.write(str(hostid) + " " + gal_spec_path)
-            fh.write("\n")
-
-            print(current_id, sn_spec_path, "{:.3f}".format(chosen_redshift))
-            print(hostid, gal_spec_path, "{:.3f}".format(chosen_redshift))
-
-        else:
-            if current_id in host_segids:
-                continue
-            else:
-                spec_path = get_gal_spec_path(chosen_redshift)
-
-                fh.write(str(current_id) + " " + spec_path)
-                fh.write("\n")
-
-                print(current_id, spec_path, "{:.3f}".format(chosen_redshift))
-
-    # Close sed.lst file to save
-    fh.close()
 
     return None
 
