@@ -272,7 +272,7 @@ def main():
     
         img_suffix = img_suffix_list[sim_count]
 
-        dir_img_name = img_basename + img_suffix + '.fits'
+        dir_img_name = img_basename + img_suffix + '_sci.fits'
         print("Working on direct image:", dir_img_name)
 
         # Leave commented out # Do not delete
@@ -292,7 +292,7 @@ def main():
         os.chdir(result_path)
 
         # Define list files and other preliminary stuff
-        segfile = img_sim_dir + 'akari_match_' + img_suffix + '_segmap.fits'
+        segfile = img_sim_dir + img_basename + img_suffix + '_segmap.fits'
     
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
         wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
