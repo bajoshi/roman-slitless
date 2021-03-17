@@ -316,15 +316,15 @@ def main():
         sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
     
         # Set up and tabulate
-        grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-        tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
-        tabnames = tabulate.run(grisms, sources, beam)
+        #grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
+        #tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
+        #tabnames = tabulate.run(grisms, sources, beam)
     
         ## ---------------------- Simulate
-        print("Simulating...")
-        simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
-        fltnames = simulate.run(grisms, sources, beam)
-        print("Simulation done.")
+        #print("Simulating...")
+        #simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
+        #fltnames = simulate.run(grisms, sources, beam)
+        #print("Simulation done.")
     
         for e in range(len(exptime_list)):
             
@@ -340,7 +340,7 @@ def main():
             read = 10.0    # electrons
     
             exptime = exptime_list[e]  # seconds
-    
+            
             for i in range(len(roll_angle_list)):
                 oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
                 print("Working on...", oldf)
@@ -360,9 +360,12 @@ def main():
                     signal = (sci + sky + dark)
     
                     # Handling of pixels with negative signal
-                    #neg_idx = np.where(sci < 0.0)
-                    #sci[neg_idx] = 0.0  # This is wrong but should allow the rest of the program to work for now
-    
+                    neg_idx = np.where(signal < 0.0)
+                    #signal[neg_idx] = 0.0  # This is wrong but should allow the rest of the program to work for now
+
+                    print(neg_idx)
+                    print(np.where(np.isnan(signal)))
+                    
                     # Multiply the science image with the exptime
                     # sci image originally in electrons/s
                     signal = signal * exptime  # this is now in electrons
@@ -394,7 +397,7 @@ def main():
             print("Noise addition done. Check simulated images.")
             ts = time.time()
             print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
-    
+            sys.exit(0)
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's' + obsstr + '.lst'
             assert os.path.isfile(fltlst)
