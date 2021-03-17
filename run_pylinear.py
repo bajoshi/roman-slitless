@@ -315,10 +315,10 @@ def main():
         assert os.path.isfile(wcslst)
     
         logger.info("Using the following paths to lst files and segmap: ")
-        logger.info("Segmentation map: ", segfile)
-        logger.info("OBS LST: ", obslst)
-        logger.info("SED LST: ", sedlst)
-        logger.info("WCS LST: ", wcslst)
+        logger.info("Segmentation map: " + segfile)
+        logger.info("OBS LST: " + obslst)
+        logger.info("SED LST: " + sedlst)
+        logger.info("WCS LST: " + wcslst)
     
         # ---------------------- Get sources
         sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
@@ -351,8 +351,8 @@ def main():
             
             for i in range(len(roll_angle_list)):
                 oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
-                logger.info("Working on... ", oldf)
-                logger.info("Putting in an exposure time of: ", exptime, "seconds.")
+                logger.info("Working on... " + oldf)
+                logger.info("Putting in an exposure time of: " + exptime, "seconds.")
     
                 #if e == 0:
                 #    # let's save the file in case we want to compare
@@ -406,11 +406,11 @@ def main():
                     newfilename = oldf.replace('_flt', '_' + str(exptime) + 's' + '_flt')
                     hdul.writeto(newfilename, overwrite=True)
                     
-                logger.info("Written:", newfilename)
+                logger.info("Written: " + newfilename)
             
             logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
-            logger.info("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
+            logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
             sys.exit(0)
 
             # ---------------------- Extraction
