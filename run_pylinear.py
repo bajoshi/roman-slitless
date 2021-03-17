@@ -12,8 +12,6 @@ import socket
 
 import logging
 
-logging.basicConfig(filename='run_pylinear.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
-
 def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
     simroot, ra_cen, dec_cen, disp_elem):
 
@@ -190,10 +188,16 @@ def gen_img_suffixes():
 def main():
 
     # ---------------------- Preliminary stuff
+
+    logger = logging.getLogger('Running pylinear wrapper')
+
+    logging_format = '%(name)s - %(asctime)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=logging.DEBUG, filename='run_pylinear.log', filemode='w', format=logging_format)
+
     # Get starting time
     start = time.time()
-    logging.info("Starting at:", dt.datetime.now())
-    
+    logger.info("Starting now.")
+
     """
     import subprocess 
     
@@ -277,7 +281,7 @@ def main():
         img_suffix = img_suffix_list[sim_count]
 
         dir_img_name = img_basename + img_suffix + '_sci.fits'
-        logging.info("Working on direct image:", dir_img_name)
+        logger.info("Working on direct image: " + dir_img_name)
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
@@ -310,11 +314,11 @@ def main():
         assert os.path.isfile(sedlst)
         assert os.path.isfile(wcslst)
     
-        logging.info("Using the following paths to lst files and segmap:")
-        logging.info("Segmentation map:", segfile)
-        logging.info("OBS LST:", obslst)
-        logging.info("SED LST:", sedlst)
-        logging.info("WCS LST:", wcslst)
+        logger.info("Using the following paths to lst files and segmap: ")
+        logger.info("Segmentation map: ", segfile)
+        logger.info("OBS LST: ", obslst)
+        logger.info("SED LST: ", sedlst)
+        logger.info("WCS LST: ", wcslst)
     
         # ---------------------- Get sources
         sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
@@ -325,15 +329,15 @@ def main():
         #tabnames = tabulate.run(grisms, sources, beam)
     
         ## ---------------------- Simulate
-        #logging.info("Simulating...")
+        #logger.info("Simulating...")
         #simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         #fltnames = simulate.run(grisms, sources, beam)
-        #logging.info("Simulation done.")
+        #logger.info("Simulation done.")
     
         for e in range(len(exptime_list)):
             
             # ---------------------- Add noise
-            logging.info("Adding noise...")
+            logger.info("Adding noise... ")
             # check Russell's notes in pylinear notebooks
             # also check WFIRST tech report TR1901
             sky = 1.1      # e/s
@@ -347,8 +351,8 @@ def main():
             
             for i in range(len(roll_angle_list)):
                 oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
-                logging.info("Working on...", oldf)
-                logging.info("Putting in an exposure time of:", exptime, "seconds.")
+                logger.info("Working on... ", oldf)
+                logger.info("Putting in an exposure time of: ", exptime, "seconds.")
     
                 #if e == 0:
                 #    # let's save the file in case we want to compare
@@ -367,13 +371,13 @@ def main():
                     neg_idx = np.where(signal < 0.0)
                     signal[neg_idx] = 0.0
 
-                    logging.error("Setting negative values to zero in signal.")
-                    logging.erro("This is wrong but should allow the rest of the program to work for now.")
+                    logger.error("Setting negative values to zero in signal.")
+                    logger.error("This is wrong but should allow the rest of the program to work for now.")
 
                     # Stop if you find nans
                     nan_idx = np.where(np.isnan(signal))
                     if nan_idx.size:
-                        logging.critical("Found NaNs. Resolve this issue first. Exiting.")
+                        logger.critical("Found NaNs. Resolve this issue first. Exiting.")
                         sys.exit(0)
                     
                     # Multiply the science image with the exptime
@@ -402,12 +406,13 @@ def main():
                     newfilename = oldf.replace('_flt', '_' + str(exptime) + 's' + '_flt')
                     hdul.writeto(newfilename, overwrite=True)
                     
-                print("Written:", newfilename)
+                logger.info("Written:", newfilename)
             
-            print("Noise addition done. Check simulated images.")
+            logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
-            print("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
+            logger.info("Time taken for simulation:", "{:.2f}".format(ts - start), "seconds.")
             sys.exit(0)
+
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's' + obsstr + '.lst'
             assert os.path.isfile(fltlst)
