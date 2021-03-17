@@ -368,10 +368,11 @@ def main():
     
                     # Handling of pixels with negative signal
                     neg_idx = np.where(signal < 0.0)
-                    signal[neg_idx] = 0.0
-
-                    logger.error("Setting negative values to zero in signal.")
-                    logger.error("This is wrong but should allow the rest of the program to work for now.")
+                    neg_idx = np.asarray(neg_idx)
+                    if neg_idx.size:
+                        signal[neg_idx] = 0.0
+                        logger.error("Setting negative values to zero in signal.")
+                        logger.error("This is wrong but should allow the rest of the program to work for now.")
 
                     # Stop if you find nans
                     nan_idx = np.where(np.isnan(signal))
