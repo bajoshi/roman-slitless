@@ -351,7 +351,7 @@ def main():
             for i in range(len(roll_angle_list)):
                 oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
                 logger.info("Working on... " + oldf)
-                logger.info("Putting in an exposure time of: " + exptime + " seconds.")
+                logger.info("Putting in an exposure time of: " + str(exptime) + " seconds.")
     
                 #if e == 0:
                 #    # let's save the file in case we want to compare
