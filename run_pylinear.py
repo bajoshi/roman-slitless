@@ -188,7 +188,6 @@ def gen_img_suffixes():
 def main():
 
     # ---------------------- Preliminary stuff
-
     logger = logging.getLogger('Running pylinear wrapper')
 
     logging_format = '%(name)s - %(asctime)s - %(levelname)s - %(message)s'
@@ -352,7 +351,7 @@ def main():
             for i in range(len(roll_angle_list)):
                 oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
                 logger.info("Working on... " + oldf)
-                logger.info("Putting in an exposure time of: " + exptime, "seconds.")
+                logger.info("Putting in an exposure time of: " + exptime + " seconds.")
     
                 #if e == 0:
                 #    # let's save the file in case we want to compare
@@ -376,6 +375,7 @@ def main():
 
                     # Stop if you find nans
                     nan_idx = np.where(np.isnan(signal))
+                    nan_idx = np.asarray(nan_idx)
                     if nan_idx.size:
                         logger.critical("Found NaNs. Resolve this issue first. Exiting.")
                         sys.exit(0)
