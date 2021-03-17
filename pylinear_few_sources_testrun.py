@@ -12,7 +12,7 @@ import socket
 
 # ---------------------- Preliminary stuff
 print("\nThis code exists to compare speeds between versions of pylinear.")
-print("See stuff in folder $HOME/Documents/roman_slitless_sims_results/few_sources_testrun/")
+print("See stuff in folder $HOME/Documents/roman_slitless_sims_results/few_sources_testrun/\n")
 
 # Get starting time
 start = time.time()

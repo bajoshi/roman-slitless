@@ -904,7 +904,8 @@ def get_snr(wav, flux):
 def main():
 
     print(f"{bcolors.WARNING}")
-    print("* * * *   [WARNING]: model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
+    print("* * * *   TO-DO: 1. Model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
+    print("* * * *   TO-DO: 2. When including a Gaussian redshift prior confirm that the integral under the Gaussian prior is 1.   * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim_"

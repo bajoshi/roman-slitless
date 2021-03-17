@@ -391,11 +391,11 @@ def gen_sed_lst():
             tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + sed_filename + f"{bcolors.ENDC}")
 
             # Check if the file exists 
-            if os.path.isfile(sed_filename):
-                # Now check that it isn't empty
-                sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
-                if sed_filesize > 30:  # I chose this limit somewhat randomly after looking at file sizes by eye
-                    continue
+            #if os.path.isfile(sed_filename):
+            #    # Now check that it isn't empty
+            #    sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
+            #    if sed_filesize > 30:  # I chose this limit somewhat randomly after looking at file sizes by eye
+            #        continue
 
             fh = open(sed_filename, 'w')
 
@@ -423,6 +423,7 @@ def gen_sed_lst():
                     tqdm.write(f"{bcolors.GREEN}" + "Unzipping file: " + img_filename + ".gz" + f"{bcolors.ENDC}")
                     subprocess.run(['gzip', '-fd', img_filename + '.gz'])
 
+                img_filename += '[1]'  # Run only on 1st, i.e., SCI, extension in the file (0 indexed)
                 tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
                     " -CATALOG_NAME " + os.path.basename(cat_filename) + " -CHECKIMAGE_NAME " + checkimage + f"{bcolors.ENDC}")
 
