@@ -363,6 +363,7 @@ def gen_sed_lst():
     print("2. Make this code run on multiple cores.")
     print("3. How is the simulated magnitude taken into account?")
     print("4. Why are so many SNe matches not found?")
+    print("5. Ask Kevin why some objects are missing from the truth files.")
     print(f"{bcolors.ENDC}")
 
     # Set image and truth params

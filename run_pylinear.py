@@ -185,13 +185,27 @@ def gen_img_suffixes():
 
     return img_suffix_list
 
+def get_truth_sn(roman_direct_dir, img_suffix):
+
+    truth_dir = roman_direct_dir + 'K_5degtruth/'
+    truth_basename = '5deg_index_'
+    truth_filename = truth_dir + truth_basename + img_suffix + '_sn.fits'
+
+    truth_hdu_sn = fits.open(truth_filename)
+
+    num_truth_sn = len(truth_hdu_sn[1].data['ra'])
+    
+    truth_hdu_sn.close()
+
+    return num_truth_sn
+
 def main():
 
     # ---------------------- Preliminary stuff
     logger = logging.getLogger('Running pylinear wrapper')
 
     logging_format = '%(name)s - %(asctime)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.DEBUG, filename='run_pylinear.log', filemode='w', format=logging_format)
+    logging.basicConfig(level=logging.DEBUG, filename='pylinear_wrapper.log', filemode='w', format=logging_format)
 
     # Get starting time
     start = time.time()
@@ -218,6 +232,7 @@ def main():
     home = os.getenv('HOME')
 
     # Set image params
+    # Figure out the correct filenames depending on which machine is being used
     dir_img_part = 'part1'
     img_basename = '5deg_'
     img_filt = 'Y106_'
@@ -265,7 +280,7 @@ def main():
     # Set imaging sims dir
     img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
 
-    # Figure out the correct filenames depending on which machine is being used
+    # Set some other params
     img_suffix_list = gen_img_suffixes()
     exptime_list = [300, 600, 900, 1800, 3600]
     roll_angle_list = [70.0, 130.0, 190.0]
@@ -273,6 +288,7 @@ def main():
     dir_img_filt = 'hst_wfc3_f105w'
     simroot = 'romansim'
     
+    # Now set simulation counter and loop
     sim_count = 0
     
     for img in img_suffix_list:
@@ -288,6 +304,16 @@ def main():
         #    img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
         #    exptime_list, simroot)
         #sys.exit(0)
+
+        # Now check that there are SNe planted in this image since
+        # some of the images do not have them. For computational
+        # efficiency I'm going to skip the images that do not have 
+        # SNe in them.
+        num_truth_sn = get_truth_sn(roman_direct_dir, img_suffix)
+        logger.info("Number of SN in image: " + str(num_truth_sn))
+        if num_truth_sn < 1:
+            logger.info("Skipping image due to no SNe.")
+            continue
 
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
             img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
