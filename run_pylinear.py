@@ -369,15 +369,15 @@ def main():
         sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
     
         # Set up and tabulate
-        #grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-        #tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
-        #tabnames = tabulate.run(grisms, sources, beam)
+        grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
+        tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
+        tabnames = tabulate.run(grisms, sources, beam)
     
         ## ---------------------- Simulate
-        #logger.info("Simulating...")
-        #simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
-        #fltnames = simulate.run(grisms, sources, beam)
-        #logger.info("Simulation done.")
+        logger.info("Simulating...")
+        simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
+        fltnames = simulate.run(grisms, sources, beam)
+        logger.info("Simulation done.")
     
         for e in range(len(exptime_list)):
             
