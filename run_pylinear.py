@@ -288,7 +288,7 @@ def main():
     dir_img_filt = 'hst_wfc3_f105w'
     simroot = 'romansim'
     
-    # Now set simulation counter and loop
+    # ---------------------- Now set simulation counter and loop
     sim_count = 0
     
     for img in img_suffix_list:
@@ -305,6 +305,7 @@ def main():
         #    exptime_list, simroot)
         #sys.exit(0)
 
+        # ---------------------- 
         # Now check that there are SNe planted in this image since
         # some of the images do not have them. For computational
         # efficiency I'm going to skip the images that do not have 
@@ -324,7 +325,7 @@ def main():
         # sed lst generation will fail.
         os.chdir(result_path)
 
-        # Define list files and other preliminary stuff
+        # ---------------------- Define list files and other preliminary stuff
         segfile = img_sim_dir + img_basename + img_suffix + '_segmap.fits'
     
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
@@ -344,6 +345,19 @@ def main():
         logger.info("OBS LST: " + obslst)
         logger.info("SED LST: " + sedlst)
         logger.info("WCS LST: " + wcslst)
+
+        # ---------------------- Need to also check that there is at least 
+        # one SN spectrum in the sed.lst file. This check is required because
+        # sometimes even if a SN is in the image it might not get matched to
+        # truth and therefore the sed.lst file will not have any SN spectra
+        # in it. 
+        sed_fh = open(sedlst, 'r')
+        all_sed_lines = sed_fh.readlines()
+        if 'salt' not in all_sed_lines:
+            logger.info("Skipping image due to no SNe matches.")
+            continue
+
+        sys.exit(0)
     
         # ---------------------- Get sources
         sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
@@ -365,7 +379,7 @@ def main():
             logger.info("Adding noise... ")
             # check Russell's notes in pylinear notebooks
             # also check WFIRST tech report TR1901
-            sky = 1.1      # e/s
+            sky  = 1.1     # e/s
             npix = 4096 * 4096
             sky /= npix    # e/s/pix
     
@@ -396,7 +410,7 @@ def main():
                     neg_idx = np.where(signal < 0.0)
                     neg_idx = np.asarray(neg_idx)
                     if neg_idx.size:
-                        signal[neg_idx] = 0.0
+                        signal[neg_idx] = 0.0 
                         logger.error("Setting negative values to zero in signal.")
                         logger.error("This is wrong but should allow the rest of the program to work for now.")
 
