@@ -314,6 +314,7 @@ def main():
         logger.info("Number of SN in image: " + str(num_truth_sn))
         if num_truth_sn < 1:
             logger.info("Skipping image due to no SNe.")
+            sim_count += 1
             continue
 
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
@@ -355,9 +356,8 @@ def main():
         all_sed_lines = sed_fh.readlines()
         if 'salt' not in all_sed_lines:
             logger.info("Skipping image due to no SNe matches.")
+            sim_count += 1
             continue
-
-        sys.exit(0)
     
         # ---------------------- Get sources
         sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
