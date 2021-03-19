@@ -6,6 +6,10 @@ import sys
 
 import matplotlib.pyplot as plt
 
+extdir = '/Volumes/Joshi_external_HDD/Roman/'
+roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+assert os.path.isdir(roman_direct_dir)
+
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
@@ -41,17 +45,17 @@ def main():
 
     home = os.getenv('HOME')
     
-    img_sim_dir = home + '/Documents/roman_direct_sims/sims2021/sextractor_mag_zp_test/'
+    img_sim_dir = roman_direct_dir + 'sextractor_mag_zp_test/'
     img_basename = 'test_5deg_'
     img_suffix = 'Y106_1_7'
     
-    truth_dir = home + '/Documents/roman_direct_sims/sims2021/K_5degtruth/'
+    truth_dir = roman_direct_dir + 'K_5degtruth/'
     truth_basename = '5deg_index_'
     
     # Read in SExtractor catalog
     cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
     'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
-    cat = np.genfromtxt(img_sim_dir + img_basename + img_suffix + '.cat', \
+    cat = np.genfromtxt(img_sim_dir + img_basename + img_suffix + '_cps.cat', \
         dtype=None, names=cat_header, encoding='ascii')
     
     test_obj_ids = np.arange(len(cat))
@@ -74,6 +78,7 @@ def main():
 
     # EMpty list ot hold zeropoints
     zp_list = []
+    mag_diff = []
     
     # Now match each object
     for i in range(len(test_obj_ids)):
@@ -116,7 +121,7 @@ def main():
 
         # Get the difference in magnitudes
         true_mag = truth_hdu[1].data['mag'][idx]
-        # mag_diff = true_mag - cat['MAG_AUTO'][current_id - 1]
+        mag_diff.append(true_mag - cat['MAG_AUTO'][current_id - 1])
 
         flux = cat['FLUX_AUTO'][current_id - 1]
         print("FLUX (counts) from SExtractor:", flux)
@@ -136,7 +141,20 @@ def main():
     ax.set_xlabel('ZP', fontsize=15)
     ax.set_ylabel('\# objects', fontsize=15)
 
-    ax.hist(zp, 30, range=(30.5, 32.0), histtype='step', color='k', lw=2.5)
+    ax.hist(zp, 50, range=(25.0, 27.5), histtype='step', color='k', lw=2.5)
+
+    plt.show()
+
+    # Histogram of magnitude differences
+    mag_diff = np.asarray(mag_diff)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ax.set_xlabel(r'$\Delta m, m_\mathrm{true} - m_\mathrm{SExtractor}$', fontsize=15)
+    ax.set_ylabel('\# objects', fontsize=15)
+
+    ax.hist(mag_diff, 40, range=(-1.0, 1.0), histtype='step', color='k', lw=2.5)
 
     plt.show()
 
