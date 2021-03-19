@@ -354,7 +354,13 @@ def main():
         # in it. 
         sed_fh = open(sedlst, 'r')
         all_sed_lines = sed_fh.readlines()
-        if 'salt' not in all_sed_lines:
+        sn_exists = False
+        for l in all_sed_lines:
+            if 'salt' in l:
+                sn_exists = True
+                break
+
+        if not sn_exists:
             logger.info("Skipping image due to no SNe matches.")
             sim_count += 1
             continue
