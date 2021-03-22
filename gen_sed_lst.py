@@ -394,11 +394,11 @@ def gen_sed_lst():
             tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + sed_filename + f"{bcolors.ENDC}")
 
             # Check if the file exists 
-            #if os.path.isfile(sed_filename):
-            #    # Now check that it isn't empty
-            #    sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
-            #    if sed_filesize > 30:  # I chose this limit somewhat randomly after looking at file sizes by eye
-            #        continue
+            if os.path.isfile(sed_filename):
+                # Now check that it isn't empty
+                sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
+                if sed_filesize > 30:  # I chose this limit somewhat randomly after looking at file sizes by eye
+                    continue
 
             fh = open(sed_filename, 'w')
 
