@@ -129,6 +129,8 @@ def main():
 
         zp = true_mag + 2.5 * np.log10(flux)
         print(f"{bcolors.GREEN}", "ZP for this object:", zp, f"{bcolors.ENDC}")
+        print(f"{bcolors.WARNING}", "Be careful! The quoted ZP combines a SExtractor")
+        print("quantity with a true quantity. Mag diff is a better statistic.(?)", f"{bcolors.ENDC}")
 
         zp_list.append(zp)
 

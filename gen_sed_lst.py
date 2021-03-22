@@ -362,6 +362,8 @@ def gen_sed_lst():
     print("<if id_fetch in hostids> should be <for i in hostids> and loop instead of checking.")
     print("2. Make this code run on multiple cores.")
     print("3. How is the simulated magnitude taken into account?")
+    print("i.e., if the SN mag is known and the redshift is known then")
+    print("the SN phase is also a known quantity (so it shouldn't be randomized)?")
     print("4. Why are so many SNe matches not found?")
     print("5. Ask Kevin why some objects are missing from the truth files.")
     print(f"{bcolors.ENDC}")
@@ -424,8 +426,16 @@ def gen_sed_lst():
                     tqdm.write(f"{bcolors.GREEN}" + "Unzipping file: " + img_filename + ".gz" + f"{bcolors.ENDC}")
                     subprocess.run(['gzip', '-fd', img_filename + '.gz'])
 
-                img_filename += '[1]'  # Run only on 1st, i.e., SCI, extension in the file (0 indexed)
-                tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
+                # Now divide by the exptime to get the image to counts per sec
+                cps_img_filename = img_basename + img_filt + str(pt) + '_' + str(det) + '_cps.fits'
+                img_hdu = fits.open(img_filename)
+                cps_sci_arr = img_hdu[1].data / float(img_hdu[1].header['EXPTIME'])
+                cps_hdu = fits.PrimaryHDU(data=cps_sci_arr, header=img_hdu[1].header)
+                cps_hdu.writeto(cps_img_filename, overwrite=True)
+                img_hdu.close()
+                del cps_hdu
+
+                tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + cps_img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
                     " -CATALOG_NAME " + os.path.basename(cat_filename) + " -CHECKIMAGE_NAME " + checkimage + f"{bcolors.ENDC}")
 
                 # Use subprocess to call sextractor.
@@ -435,7 +445,7 @@ def gen_sed_lst():
                 # It will not work if you join all of these args in a 
                 # string with spaces where they are supposed to be; 
                 # even if the command looks right when printed out.
-                sextractor = subprocess.run(['sex', img_filename, '-c', 'roman_sims_sextractor_config.txt', \
+                sextractor = subprocess.run(['sex', cps_img_filename, '-c', 'roman_sims_sextractor_config.txt', \
                     '-CATALOG_NAME', os.path.basename(cat_filename), '-CHECKIMAGE_NAME', checkimage], check=True)
                 
                 tqdm.write("Finished SExtractor run. Check cat and segmap if needed.")

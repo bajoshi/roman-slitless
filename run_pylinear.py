@@ -295,7 +295,7 @@ def main():
     
         img_suffix = img_suffix_list[sim_count]
 
-        dir_img_name = img_basename + img_suffix + '_sci.fits'
+        dir_img_name = img_basename + img_suffix + '_cps.fits'
         logger.info("Working on direct image: " + dir_img_name)
 
         # Leave commented out # Do not delete
