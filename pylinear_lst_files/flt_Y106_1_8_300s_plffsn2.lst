@@ -1,0 +1,6 @@
+# Path to each flt image
+# This has to be a simulated or observed dispersed image
+
+/home/bajoshi/Documents/roman_slitless_sims_results/romansim1_Y106_1_8_300s_flt.fits
+/home/bajoshi/Documents/roman_slitless_sims_results/romansim2_Y106_1_8_300s_flt.fits
+/home/bajoshi/Documents/roman_slitless_sims_results/romansim3_Y106_1_8_300s_flt.fits
