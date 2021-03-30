@@ -37,6 +37,7 @@ print("Starting at:", dt.datetime.now())
 salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
+# Get the dirs correct
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
     modeldir = extdir + 'bc03_output_dir/'
@@ -44,8 +45,14 @@ else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
 
+roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 assert os.path.isdir(modeldir)
+assert os.path.isdir(roman_direct_dir)
 
+dir_img_part = 'part1'
+img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+
+# Now do the actual reading in
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
 model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
 
@@ -198,9 +205,13 @@ if __name__ == '__main__':
     
     # --------------- Preliminary stuff
     ext_root = "romansim_"
+
+    img_basename = '5deg_'
     img_suffix = 'Y106_0_2'
+
     exptime1 = '_900s'
     exptime2 = '_1800s'
+    exptime3 = '_3600s'
 
     # --------------- Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
@@ -209,6 +220,12 @@ if __name__ == '__main__':
     print("Read in sed.lst from:", sedlst_path)
 
     print("Number of spectra in file:", len(sedlst))
+
+    # --------------- Read in source catalog
+    cat_filename = img_sim_dir + img_basename + img_suffix + '.cat'
+    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
+    'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
+    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
     # Set pylinear f_lambda scaling factor
     pylinear_flam_scale_fac = 1e-17
@@ -221,6 +238,10 @@ if __name__ == '__main__':
     ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
     ext_hdu2 = fits.open(ext_spec_filename2)
     print("Read in extracted spectra from:", ext_spec_filename2)
+
+    ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
+    ext_hdu3 = fits.open(ext_spec_filename3)
+    print("Read in extracted spectra from:", ext_spec_filename3)
 
     # --------------- plot each spectrum in a for loop
     for i in range(len(sedlst)):
@@ -236,18 +257,26 @@ if __name__ == '__main__':
         wav2 = ext_hdu2[('SOURCE', segid)].data['wavelength']
         flam2 = ext_hdu2[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
+        wav3 = ext_hdu3[('SOURCE', segid)].data['wavelength']
+        flam3 = ext_hdu3[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+
         # First check the SNR on the longer exptime
         # Skip if below 3.0
-        snr1800 = get_snr(wav2, flam2)
+        snr = get_snr(wav3, flam3)
 
-        print("SNR for the 1800 s exptime spectrum:", "{:.2f}".format(snr1800))
+        print("SNR for the 3600 s exptime spectrum:", "{:.2f}".format(snr))
 
-        if snr1800 < 3.0:
+        # Also get magnitude
+        segid_idx = np.where(cat['NUMBER'] == int(segid))[0]
+        obj_mag = "{:.3f}".format(float(cat['MAG_AUTO'][segid_idx]))
+        print("Object magnitude from SExtractor:", obj_mag)
+
+        if snr < 3.0:
             print("Skipping due to low SNR.")
             continue
 
         # Set noise level based on snr
-        noise_lvl = 1/snr1800
+        noise_lvl = 1/snr
 
         # Read in the dummy template passed to pyLINEAR
         template_name = os.path.basename(sedlst['sed_path'][i])
@@ -272,12 +301,16 @@ if __name__ == '__main__':
             galaxy_logtau = np.log10(galaxy_tau)
 
         # Now plot
-        fig = plt.figure(figsize=(10,5))
+        fig = plt.figure(figsize=(13,6))
         ax = fig.add_subplot(111)
+
+        ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+        ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
 
         # extracted spectra
         ax.plot(wav1, flam1, label='900 s')
         ax.plot(wav2, flam2, label='1800 s')
+        ax.plot(wav3, flam3, label='3600 s')
 
         # models
         m = model_galaxy(wav1, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
@@ -290,6 +323,7 @@ if __name__ == '__main__':
 
         a1, chi2_1 = get_chi2(m, flam1, noise_lvl*flam1, x0)
         a2, chi2_2 = get_chi2(m, flam2, noise_lvl*flam2, x0)
+        a3, chi2_3 = get_chi2(m, flam3, noise_lvl*flam3, x0)
 
         print("Galaxy a for 900 s exptime:", "{:.4e}".format(a1))
         print("Galaxy base model chi2 for 900 s exptime:", chi2_1)
@@ -297,19 +331,26 @@ if __name__ == '__main__':
         print("Galaxy a for 1800 s exptime:", "{:.4e}".format(a2))
         print("Galaxy base model chi2 for 1800 s exptime:", chi2_2)
 
+        print("Galaxy a for 3600 s exptime:", "{:.4e}".format(a3))
+        print("Galaxy base model chi2 for 3600 s exptime:", chi2_3)
+
         # scale the model
         # using the longer exptime alpha for now
-        m = m * a2
+        m = m * a3
 
         ax.plot(w, m, label='model')
 
         # Add some text to the plot
+        ax.text(x=0.85, y=0.45, s=r'$\mathrm{SegID:\ }$' + str(segid), color='k', \
+            verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, size=14)
+        ax.text(x=0.85, y=0.4, s=r'$m_{Y106}\, = \, $' + obj_mag, color='k', \
+            verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, size=14)
 
-        ax.legend(loc=0)
+        ax.legend(loc=4, fontsize=14)
 
         plt.show()
 
-        if i > 50: break
+        
 
     sys.exit(0)
 
