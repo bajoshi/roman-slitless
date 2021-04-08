@@ -260,10 +260,11 @@ if __name__ == '__main__':
         wav3 = ext_hdu3[('SOURCE', segid)].data['wavelength']
         flam3 = ext_hdu3[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-        # First check the SNR on the longer exptime
+        # First check the SNR on the longest exptime
         # Skip if below 3.0
         snr = get_snr(wav3, flam3)
 
+        print("SNR for the 900 s exptime spectrum:", "{:.2f}".format(get_snr(wav1, flam1)))
         print("SNR for the 3600 s exptime spectrum:", "{:.2f}".format(snr))
 
         # Also get magnitude
