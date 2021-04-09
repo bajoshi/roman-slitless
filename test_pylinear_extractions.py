@@ -57,7 +57,7 @@ else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
-    
+
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_direct_dir)
 
@@ -388,7 +388,6 @@ def get_lnLike_clip(y, data, err):
 
     # Clip arrays
     y = y[x0]
-    x = x[x0]
     data = data[x0]
     err = err[x0]
 
