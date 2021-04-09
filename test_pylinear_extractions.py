@@ -52,11 +52,12 @@ salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
     modeldir = extdir + 'bc03_output_dir/'
+    roman_direct_dir = home + '/Documents/roman_direct_sims/sims2021/'
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
-
-roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+    roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+    
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_direct_dir)
 
