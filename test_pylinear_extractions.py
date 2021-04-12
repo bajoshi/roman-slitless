@@ -1,4 +1,3 @@
-import numpy as np
 from astropy.io import fits
 import scipy
 from scipy.ndimage import gaussian_filter1d
@@ -15,7 +14,9 @@ import time
 import datetime as dt
 
 os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 
+import numpy as np
 import emcee
 import corner
 from multiprocessing import Pool
