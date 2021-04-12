@@ -19,7 +19,8 @@ os.environ["MKL_NUM_THREADS"] = "1"
 import numpy as np
 import emcee
 import corner
-from multiprocessing import Pool
+#from multiprocessing import Pool
+from lmfit import Parameters, fit_report, Minimizer
 
 from numba import njit
 
@@ -66,8 +67,8 @@ dir_img_part = 'part1'
 img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
 
 # Now do the actual reading in
-model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
-model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
+model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy")
+model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy")
 
 all_m62_models = []
 tau_low = 0
@@ -100,6 +101,74 @@ grism_sens_wav = grism_sens_cat['Wave'] * 1e4  # the text file has wavelengths i
 grism_sens = grism_sens_cat['BAOGrism_1st']
 grism_wav_idx = np.where(grism_sens > 0.25)
 # ------------------
+
+def residual(pars, x, data, err):
+
+    vals = pars.valuesdict()
+    zval = vals['z']
+    msval = vals['ms']
+    ageval = vals['age']
+    logtauval = vals['logtau']
+    avval = vals['av']
+
+    m0 = model_galaxy(x, z=zval, 
+        ms=msval, 
+        age=ageval, 
+        logtau=logtauval, 
+        av=avval)
+    r = (m0 - data) / err
+
+    return r
+
+def get_optimal_fit(args_obj, init_guess):
+
+    #print("Running optimizer (LMFIT) to determine initial position.")
+
+    # first pull out required stuff from args
+    wav = args_obj[0]
+    flam = args_obj[1]
+    ferr = args_obj[2]
+
+    x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                   (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
+    wav = wav[x0]
+    flam = flam[x0]
+    ferr = ferr[x0]
+
+    # Initial guess and bounds
+    fit_params = Parameters()
+    fit_params.add('z', min=init_guess[0] - 0.02, max=init_guess[0] + 0.02)
+    fit_params.add('ms', min=init_guess[1] - 0.1, max=init_guess[1] + 0.1)
+    fit_params.add('age', min=init_guess[2] - 3.0, max=init_guess[2] + 3.0)
+    fit_params.add('logtau', min=init_guess[3] - 0.5, max=init_guess[3] + 0.5)
+    fit_params.add('av', min=init_guess[4] - 1.0, max=init_guess[4] + 1.0)
+
+    fitter = Minimizer(residual, fit_params, fcn_args=(wav, flam, ferr))
+    out = fitter.minimize(method='brute', Ns=10, workers=-1)
+
+    print("Result from optimal fit:")
+    print(fit_report(out))
+
+    """
+
+    m0 = model_galaxy(wav, z=init_guess[0], 
+        ms=init_guess[1], 
+        age=init_guess[2], 
+        logtau=init_guess[3], 
+        av=init_guess[4])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(wav, flam)
+    ax.plot(wav, m0, label='init guess')
+    ax.plot(wav, model_galaxy(wav, *out.brute_x0), label='best fit')
+    ax.legend()
+    plt.show()
+    """
+
+    return out.brute_x0
+
 
 @njit
 def get_dl_at_z(z):
@@ -219,22 +288,29 @@ def model_galaxy(x, z, ms, age, logtau, av):
 
     return model_mod
 
-def get_chi2(model, flam, ferr, indices=None):
+def get_chi2(model, flam, ferr, apply_a=True, indices=None):
 
     # Compute a and chi2
-    if indices.size:
+    if indices:
 
         a = np.nansum(flam[indices] * model / ferr[indices]**2) / np.nansum(model**2 / ferr[indices]**2)
-        model = a*model
+        if apply_a:
+            model = a*model
+
         chi2 = np.nansum( (model - flam[indices])**2 / ferr[indices]**2 )
 
     else:
 
         a = np.nansum(flam * model / ferr**2) / np.nansum(model**2 / ferr**2)
-        model = a*model
+        if apply_a:
+            model = a*model
+
         chi2 = np.nansum( (model - flam)**2 / ferr**2 )
 
-    return a, chi2
+    if apply_a:
+        return a, chi2
+    else:
+        return chi2
 
 def get_snr(wav, flux):
 
@@ -641,6 +717,10 @@ if __name__ == '__main__':
     # Create ferr array
     ferr = noise_lvl * flam
 
+    # Only consider wavelengths where sensitivity is above 25%
+    x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                   (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+
     # Setup for emcee
     # Labels for corner and trace plots
     label_list_galaxy = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', r'$\mathrm{Age\, [Gyr]}$', \
@@ -653,23 +733,23 @@ if __name__ == '__main__':
     jump_size_logtau = 0.01  # tau in gyr
     jump_size_av = 0.1  # magnitudes
 
-    zprior = 0.525
+    zprior =  0.525
     zprior_sigma = 0.02
 
-    # Initialize
+    args_galaxy = [wav, flam, ferr, zprior, zprior_sigma, x0]
+
+    # Initial guess
     rgal_init = np.array([zprior, 11.6, 4.0, 0.5, 2.4])
+
+    # Get optimal position
+    #brute_x0 = get_optimal_fit(args_galaxy, rgal_init)
+
+    # Re-initialize to optimal position
+    #rgal_init = np.array([brute_x0[0], brute_x0[1], brute_x0[2], brute_x0[3], brute_x0[4]])
 
     # Setup dims and walkers
     nwalkers = 300
     ndim_gal = 5
-
-    #global pos_gal
-    #global args_galaxy
-    #global x0
-
-    # Only consider wavelengths where sensitivity is above 25%
-    x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
-                   (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
 
     # generating ball of walkers about initial position defined above
     pos_gal = np.zeros(shape=(nwalkers, ndim_gal))
@@ -694,17 +774,14 @@ if __name__ == '__main__':
     # Running emcee
     print("\nRunning emcee...")
 
-    args_galaxy = [wav, flam, ferr, zprior, zprior_sigma, x0]
-
     ## ----------- Set up the HDF5 file to incrementally save progress to
     emcee_savefile = 'emcee_sampler_testgalaxy' + str(segid_to_test) + '.h5'
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim_gal)
 
-    with Pool() as pool:
-
-        sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, args=args_galaxy, pool=pool, backend=backend)
-        sampler.run_mcmc(pos_gal, 1000, progress=True)
+    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, args=args_galaxy, backend=backend, 
+        moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
+    sampler.run_mcmc(pos_gal, 1000, progress=True)
 
     print("Finished running emcee.")
     print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")

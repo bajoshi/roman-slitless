@@ -127,3 +127,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+emcee_sampler_testgalaxy1.h5
