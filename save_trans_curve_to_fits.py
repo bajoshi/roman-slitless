@@ -20,11 +20,8 @@ def save_thru_curve_to_fits(wav, sens, err, disperser, order=1):
     p = fits.PrimaryHDU()
     hdul = fits.HDUList(p)
     hdul.append(thdu)
-   
-    if disperser == 'prism':
-        hdul.writeto(pylinear_config_roman_dir + 'Roman_' + disperser + '_throughput_20190325.fits', overwrite=True)
-    else:
-        hdul.writeto(pylinear_config_roman_dir + 'Roman_' + disperser + '_' + str(order) + '_throughput_20190325.fits', overwrite=True)
+        
+    hdul.writeto(pylinear_config_roman_dir + 'Roman_' + disperser + '_' + str(order) + '_throughput_20190325.fits', overwrite=True)
 
     return None
 
@@ -40,7 +37,12 @@ def main():
     wp = rt['Wave'] * 1e4  # convert to angstroms from microns
     tp = rt['SNPrism'] * senslimit  # THIS CONVERSION TO SENSITIVITY NEEDS TO BE CHECKED
 
-    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), 'prism')
+    print("Prism trans:")
+    print(tp)
+
+    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), 'p120')
+
+    sys.exit()
 
     # ---------------- Grism 1st ---------------- #
     w1 = rt['Wave'] * 1e4  # convert to angstroms from microns

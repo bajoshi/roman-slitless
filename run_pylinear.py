@@ -158,7 +158,7 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
     create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name, img_suffix, machine)
 
     # WCS LST
-    create_wcs_lst(lst_dir, img_suffix, roll_angle_list, simroot, ra_cen, dec_cen, 'G150')
+    create_wcs_lst(lst_dir, img_suffix, roll_angle_list, simroot, ra_cen, dec_cen, 'P120')
 
     # FLT LST
     create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, machine, roll_angle_list)
@@ -352,6 +352,8 @@ def main():
         # sometimes even if a SN is in the image it might not get matched to
         # truth and therefore the sed.lst file will not have any SN spectra
         # in it. 
+        # For getting larger numbers of SNe spectra to analyze I'm only
+        # going through the images with at least 2 SNe in them, first.
         sed_fh = open(sedlst, 'r')
         all_sed_lines = sed_fh.readlines()
         num_sn = 0

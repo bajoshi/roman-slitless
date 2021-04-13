@@ -19,7 +19,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 import numpy as np
 import emcee
 import corner
-#from multiprocessing import Pool
+from multiprocessing import Pool
 from lmfit import Parameters, fit_report, Minimizer
 
 from numba import njit
@@ -291,7 +291,7 @@ def model_galaxy(x, z, ms, age, logtau, av):
 def get_chi2(model, flam, ferr, apply_a=True, indices=None):
 
     # Compute a and chi2
-    if indices:
+    if isinstance(indices, np.ndarray):
 
         a = np.nansum(flam[indices] * model / ferr[indices]**2) / np.nansum(model**2 / ferr[indices]**2)
         if apply_a:
@@ -400,10 +400,13 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3):
                        (wav1 <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
         m = m[x0]
         w = wav1[x0]
+        flam1 = flam1[x0]
+        flam2 = flam2[x0]
+        flam3 = flam3[x0]
 
-        a1, chi2_1 = get_chi2(m, flam1, noise_lvl*flam1, x0)
-        a2, chi2_2 = get_chi2(m, flam2, noise_lvl*flam2, x0)
-        a3, chi2_3 = get_chi2(m, flam3, noise_lvl*flam3, x0)
+        a1, chi2_1 = get_chi2(m, flam1, noise_lvl*flam1)
+        a2, chi2_2 = get_chi2(m, flam2, noise_lvl*flam2)
+        a3, chi2_3 = get_chi2(m, flam3, noise_lvl*flam3)
 
         print("Galaxy a for 900 s exptime:", "{:.4e}".format(a1))
         print("Galaxy base model chi2 for 900 s exptime:", chi2_1)
@@ -727,13 +730,13 @@ if __name__ == '__main__':
     r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$'] 
 
     # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-    jump_size_z = 0.01
-    jump_size_ms = 0.1  # log(ms)
-    jump_size_age = 0.1  # in gyr
-    jump_size_logtau = 0.01  # tau in gyr
-    jump_size_av = 0.1  # magnitudes
+    jump_size_z = 0.5
+    jump_size_ms = 1.0  # log(ms)
+    jump_size_age = 1.0  # in gyr
+    jump_size_logtau = 0.2  # tau in gyr
+    jump_size_av = 0.5  # magnitudes
 
-    zprior =  0.525
+    zprior = 0.5
     zprior_sigma = 0.02
 
     args_galaxy = [wav, flam, ferr, zprior, zprior_sigma, x0]
@@ -779,8 +782,8 @@ if __name__ == '__main__':
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim_gal)
 
-    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, args=args_galaxy, backend=backend, 
-        moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
+    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, args=args_galaxy, pool=pool, backend=backend)
+    #moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
     sampler.run_mcmc(pos_gal, 1000, progress=True)
 
     print("Finished running emcee.")
