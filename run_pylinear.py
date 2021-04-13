@@ -65,6 +65,11 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
     sedlst_basefilename = lst_dir + 'sed_' + img_suffix + '.lst'
     sedlst_filename = lst_dir + 'sed_' + img_suffix + machine + '.lst'
 
+    if machine == '':
+        cpf = sedlst_basefilename.replace('.lst', '_base.lst')
+        shutil.copyfile(sedlst_basefilename, cpf)
+        sedlst_basefilename = cpf
+
     if not os.path.isfile(sedlst_basefilename):
         print("Cannot find file:", sedlst_basefilename)
         print("First run the gen_sed_lst program to generate")
@@ -276,6 +281,7 @@ def main():
         pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
         seds_path = home + '/Documents/roman_slitless_sims_seds/'
         result_path = home + '/Documents/roman_slitless_sims_results/'
+        obsstr = ''
     
     # Set imaging sims dir
     img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
