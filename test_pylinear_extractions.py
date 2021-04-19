@@ -102,6 +102,13 @@ grism_sens = grism_sens_cat['BAOGrism_1st']
 grism_wav_idx = np.where(grism_sens > 0.25)
 # ------------------
 
+prism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
+    dtype=None, names=True, skip_header=3)
+
+prism_sens_wav = prism_sens_cat['Wave'] * 1e4  # the text file has wavelengths in microns # needed in angstroms
+prism_sens = prism_sens_cat['SNPrism']
+prism_wav_idx = np.where(prism_sens > 0.25)
+
 def residual(pars, x, data, err):
 
     vals = pars.valuesdict()
@@ -320,7 +327,7 @@ def get_snr(wav, flux):
 
     return snr_derived(spec1d)
 
-def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3):
+def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
     for i in range(len(sedlst)):
@@ -396,8 +403,13 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3):
         m = model_galaxy(wav1, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
 
         # Only consider wavelengths where sensitivity is above 25%
-        x0 = np.where( (wav1 >= grism_sens_wav[grism_wav_idx][0]  ) &
-                       (wav1 <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+        if disperser == 'grism':
+            x0 = np.where( (wav1 >= grism_sens_wav[grism_wav_idx][0]  ) &
+                           (wav1 <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+        elif disperser == 'prism':
+            x0 = np.where( (wav1 >= prism_sens_wav[prism_wav_idx][0]  ) &
+                           (wav1 <= prism_sens_wav[prism_wav_idx][-1] ) )[0]
+
         m = m[x0]
         w = wav1[x0]
         flam1 = flam1[x0]
@@ -653,7 +665,7 @@ if __name__ == '__main__':
     ext_root = "romansim_"
 
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_2'
+    img_suffix = 'Y106_0_3'
 
     exptime1 = '_900s'
     exptime2 = '_1800s'
@@ -691,7 +703,9 @@ if __name__ == '__main__':
 
 
     # ------------------------
-    # plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3)
+    plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3)
+
+    sys.exit(0)
 
     # ------------------------
     # Test the fitting. Basic goals:

@@ -482,7 +482,7 @@ def main():
             # Set extraction params
             sources.update_extraction_parameters(**extraction_parameters)
             method = 'golden'  # golden, grid, or single
-            extroot = 'romansim_' + img_suffix + '_' + str(exptime) + 's'
+            extroot = simroot + img_suffix + '_' + str(exptime) + 's'
             logdamp = [-7, -1, 0.1]
     
             print("Extracting...")
@@ -502,7 +502,6 @@ def main():
         sim_count += 1
 
         print("Finished with first set of sims. Check results. Exiting.")
-        sys.exit(0)
     
     print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 
