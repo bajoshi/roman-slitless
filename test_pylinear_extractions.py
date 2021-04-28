@@ -42,6 +42,7 @@ print("Starting at:", dt.datetime.now())
 
 # Define constants
 Lsol = 3.826e33
+sn_day_arr = np.arange(-19,50,1)
 
 # Load in all models
 # ------ THIS HAS TO BE GLOBAL!
@@ -327,6 +328,36 @@ def get_snr(wav, flux):
 
     return snr_derived(spec1d)
 
+def model_sn(x, z, day, sn_av):
+
+    # pull out spectrum for the chosen day
+    day_idx_ = np.argmin(abs(sn_day_arr - day))
+    day_idx = np.where(salt2_spec['day'] == sn_day_arr[day_idx_])[0]
+
+    sn_spec_llam = salt2_spec['flam'][day_idx]
+    sn_spec_lam = salt2_spec['lam'][day_idx]
+
+    # ------ Apply dust extinction
+    sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, sn_av)
+
+    # ------ Apply redshift
+    sn_lam_z, sn_flam_z = apply_redshift(sn_spec_lam, sn_dusty_llam, z)
+
+    # ------ Apply some LSF. 
+    # This is a NUISANCE FACTOR ONLY FOR NOW
+    # When we use actual SNe they will be point sources.
+    #lsf_sigma = 0.5
+    #sn_flam_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_z, sigma=lsf_sigma)
+
+    sn_mod = griddata(points=sn_lam_z, values=sn_flam_z, xi=x)
+
+    # ------ combine host light
+    # some fraction to account for host contamination
+    # This fraction is a free parameter
+    #sn_flam_hostcomb = sn_mod  +  host_frac * host_flam
+
+    return sn_mod
+
 def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
@@ -372,9 +403,9 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
         # Get template properties
         if 'salt' in template_name:
             
-            sn_av = float(t[-1].replace('p', '.').replace('av',''))
-            sn_z = float(t[-2].replace('p', '.').replace('z',''))
-            sn_day = int(t[-3].replace('day',''))
+            sn_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
+            sn_z = float(template_name_list[-2].replace('p', '.').replace('z',''))
+            sn_day = int(template_name_list[-3].replace('day',''))
 
         else:
 
@@ -400,7 +431,10 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
         ax.plot(wav3, flam3, label='3600 s')
 
         # models
-        m = model_galaxy(wav1, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
+        if 'salt' in template_name:
+            m = model_sn(wav1, sn_z, sn_day, sn_av)
+        else:
+            m = model_galaxy(wav1, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
 
         # Only consider wavelengths where sensitivity is above 25%
         if disperser == 'grism':
@@ -420,14 +454,14 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
         a2, chi2_2 = get_chi2(m, flam2, noise_lvl*flam2)
         a3, chi2_3 = get_chi2(m, flam3, noise_lvl*flam3)
 
-        print("Galaxy a for 900 s exptime:", "{:.4e}".format(a1))
-        print("Galaxy base model chi2 for 900 s exptime:", chi2_1)
+        print("Object a for 900 s exptime:", "{:.4e}".format(a1))
+        print("Object base model chi2 for 900 s exptime:", chi2_1)
 
-        print("Galaxy a for 1800 s exptime:", "{:.4e}".format(a2))
-        print("Galaxy base model chi2 for 1800 s exptime:", chi2_2)
+        print("Object a for 1800 s exptime:", "{:.4e}".format(a2))
+        print("Object base model chi2 for 1800 s exptime:", chi2_2)
 
-        print("Galaxy a for 3600 s exptime:", "{:.4e}".format(a3))
-        print("Galaxy base model chi2 for 3600 s exptime:", chi2_3)
+        print("Object a for 3600 s exptime:", "{:.4e}".format(a3))
+        print("Object base model chi2 for 3600 s exptime:", chi2_3)
 
         # scale the model
         # using the longer exptime alpha for now
