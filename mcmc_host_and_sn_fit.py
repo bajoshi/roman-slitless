@@ -41,10 +41,12 @@ template_dir = home + "/Documents/roman_slitless_sims_seds/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 emcee_diagnostics_dir = home + "/Documents/emcee_runs/emcee_diagnostics_roman/"
 
-grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
+grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/' + \
+    'pylinear_config/Roman/roman_throughput_20190325.txt',
     dtype=None, names=True, skip_header=3)
 
-grism_sens_wav = grism_sens_cat['Wave'] * 1e4  # the text file has wavelengths in microns # needed in angstroms
+grism_sens_wav = grism_sens_cat['Wave'] * 1e4  
+# the text file has wavelengths in microns # needed in angstroms
 grism_sens = grism_sens_cat['BAOGrism_1st']
 grism_wav_idx = np.where(grism_sens > 0.25)
 
@@ -507,8 +509,10 @@ def remove_emission_lines(l, ll):
     SII_1 = 6718.29
     SII_2 = 6732.67
 
-    all_line_wav = np.array([MgII, OII_1, OIII_1, OIII_2, NII_1, NII_2, SII_1, SII_2, h_alpha, h_beta, h_gamma, h_delta])
-    all_line_names = np.array(['MgII', 'OII_1', 'OIII_1', 'OIII_2', 'NII_1', 'NII_2', 'SII_1', 'SII_2', 'h_alpha', 'h_beta', 'h_gamma', 'h_delta'])
+    all_line_wav = np.array([MgII, OII_1, OIII_1, OIII_2, NII_1, NII_2, 
+        SII_1, SII_2, h_alpha, h_beta, h_gamma, h_delta])
+    all_line_names = np.array(['MgII', 'OII_1', 'OIII_1', 'OIII_2', 'NII_1', 'NII_2', 
+        'SII_1', 'SII_2', 'h_alpha', 'h_beta', 'h_gamma', 'h_delta'])
 
     # get list of indices to be deleted in the model wavelength and spectrum arrays
     lidx = []
@@ -578,7 +582,8 @@ def get_autocorr_time(sampler):
         print(errmsg)
         print("\n")
         print("Emcee AutocorrError occured.")
-        print("The chain is shorter than 50 times the integrated autocorrelation time for 5 parameter(s).")
+        print("The chain is shorter than 50 times the integrated ")
+        print("autocorrelation time for 5 parameter(s).")
         print("Use this estimate with caution and run a longer chain!")
         print("\n")
 
@@ -613,7 +618,8 @@ def run_emcee(object_type, nwalkers, ndim, logpost, pos, args_obj, objid):
 
     # ----------- Emcee 
     with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, args=args_obj, pool=pool, backend=backend)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logpost, 
+            args=args_obj, pool=pool, backend=backend)
         sampler.run_mcmc(pos, 2000, progress=True)
 
     # ----------- Also save the final result as a pickle dump
@@ -665,7 +671,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     axes1[-1].set_xlabel("Step number")
 
-    fig1.savefig(emcee_diagnostics_dir + 'emcee_trace_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig1.savefig(emcee_diagnostics_dir + 'emcee_trace_' + object_type + '_' + \
+        str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     # Create flat samples
@@ -717,7 +724,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
 
     #print(f"{bcolors.WARNING}\nUsing hardcoded ranges in corner plot.{bcolors.ENDC}")
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
-        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, truths=truth_arr, \
+        label_kwargs={"fontsize": 14}, show_titles='True', 
+        title_kwargs={"fontsize": 14}, truths=truth_arr, \
         verbose=True, truth_color='tab:red', smooth=1.0, smooth1d=1.0, \
         range=[(1.952, 1.9535), (11.0, 12.0), (0.0, 2.0), (0.5, 1.7), (0.6, 1.8)])
     #range=[(0.9, 1.05), (7, 50), (4.5, 5.0)])  # for SN 753
@@ -730,7 +738,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     # redshift is the first axis
     #corner_axes[0, 0].set_title()
 
-    fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig.savefig(emcee_diagnostics_dir + 'corner_' + object_type + '_' + \
+        str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     # ------------ Plot 100 random models from the parameter space within +-1sigma of corner estimates
@@ -841,7 +850,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, truth_arr, label_list, o
     ax3.plot(wav, flam, color='k', lw=2.2, zorder=1)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
 
-    fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + object_type + '_' + str(objid) + '_' + img_suffix + '.pdf', \
+    fig3.savefig(emcee_diagnostics_dir + 'emcee_overplot_' + object_type + '_' + \
+        str(objid) + '_' + img_suffix + '.pdf', \
         dpi=200, bbox_inches='tight')
 
     return None
@@ -904,8 +914,10 @@ def get_snr(wav, flux):
 def main():
 
     print(f"{bcolors.WARNING}")
-    print("* * * *   TO-DO: 1. Model has worse resolution than data in NIR. np.mean() will result in nan. Needs fixing.   * * * *")
-    print("* * * *   TO-DO: 2. When including a Gaussian redshift prior confirm that the integral under the Gaussian prior is 1.   * * * *")
+    print("* * * *   TO-DO: 1. Model has worse resolution than data in NIR. ")
+    print("                 np.mean() will result in nan. Needs fixing.   * * * *")
+    print("* * * *   TO-DO: 2. When including a Gaussian redshift prior confirm")
+    print("                 that the integral under the Gaussian prior is 1.   * * * *")
     print(f"{bcolors.ENDC}")
 
     ext_root = "romansim_"
@@ -1070,13 +1082,15 @@ def main():
                                 (host_wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
             m = m[host_x0]
 
-            a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / np.nansum(m**2 / host_ferr[host_x0]**2)
+            a = np.nansum(host_flam[host_x0] * m / host_ferr[host_x0]**2) / \
+            np.nansum(m**2 / host_ferr[host_x0]**2)
             print("HOST a:", "{:.4e}".format(a))
             m = a*m
             chi2_good = np.nansum( (m - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(m)
             print("HOST base model chi2:", chi2_good)
 
-            ax.plot(host_wav[host_x0], m, lw=1.0, color='tab:red', zorder=2, label='Downgraded model from mcmc code')
+            ax.plot(host_wav[host_x0], m, lw=1.0, color='tab:red', 
+                zorder=2, label='Downgraded model from mcmc code')
 
             # plot actual template passed into pylinear
             if 'plffsn2' not in socket.gethostname():
@@ -1101,25 +1115,30 @@ def main():
             bad_model = model_host(host_wav, 1.95, 1.0, 13.0, 1.0, 3.0)
             bad_model = bad_model[host_x0]
 
-            ab = np.nansum(host_flam[host_x0] * bad_model / host_ferr[host_x0]**2) / np.nansum(bad_model**2 / host_ferr[host_x0]**2)
+            ab = np.nansum(host_flam[host_x0] * bad_model / host_ferr[host_x0]**2) / \
+            np.nansum(bad_model**2 / host_ferr[host_x0]**2)
             print(f"{bcolors.WARNING}\nHOST a for bad model:", "{:.3e}".format(ab))
             bad_model = ab*bad_model
             chi2_bad = np.nansum( (bad_model - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(bad_model)
             print("HOST base model reduced chi2 for bad model:", chi2_bad)
             print(f"{bcolors.ENDC}")
-            ax.plot(host_wav[host_x0], bad_model, lw=1.0, color='magenta', zorder=2, label='Representative bad model (downgraded)')
+            ax.plot(host_wav[host_x0], bad_model, lw=1.0, color='magenta', 
+            zorder=2, label='Representative bad model (downgraded)')
 
             # another model worse than the bad model
             worse_model = model_host(host_wav, 1.9, 3.0, 0.5, 0.1, 3.0)
             worse_model = worse_model[host_x0]
 
-            aw = np.nansum(host_flam[host_x0] * worse_model / host_ferr[host_x0]**2) / np.nansum(worse_model**2 / host_ferr[host_x0]**2)
+            aw = np.nansum(host_flam[host_x0] * worse_model / host_ferr[host_x0]**2) / \
+            np.nansum(worse_model**2 / host_ferr[host_x0]**2)
             print(f"{bcolors.FAIL}\nHOST a for bad model:", "{:.3e}".format(aw))
             worse_model = aw*worse_model
-            chi2_worse = np.nansum( (worse_model - host_flam[host_x0])**2 / host_ferr[host_x0]**2 )# / len(worse_model)
+            chi2_worse = np.nansum( (worse_model - host_flam[host_x0])**2 / \
+            host_ferr[host_x0]**2 )# / len(worse_model)
             print("HOST base model reduced chi2 for worse model:", chi2_worse)
             print(f"{bcolors.ENDC}")
-            ax.plot(host_wav[host_x0], worse_model, lw=1.0, color='slateblue', zorder=2, label='Representative worse model (downgraded)')
+            ax.plot(host_wav[host_x0], worse_model, lw=1.0, color='slateblue', 
+            zorder=2, label='Representative worse model (downgraded)')
 
             # Get ln(likelihood) for all models
             lnl_good = logpost_host([host_z, host_age, host_tau, host_av, 3.0], host_wav, host_flam, host_ferr)
@@ -1128,18 +1147,27 @@ def main():
 
             # Info to plot
             ax.text(x=0.45, y=0.2, s=r"$\chi^2_\mathrm{good} \,=\, $" + "{:.2f}".format(chi2_good), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='tab:red', size=12)
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, 
+                    color='tab:red', size=12)
             ax.text(x=0.45, y=0.14, s=r"$\chi^2_\mathrm{bad} \,=\, $" + "{:.2f}".format(chi2_bad), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='magenta', size=12)
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, 
+                    color='magenta', size=12)
             ax.text(x=0.45, y=0.08, s=r"$\chi^2_\mathrm{worse} \,=\, $" + "{:.2f}".format(chi2_worse), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='slateblue', size=12)
+                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, 
+                    color='slateblue', size=12)
 
-            ax.text(x=0.7, y=0.2, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{good}) \,=\, $" + "{:.2f}".format(lnl_good), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='tab:red', size=12)
-            ax.text(x=0.7, y=0.14, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{bad}) \,=\, $" + "{:.2f}".format(lnl_bad), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='magenta', size=12)
-            ax.text(x=0.7, y=0.08, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{worse}) \,=\, $" + "{:.2f}".format(lnl_worse), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='slateblue', size=12)
+            ax.text(x=0.7, y=0.2, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{good}) \,=\, $" \
+                    + "{:.2f}".format(lnl_good), \
+                    verticalalignment='top', horizontalalignment='left', 
+                    transform=ax.transAxes, color='tab:red', size=12)
+            ax.text(x=0.7, y=0.14, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{bad}) \,=\, $" \
+                    + "{:.2f}".format(lnl_bad), \
+                    verticalalignment='top', horizontalalignment='left', 
+                    transform=ax.transAxes, color='magenta', size=12)
+            ax.text(x=0.7, y=0.08, s=r"$\mathrm{ln}(\mathcal{L}_\mathrm{worse}) \,=\, $" \
+                    + "{:.2f}".format(lnl_worse), \
+                    verticalalignment='top', horizontalalignment='left', 
+                    transform=ax.transAxes, color='slateblue', size=12)
 
             ax.set_xlim(9000, 20000)
             host_fig_ymin = np.min(host_flam)
@@ -1203,7 +1231,8 @@ def main():
             asn = np.nansum(sn_flam[sn_x0] * msn / sn_ferr[sn_x0]**2) / np.nansum(msn**2 / sn_ferr[sn_x0]**2)
             print("SN a:", asn)
             msn = asn * msn
-            print("SN base model reduced chi2:", np.nansum( (msn - sn_flam[sn_x0])**2 / sn_ferr[sn_x0]**2 ) / len(msn))
+            print("SN base model reduced chi2:")
+            print(np.nansum( (msn - sn_flam[sn_x0])**2 / sn_ferr[sn_x0]**2 ) / len(msn))
 
             # plot spectrum without host light addition
             ax1.plot(sn_wav[sn_x0], msn, color='tab:green', label='SN template only', zorder=2)
@@ -1280,8 +1309,10 @@ def main():
             print("Final SN spectrum", sn_fin)
             print("len final sn spec:", len(sn_fin))
 
-            a_fin = np.nansum(sn_flam_norm * sn_fin / sn_ferr_norm**2) / np.nansum(sn_fin**2 / sn_ferr_norm**2)
-            ax1.plot(sn_wav, a_fin * sn_fin, color='tab:red', label='Shifted host light added SN model', zorder=3)
+            a_fin = np.nansum(sn_flam_norm * sn_fin / sn_ferr_norm**2) / \
+            np.nansum(sn_fin**2 / sn_ferr_norm**2)
+            ax1.plot(sn_wav, a_fin * sn_fin, color='tab:red', 
+            label='Shifted host light added SN model', zorder=3)
 
             ax1.legend(loc=0)
 
@@ -1303,7 +1334,8 @@ def main():
             r = np.array([1.9, 1.5, 12.4, 0.5, 2.0])
             print("Initial parameter vector:", r)
 
-            #logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam)  # evaluating the probability at the initial guess
+            #logp = logpost_sn(r, sn_wav, sn_flam, sn_ferr, host_flam) 
+            # evaluating the probability at the initial guess
             jump_size_z = 0.01
             #jump_size_day = 1  # days
             #jump_size_host_frac = 0.01
@@ -1342,8 +1374,10 @@ def main():
 
                 #print("Proposal parameter vector", rn)
                 
-                #logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)  #evaluating probability of proposal vector
-                logpn = logpost_host(rn, host_wav, host_flam, host_ferr)  #evaluating probability of proposal vector
+                #logpn = logpost_sn(rn, sn_wav, sn_flam, sn_ferr, host_flam)
+                #evaluating probability of proposal vector
+                logpn = logpost_host(rn, host_wav, host_flam, host_ferr)
+                #evaluating probability of proposal vector
                 #print("Proposed parameter vector log(probability):", logpn)
                 dlogL = logpn - logp
                 #print("dlogL:", dlogL)
@@ -1361,7 +1395,8 @@ def main():
                 else:  #only keep it based on acceptance probability
                     #print("Probability decreased. Will decide whether to keep point or not.")
                     u = np.random.rand()  #random number between 0 and 1
-                    if u < a:  #only if proposal prob / previous prob is greater than u, then keep new proposed step
+                    if u < a:  
+                        #only if proposal prob / previous prob is greater than u, then keep new proposed step
                         logp = logpn
                         r = rn
                         accept+=1
@@ -1384,10 +1419,12 @@ def main():
                 lnLike = -0.5 * np.nansum( (m-sn_flam)**2 / sn_ferr**2 )
                 print("Chi2 for this position:", chi2)
 
-                ax.text(x=0.65, y=0.95, s=r"$\chi^2 \,=\, $" + "{:.2e}".format(chi2), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='k', size=12)
-                ax.text(x=0.65, y=0.87, s=r"$ln(L) \,=\, $"  + "{:.2e}".format(lnLike), \
-                    verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, color='k', size=12)
+                ax.text(x=0.65, y=0.95, s=r"$\chi^2 \,=\, $" + \
+                        "{:.2e}".format(chi2), verticalalignment='top', horizontalalignment='left', 
+                    transform=ax.transAxes, color='k', size=12)
+                ax.text(x=0.65, y=0.87, s=r"$ln(L) \,=\, $"  + \
+                        "{:.2e}".format(lnLike), verticalalignment='top', horizontalalignment='left', 
+                    transform=ax.transAxes, color='k', size=12)
 
                 ax.plot(sn_wav, a * m, color='tab:red')
 
@@ -1406,7 +1443,8 @@ def main():
 
             # plot trace
             fig1, axes1 = plt.subplots(5, figsize=(10, 6), sharex=True)
-            label_list_host = [r'$z$', r'$log(Ms/M_\odot)$', r'$Age [Gyr]$', r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']
+            label_list_host = [r'$z$', r'$log(Ms/M_\odot)$', r'$Age [Gyr]$', 
+            r'$\tau [Gyr]$', r'$A_V [mag]$', 'LSF']
 
             for i in range(5):
                 ax1 = axes1[i]
@@ -1472,14 +1510,21 @@ def main():
             args_sn = [sn_wav, sn_flam, sn_ferr]
             args_host = [host_wav, host_flam, host_ferr, zprior, zprior_sigma]
 
-            print(f"{bcolors.GREEN}", "Starting position for HOST from where ball of walkers will be generated:\n", rhost_init, f"{bcolors.ENDC}")
-            print("logpost at starting position for HOST galaxy:", logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
+            print(f"{bcolors.GREEN}")
+            print("Starting position for HOST from where ball of walkers will be generated:")
+            print(rhost_init, f"{bcolors.ENDC}")
+            print("logpost at starting position for HOST galaxy:")
+            print(logpost_host(rhost_init, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
 
             rtrue = np.array([host_z, host_ms, host_age, np.log10(host_tau), host_av])
-            print("logpost at true position for HOST galaxy:", logpost_host(rtrue, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
-            #print(f"{bcolors.WARNING}", "Lower log(posterior) probability at true position likely due to metallicity difference.", f"{bcolors.ENDC}")
+            print("logpost at true position for HOST galaxy:")
+            print(logpost_host(rtrue, host_wav, host_flam, host_ferr, zprior, zprior_sigma))
+            #print(f"{bcolors.WARNING}")
+            #print("Lower log(posterior) probability at true position 
+            #print(likely due to metallicity difference.", f"{bcolors.ENDC}")
 
-            print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:\n", rsn_init, f"{bcolors.ENDC}")
+            print(f"{bcolors.GREEN}Starting position for SN from where ball of walkers will be generated:")
+            print(rsn_init, f"{bcolors.ENDC}")
             print("logpost at starting position for SN:", logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
             rsn_true = np.array([sn_z, sn_day, sn_av])
             print("True SN position:", rsn_true)
@@ -1530,20 +1575,26 @@ def main():
             host_h5 = emcee_diagnostics_dir + checkdir + 'host_' + str(hostid) + '_emcee_sampler.h5'
             sn_h5 = emcee_diagnostics_dir + 'sn_' + str(segid) + '_emcee_sampler.h5'
 
-            read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+            read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, 
+                label_list_host, hostid, img_suffix)
 
             sys.exit(0)
 
             if os.path.isfile(host_h5):
-                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
-                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                #read_pickle_make_plots('host', ndim_host, args_host, 
+                #    truth_arr_host, label_list_host, hostid, img_suffix)
+                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, 
+                    label_list_sn, segid, img_suffix)
             else:
                 # Call emcee
                 #run_emcee('sn', nwalkers, ndim_sn, logpost_sn, pos_sn, args_sn, segid)
-                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, label_list_sn, segid, img_suffix)
+                read_pickle_make_plots('sn', ndim_sn, args_sn, truth_arr_sn, 
+                    label_list_sn, segid, img_suffix)
 
-                #run_emcee('host', nwalkers, ndim_host, logpost_host, pos_host, args_host, hostid)
-                #read_pickle_make_plots('host', ndim_host, args_host, truth_arr_host, label_list_host, hostid, img_suffix)
+                #run_emcee('host', nwalkers, ndim_host, logpost_host, 
+                #    pos_host, args_host, hostid)
+                #read_pickle_make_plots('host', ndim_host, args_host, 
+                #    truth_arr_host, label_list_host, hostid, img_suffix)
 
             sys.exit(0)
 
