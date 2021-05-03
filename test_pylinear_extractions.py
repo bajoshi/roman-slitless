@@ -95,18 +95,22 @@ del dl_cat
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
 # ------------------
-grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
+grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/' + \
+    'pylinear_config/Roman/roman_throughput_20190325.txt', \
     dtype=None, names=True, skip_header=3)
 
-grism_sens_wav = grism_sens_cat['Wave'] * 1e4  # the text file has wavelengths in microns # needed in angstroms
+grism_sens_wav = grism_sens_cat['Wave'] * 1e4
+# the text file has wavelengths in microns # needed in angstroms
 grism_sens = grism_sens_cat['BAOGrism_1st']
 grism_wav_idx = np.where(grism_sens > 0.25)
 # ------------------
 
-prism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/pylinear_config/Roman/roman_throughput_20190325.txt', \
+prism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/' + \
+    'pylinear_config/Roman/roman_throughput_20190325.txt', \
     dtype=None, names=True, skip_header=3)
 
-prism_sens_wav = prism_sens_cat['Wave'] * 1e4  # the text file has wavelengths in microns # needed in angstroms
+prism_sens_wav = prism_sens_cat['Wave'] * 1e4
+# the text file has wavelengths in microns # needed in angstroms
 prism_sens = prism_sens_cat['SNPrism']
 prism_wav_idx = np.where(prism_sens > 0.25)
 
@@ -748,8 +752,9 @@ if __name__ == '__main__':
     # 3. Non-parametric SFHs
 
     # Other goals:
-    # Test with pyMC3 and Multinest/NUTS/ other packages
-    # for multimodal posteriors.
+    # Test with pyMC3 and Multinest/NUTS/ other packages for multimodal posteriors.
+    # Test with Prospector and Dynesty
+    # 
     # ------------------------
 
     segid_to_test = 1
@@ -820,7 +825,8 @@ if __name__ == '__main__':
 
     print("Starting position for galaxies from where ball of walkers will be generated:\n", rgal_init)
 
-    print("logpost at starting position for galaxy:", logpost_galaxy(rgal_init, wav, flam, ferr, zprior, zprior_sigma, x0))
+    print("logpost at starting position for galaxy:")
+    print(logpost_galaxy(rgal_init, wav, flam, ferr, zprior, zprior_sigma, x0))
 
     # Running emcee
     print("\nRunning emcee...")
@@ -830,7 +836,8 @@ if __name__ == '__main__':
     backend = emcee.backends.HDFBackend(emcee_savefile)
     backend.reset(nwalkers, ndim_gal)
 
-    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, args=args_galaxy, pool=pool, backend=backend)
+    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, 
+        args=args_galaxy, pool=pool, backend=backend)
     #moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),],)
     sampler.run_mcmc(pos_gal, 1000, progress=True)
 
@@ -856,7 +863,8 @@ if __name__ == '__main__':
     # Create truths array and plot
     truth_arr = np.array([galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av])
 
-    read_pickle_make_plots('testgalaxy' + str(segid_to_test), ndim_gal, args_galaxy, label_list_galaxy, truth_arr)
+    read_pickle_make_plots('testgalaxy' + str(segid_to_test), ndim_gal, 
+        args_galaxy, label_list_galaxy, truth_arr)
 
 
     sys.exit(0)

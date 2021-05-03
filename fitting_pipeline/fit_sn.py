@@ -22,7 +22,6 @@ from multiprocessing import Pool
 from numba import jit
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 
 start = time.time()
 print("Starting at:", dt.datetime.now())

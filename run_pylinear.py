@@ -12,12 +12,36 @@ import socket
 
 import logging
 
+def get_dithered_locations(ra_cen, dec_cen, nobs):
+
+    if nobs = 4:
+        # A simple 4-point dither
+        # Looks like this,
+        #   * --- xoff --- *
+        #   |              |
+        #   |     yoff     |
+        #   |              |
+        #   * --- xoff ---  *
+
+        # Hardcoded offsets
+        xoff = 0.5
+        yoff = 0.5
+
+        # 
+
+
+    return ra_list, dec_list
+
 def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
-    simroot, ra_cen, dec_cen, disp_elem):
+    simroot, ra_cen, dec_cen, disp_elem, exptime):
 
     # Format the ra dec
     ra_cen_fmt = "{:.7f}".format(ra_cen)
     dec_cen_fmt = "{:.7f}".format(dec_cen)
+
+    # Generate all dither positions based on exptime
+    nobs = int(exptime / 600)  # i.e, min exptime is 600 and anything more gets dithered
+    ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
 
     # Write list
     wcs_filename = 'wcs_' + img_suffix + '.lst'
@@ -31,12 +55,16 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
 
         for r in range(len(roll_angle_list)):
 
-            roll_angle = "{:.1f}".format(roll_angle_list[r])
+            for d in range(nobs):
 
-            str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + '  ' + \
-            ra_cen_fmt + '  ' + dec_cen_fmt + '  ' + roll_angle + '  ' + disp_elem
+                roll_angle = "{:.1f}".format(roll_angle_list[r])
+                ra = "{:.7f}".format(ra_list[d])
+                dec = "{:.7f}".format(dec_list[d])
+
+                str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + '  ' + \
+                ra + '  ' + dec + '  ' + roll_angle + '  ' + disp_elem
             
-            fh.write(str_to_write)
+                fh.write(str_to_write)
 
     print("Written WCS LST:", wcs_filename)
 
@@ -164,7 +192,7 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
     create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name, img_suffix, machine)
 
     # WCS LST
-    create_wcs_lst(lst_dir, img_suffix, roll_angle_list, simroot, ra_cen, dec_cen, 'P120')
+    create_wcs_lst(lst_dir, img_suffix, roll_angle_list, simroot, ra_cen, dec_cen, 'P120', exptime)
 
     # FLT LST
     create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, machine, roll_angle_list)
