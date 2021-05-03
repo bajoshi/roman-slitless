@@ -179,22 +179,25 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
 
     # Get (a copy of) one of the prepackaged model set dictionaries.
     # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
-    model_params = TemplateLibrary["alpha"]
+    #model_params = TemplateLibrary["alpha"]
+    model_params = TemplateLibrary["parametric_sfh"]
     
     # Let's make some changes to initial values appropriate for our objects and data
-    model_params["total_mass"]["init"] = 1e10
+    #model_params["total_mass"]["init"] = 1e10
     model_params["logzsol"]["init"] = -0.5
     model_params["dust2"]["init"] = 0.05
+    model_params["mass"]["init"] = 1e10
+    model_params["tage"]["init"] = 1.0
 
     # Choose priors
     # Priors not specified in here are left at default values
-    #model_params["dust2"]["prior"] = priors.TopHat(mini=0.0, maxi=2.0)
-    #model_params["mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
+    model_params["dust2"]["prior"] = priors.TopHat(mini=0.0, maxi=2.0)
+    model_params["mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
 
     # If we are going to be using emcee, it is useful to provide a 
     # minimum scale for the cloud of walkers (the default is 0.1)
-    model_params["total_mass"]["disp_floor"] = 1e8
-    #model_params["tage"]["disp_floor"] = 1.0
+    model_params["mass"]["disp_floor"] = 1e8
+    model_params["tage"]["disp_floor"] = 1.0
     
     # Change the model parameter specifications based on some keyword arguments
     if fixed_metallicity is not None:
@@ -229,8 +232,9 @@ def build_sps(zcontinuous=1, **extras):
         have a continuous metallicity parameter (`logzsol`)
         See python-FSPS documentation for details
     """
-    from prospect.sources import FastStepBasis
-    sps = FastStepBasis(zcontinuous=zcontinuous)
+    #from prospect.sources import FastStepBasis
+    from prospect.sources import CSPSpecBasis
+    sps = CSPSpecBasis(zcontinuous=zcontinuous)
     return sps
 
 def main(galaxy_seq):
@@ -243,7 +247,7 @@ def main(galaxy_seq):
 
     # Set up for emcee
     nwalkers = 1000
-    niter = 300
+    niter = 500
 
     #print('Read in pickle with the following columns:')
     #print(df.columns)
@@ -340,7 +344,6 @@ def main(galaxy_seq):
 
     run_params["emcee"] = True
     run_params["dynesty"] = False
-    """
     # Number of emcee walkers
     run_params["nwalkers"] = nwalkers
     # Number of iterations of the MCMC sampling
@@ -351,10 +354,10 @@ def main(galaxy_seq):
     run_params["nburn"] = [8, 16, 32, 64]
 
     print("Now running with Emcee.")
-    from multiprocessing import Pool
-    with Pool(4) as pool:
-        run_params['pool'] = pool
-        output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
+    #from multiprocessing import Pool
+    #with Pool(4) as pool:
+    #    run_params['pool'] = pool
+    output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
 
     print('done emcee in {0}s'.format(output["sampling"][1]))
     
@@ -365,12 +368,12 @@ def main(galaxy_seq):
                       toptimize=output["optimization"][1])
     
     print('Finished with Seq: ' + str(galaxy_seq))
-    """
 
+    """
     print("Now running with Dynesty.")
 
     run_params["nested_method"] = "rwalk"
-    run_params["nlive_init"] = 400
+    run_params["nlive_init"] = 1000
     run_params["nlive_batch"] = 200
     run_params["nested_dlogz_init"] = 0.05
     run_params["nested_posterior_thresh"] = 0.05
@@ -386,11 +389,12 @@ def main(galaxy_seq):
                       toptimize=output["optimization"][1])
 
     print('Finished with Seq: ' + str(galaxy_seq))
+    """
 
     # -------------------------
     # Visualizing results
 
-    results_type = "dynesty"  # "emcee" | "dynesty"
+    results_type = "emcee"  # "emcee" | "dynesty"
     # grab results (dictionary), the obs dictionary, and our corresponding models
     # When using parameter files set `dangerous=True`
     #result, obs, _ = reader.results_from("{}_" + str(galaxy_seq) + ".h5".format(results_type), dangerous=False)
@@ -416,12 +420,6 @@ def main(galaxy_seq):
         tracefig = reader.traceplot(result, figsize=(10,6))
         tracefig.savefig(adap_dir + 'trace_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
 
-    # Corner plot
-    cornerfig = reader.subcorner(result, start=0, thin=1,
-                                 fig=plt.subplots(12,12, figsize=(18,18))[0], 
-                                 verbose=True)
-    cornerfig.savefig(adap_dir + 'corner_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
-
     # maximum a posteriori (of the locations visited by the MCMC sampler)
     pmax = np.argmax(result['lnprobability'])
     if results_type == "emcee":
@@ -434,6 +432,11 @@ def main(galaxy_seq):
 
     #print('Optimization value: {}'.format(theta_best))
     #print('MAP value: {}'.format(theta_max))
+    # Corner plot
+    cornerfig = reader.subcorner(result, start=0, thin=5,
+                                 fig=plt.subplots(5,5, figsize=(10,10))[0], 
+                                 verbose=True)
+    cornerfig.savefig(adap_dir + 'corner_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
 
     # make SED plot for MAP model and some random model
     # randomly chosen parameters from chain
