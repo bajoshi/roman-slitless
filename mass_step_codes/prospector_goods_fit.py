@@ -10,8 +10,6 @@ import pandas
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-mpl.rcParams.update({'text.usetex': 'False'})
-
 import fsps
 import sedpy
 import prospect
@@ -32,6 +30,10 @@ from prospect.utils.obsutils import fix_obs
 
 home = os.getenv('HOME')
 adap_dir = home + '/Documents/adap2021/'
+utils_dir = home + '/Documents/GitHub/roman-slitless/fitting_pipeline/utils/'
+
+sys.path.append(utils_dir)
+from convert_to_sci_not import convert_to_sci_not as csn
 
 def build_obs(fluxes, fluxes_unc, bandpasses, **extras):
     """Build a dictionary of observational data. 
@@ -430,31 +432,18 @@ def main(galaxy_seq):
         tracefig = reader.traceplot(result, figsize=(10,6))
         tracefig.savefig(adap_dir + 'trace_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
 
-    # maximum a posteriori (of the locations visited by the MCMC sampler)
-    #pmax = np.argmax(result['lnprobability'])
-    #if results_type == "emcee":
-    #    p, q = np.unravel_index(pmax, result['lnprobability'].shape)
-    #    theta_max = result['chain'][p, q, :].copy()
-    #    thin = 5
-    #else:
-    #    theta_max = result["chain"][pmax, :]
-    #    thin = 1
-
-    #print('Optimization value: {}'.format(theta_best))
-    #print('MAP value: {}'.format(theta_max))
-
     # Get chain for corner plot
     samples = result['chain']
+
+    math_parnames = [r'$\mathrm{log(Z_\odot)}$', r'$\mathrm{dust2}$', 
+    r'$zf_1$', r'$zf_2$', r'$zf_3$', r'$zf_4$', r'$zf_5$', 
+    r'$\mathrm{M_s}$', r'$\mathrm{f_{agn}}$', r'$\mathrm{agn_\tau}$', 
+    r'$\mathrm{dust_{ratio}}$', r'$\mathrm{dust_{index}}$']
 
     # Fix labels for corner plot and        
     # Figure out ranges for corner plot
     corner_range = []
     for d in range(ndim):
-
-        # Fix underscores in param name
-        # they cause problems with tex math mode
-        if '_' in parnames[d]:
-            parnames[d] = parnames[d].replace('_', '-')
 
         # Get corner estimate and errors
         cq = corner.quantile(x=samples[:, d], q=[0.16, 0.5, 0.84])
@@ -491,15 +480,47 @@ def main(galaxy_seq):
         print(parnames[d], ":  ", pn, "+", pnu, "-", pnl)
 
     # Corner plot
-    cornerfig = corner.corner(samples, quantiles=[0.16, 0.5, 0.84], labels=parnames, 
-    label_kwargs={"fontsize": 12}, show_titles='True', title_kwargs={"fontsize": 11},
-    range=corner_range, smooth=0.5, smooth1d=0.5)
+    cornerfig = corner.corner(samples, quantiles=[0.16, 0.5, 0.84], 
+        labels=math_parnames, label_kwargs={"fontsize": 14},
+        range=corner_range, smooth=0.5, smooth1d=0.5)
 
-    axes = np.array(cornerfig.axes).reshape((ndim, ndim))
+    # loop over all axes *again* and set title
+    # because it won't let me set the 
+    # format for soem titles separately
+    # Looping has to be done twice because corner 
+    # plotting has to be done to get the figure.
+    corner_axes = np.array(cornerfig.axes).reshape((ndim, ndim))
+
+    for d in range(ndim):
+        # Get corner estimate and errors
+        cq = corner.quantile(x=samples[:, d], q=[0.16, 0.5, 0.84])
+        
+        low_err = cq[1] - cq[0]
+        up_err  = cq[2] - cq[1]
+
+        ax_c = corner_axes[d, d]
+
+        if 'mass' in parnames[d]:
+            ax_c.set_title(math_parnames[d] + r"$ \, =\,$" + csn(cq[1], sigfigs=3) + \
+            r"$\substack{+$" + csn(up_err, sigfigs=3) + r"$\\ -$" + \
+            csn(low_err, sigfigs=3) + r"$}$", fontsize=11, pad=15)
+        else:
+            ax_c.set_title(math_parnames[d] + r"$ \, =\,$" + r"${:.3f}$".format(cq[1]) + \
+            r"$\substack{+$" + r"${:.3f}$".format(up_err) + r"$\\ -$" + \
+            r"${:.3f}$".format(low_err) + r"$}$", fontsize=11, pad=10)
 
     cornerfig.savefig(adap_dir + 'corner_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
 
-    sys.exit(0)
+    # maximum a posteriori (of the locations visited by the MCMC sampler)
+    pmax = np.argmax(result['lnprobability'])
+    if results_type == "emcee":
+        p, q = np.unravel_index(pmax, result['lnprobability'].shape)
+        theta_max = result['chain'][p, q, :].copy()
+    else:
+        theta_max = result["chain"][pmax, :]
+
+    #print('Optimization value: {}'.format(theta_best))
+    #print('MAP value: {}'.format(theta_max))
 
     # make SED plot for MAP model and some random model
     # randomly chosen parameters from chain

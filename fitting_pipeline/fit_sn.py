@@ -348,8 +348,7 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
 
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, 
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14},
-        truth_color='tab:red', truths=truth_arr, verbose=True, smooth=0.8, smooth1d=0.8,
-        range=[(0.51, 0.53), (2, 8), (0.2, 0.8)])
+        truth_color='tab:red', truths=truth_arr, verbose=True, smooth=0.5, smooth1d=0.5)
 
     # Extract the axes
     axes = np.array(fig.axes).reshape((ndim, ndim))
