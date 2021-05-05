@@ -372,7 +372,8 @@ def main():
     #    verticalalignment='top', horizontalalignment='left', transform=ax1.transAxes, size=14)
 
     # -------- Side histogram
-    ax2.hist(z_acc_sn, range=(-0.015, 0.015), bins=30, orientation='horizontal', histtype='step', color='k', lw=2.0)
+    ax2.hist(z_acc_sn, range=(-0.015, 0.015), bins=30, 
+        orientation='horizontal', histtype='step', color='k', lw=2.0)
     ax2.set_ylim(-0.015, 0.015)
     ax2.set_yticks([])
 
@@ -442,7 +443,8 @@ def main():
     print("Total catastrophic fails:", len(fail_idx))
 
     ax.set_xlabel(r'$\mathrm{SNR}$', fontsize=16)
-    ax.set_ylabel(r'$\mathrm{Catastrophic\ failure\ fraction}\ \left(\frac{\Delta z}{1+z}\,\geq\,0.1\right)$', fontsize=16)
+    catfail_str = r'$\mathrm{Catastrophic\ failure\ fraction}\ \left(\frac{\Delta z}{1+z}\,\geq\,0.1\right)$'
+    ax.set_ylabel(catfail_str, fontsize=16)
 
     counts, bins = np.histogram(snr_arr_sn[fail_idx], 32, range=(3, 35))
 

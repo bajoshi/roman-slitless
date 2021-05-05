@@ -245,7 +245,7 @@ def model_galaxy(x, z, ms, age, logtau, av):
     #model_flam_z = Lsol * model_flam_z
 
     # ------ Apply LSF
-    model_lsfconv = gaussian_filter1d(input=model_flam_z, sigma=5.0)
+    model_lsfconv = gaussian_filter1d(input=model_flam_z, sigma=30.0)
 
     # ------ Downgrade to grism resolution
     model_mod = griddata(points=model_lam_z, values=model_lsfconv, xi=x)
@@ -454,7 +454,7 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 
     fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, \
-        verbose=True, smooth=0.5, smooth1d=0.5)
+        verbose=True, smooth=1.0, smooth1d=1.0)
 
     #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
 
@@ -568,7 +568,8 @@ def main():
         if not continue_flag:
             ncount += 1
 
-            print("\nFilename:", os.path.basename(fl))
+            print("\n----------------")
+            print("Filename:", os.path.basename(fl))
             nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = read_galaxy_data(fl)
 
             # Basic plot to check data quality
@@ -631,7 +632,7 @@ def main():
             args_galaxy = [gal_wav, gal_flam, gal_ferr, zprior, zprior_sigma, x0]
 
             # Initial guess
-            rgal_init = np.array([zprior, 11.0, 1.0, 1.0, 0.5])
+            rgal_init = np.array([zprior, 10.0, 6.0, 1.0, 0.2])
 
             # Setup dims and walkers
             ndim_gal = 5

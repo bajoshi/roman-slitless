@@ -179,25 +179,25 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
 
     # Get (a copy of) one of the prepackaged model set dictionaries.
     # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
-    #model_params = TemplateLibrary["alpha"]
-    model_params = TemplateLibrary["parametric_sfh"]
+    model_params = TemplateLibrary["alpha"]
+    #model_params = TemplateLibrary["parametric_sfh"]
     
     # Let's make some changes to initial values appropriate for our objects and data
-    #model_params["total_mass"]["init"] = 1e10
+    model_params["total_mass"]["init"] = 1e10
     model_params["logzsol"]["init"] = -0.5
     model_params["dust2"]["init"] = 0.05
-    model_params["mass"]["init"] = 1e10
-    model_params["tage"]["init"] = 1.0
+    #model_params["mass"]["init"] = 1e10
+    #model_params["tage"]["init"] = 1.0
 
     # Choose priors
     # Priors not specified in here are left at default values
     model_params["dust2"]["prior"] = priors.TopHat(mini=0.0, maxi=2.0)
-    model_params["mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
+    model_params["total_mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
 
     # If we are going to be using emcee, it is useful to provide a 
     # minimum scale for the cloud of walkers (the default is 0.1)
-    model_params["mass"]["disp_floor"] = 1e8
-    model_params["tage"]["disp_floor"] = 1.0
+    model_params["total_mass"]["disp_floor"] = 1e8
+    #model_params["tage"]["disp_floor"] = 1.0
     
     # Change the model parameter specifications based on some keyword arguments
     if fixed_metallicity is not None:
@@ -232,9 +232,9 @@ def build_sps(zcontinuous=1, **extras):
         have a continuous metallicity parameter (`logzsol`)
         See python-FSPS documentation for details
     """
-    #from prospect.sources import FastStepBasis
-    from prospect.sources import CSPSpecBasis
-    sps = CSPSpecBasis(zcontinuous=zcontinuous)
+    from prospect.sources import FastStepBasis
+    #from prospect.sources import CSPSpecBasis
+    sps = FastStepBasis(zcontinuous=zcontinuous)
     return sps
 
 def main(galaxy_seq):
@@ -249,11 +249,14 @@ def main(galaxy_seq):
     nwalkers = 1000
     niter = 500
 
+    ndim = 12
+
     #print('Read in pickle with the following columns:')
     #print(df.columns)
     #print('Rows in DataFrame:', len(df))
 
-    all_filters = ['ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 
+    all_filters = ['ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 
+    'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 
     'WFC3_F098M_FLUX', 'WFC3_F105W_FLUX', 'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 
     'IRAC_CH1_FLUX', 'IRAC_CH2_FLUX', 'IRAC_CH3_FLUX', 'IRAC_CH4_FLUX']
 
@@ -342,6 +345,7 @@ def main(galaxy_seq):
     # starting at the edge of a prior (e.g. dust2=0.0)
     run_params["nmin"] = 5
 
+    """
     run_params["emcee"] = True
     run_params["dynesty"] = False
     # Number of emcee walkers
@@ -352,11 +356,9 @@ def main(galaxy_seq):
     # After each round, the walkers are reinitialized based on the 
     # locations of the highest probablity half of the walkers.
     run_params["nburn"] = [8, 16, 32, 64]
+    run_params["progress"] = True
 
     print("Now running with Emcee.")
-    #from multiprocessing import Pool
-    #with Pool(4) as pool:
-    #    run_params['pool'] = pool
     output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
 
     print('done emcee in {0}s'.format(output["sampling"][1]))
@@ -368,16 +370,19 @@ def main(galaxy_seq):
                       toptimize=output["optimization"][1])
     
     print('Finished with Seq: ' + str(galaxy_seq))
+    """
 
     """
     print("Now running with Dynesty.")
 
+    run_params["emcee"] = False
+    run_params["dynesty"] = True
     run_params["nested_method"] = "rwalk"
-    run_params["nlive_init"] = 1000
+    run_params["nlive_init"] = 400
     run_params["nlive_batch"] = 200
     run_params["nested_dlogz_init"] = 0.05
-    run_params["nested_posterior_thresh"] = 0.05
-    run_params["nested_maxcall"] = int(1e7)
+    run_params["nested_posterior_thresh"] = 0.1
+    run_params["nested_maxcall"] = int(1e6)
 
     output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
     print('done dynesty in {0}s'.format(output["sampling"][1]))
@@ -394,12 +399,14 @@ def main(galaxy_seq):
     # -------------------------
     # Visualizing results
 
-    results_type = "emcee"  # "emcee" | "dynesty"
+    results_type = "dynesty"  # "emcee" | "dynesty"
     # grab results (dictionary), the obs dictionary, and our corresponding models
     # When using parameter files set `dangerous=True`
-    #result, obs, _ = reader.results_from("{}_" + str(galaxy_seq) + ".h5".format(results_type), dangerous=False)
+    #result, obs, _ = reader.results_from("{}_" + str(galaxy_seq) + \
+    #                 ".h5".format(results_type), dangerous=False)
     
-    result, obs, _ = reader.results_from(adap_dir + results_type + "_" + str(galaxy_seq) + ".h5", dangerous=False)
+    result, obs, _ = reader.results_from(adap_dir + results_type + "_" + \
+                     str(galaxy_seq) + ".h5", dangerous=False)
 
     #The following commented lines reconstruct the model and sps object, 
     # if a parameter file continaing the `build_*` methods was saved along with the results
@@ -408,6 +415,9 @@ def main(galaxy_seq):
     
     # let's look at what's stored in the `result` dictionary
     print(result.keys())
+
+    parnames = np.array(result['theta_labels'])
+    print('Parameters in this model:', parnames)
 
     if results_type == "emcee":
 
@@ -421,22 +431,75 @@ def main(galaxy_seq):
         tracefig.savefig(adap_dir + 'trace_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
 
     # maximum a posteriori (of the locations visited by the MCMC sampler)
-    pmax = np.argmax(result['lnprobability'])
-    if results_type == "emcee":
-        p, q = np.unravel_index(pmax, result['lnprobability'].shape)
-        theta_max = result['chain'][p, q, :].copy()
-        thin = 5
-    else:
-        theta_max = result["chain"][pmax, :]
-        thin = 1
+    #pmax = np.argmax(result['lnprobability'])
+    #if results_type == "emcee":
+    #    p, q = np.unravel_index(pmax, result['lnprobability'].shape)
+    #    theta_max = result['chain'][p, q, :].copy()
+    #    thin = 5
+    #else:
+    #    theta_max = result["chain"][pmax, :]
+    #    thin = 1
 
     #print('Optimization value: {}'.format(theta_best))
     #print('MAP value: {}'.format(theta_max))
+
+    # Get chain for corner plot
+    samples = result['chain']
+
+    # Fix labels for corner plot and        
+    # Figure out ranges for corner plot
+    corner_range = []
+    for d in range(ndim):
+
+        # Fix underscores in param name
+        # they cause problems with tex math mode
+        if '_' in parnames[d]:
+            parnames[d] = parnames[d].replace('_', '-')
+
+        # Get corner estimate and errors
+        cq = corner.quantile(x=samples[:, d], q=[0.16, 0.5, 0.84])
+        
+        low_err = cq[1] - cq[0]
+        up_err  = cq[2] - cq[1]
+
+        # Decide the padding for the plot range
+        # depending on how large the error is relative 
+        # to the central estimate.
+        if low_err * 2.5 >= cq[1]:
+            sigma_padding_low = 1.2
+        else: sigma_padding_low = 3.0
+
+        if up_err * 2.5 >= cq[1]:
+            sigma_padding_up = 1.2
+        else: sigma_padding_up = 3.0
+
+        low_lim = cq[1] - sigma_padding_low * low_err
+        up_lim  = cq[1] + sigma_padding_up  * up_err
+        
+        corner_range.append((low_lim, up_lim))
+
+        # Print estimate to screen
+        if 'mass' in parnames[d]:
+            pn  = '{:.3e}'.format(cq[1])
+            pnu = '{:.3e}'.format(up_err)
+            pnl = '{:.3e}'.format(low_err)
+        else:
+            pn  = '{:.3f}'.format(cq[1])
+            pnu = '{:.3f}'.format(up_err)
+            pnl = '{:.3f}'.format(low_err)
+
+        print(parnames[d], ":  ", pn, "+", pnu, "-", pnl)
+
     # Corner plot
-    cornerfig = reader.subcorner(result, start=0, thin=5,
-                                 fig=plt.subplots(5,5, figsize=(10,10))[0], 
-                                 verbose=True)
+    cornerfig = corner.corner(samples, quantiles=[0.16, 0.5, 0.84], labels=parnames, 
+    label_kwargs={"fontsize": 12}, show_titles='True', title_kwargs={"fontsize": 11},
+    range=corner_range, smooth=0.5, smooth1d=0.5)
+
+    axes = np.array(cornerfig.axes).reshape((ndim, ndim))
+
     cornerfig.savefig(adap_dir + 'corner_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
+
+    sys.exit(0)
 
     # make SED plot for MAP model and some random model
     # randomly chosen parameters from chain
