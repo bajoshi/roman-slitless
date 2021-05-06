@@ -63,25 +63,26 @@ def build_obs(fluxes, fluxes_unc, bandpasses, **extras):
        'IRAC_CH1', 'IRAC_CH2', 'IRAC_CH3', 'IRAC_CH4'
     """
 
+    ground_u = ['decam_u']
     hst = ['acs_wfc_f435w', 'acs_wfc_f606w', 'acs_wfc_f775w', 'acs_wfc_f814w', 'acs_wfc_f850lp',
            'wfc3_ir_f105w', 'wfc3_ir_f125w', 'wfc3_ir_f160w']
+    k_band = ['Paranal_HAWKI_Ks_thru']
     spitzer = ['spitzer_irac_ch'+n for n in ['1','2','3','4']]
 
-    # filternames = ground_u + hst + kbands + spitzer
-    filternames = hst + spitzer
+    filternames = ground_u + hst + k_band + spitzer
 
-    filternames_toload = []
-    for ft in filternames:
-        bp = (ft.split('_')[-1]).upper()
-        for j in range(len(bandpasses)):
-            bandpass = bandpasses[j]
-            if bp in bandpass:
-                filternames_toload.append(ft)
-                break
+    #filternames_toload = []
+    #for ft in filternames:
+    #    bp = (ft.split('_')[-1]).upper()
+    #    for j in range(len(bandpasses)):
+    #        bandpass = bandpasses[j]
+    #        if bp in bandpass:
+    #            filternames_toload.append(ft)
+    #            break
 
     # And here we instantiate the `Filter()` objects using methods in `sedpy`,
     # and put the resultinf list of Filter objects in the "filters" key of the `obs` dictionary
-    obs["filters"] = sedpy.observate.load_filters(filternames_toload)
+    obs["filters"] = sedpy.observate.load_filters(filternames)
 
     # Now we store the measured fluxes for a single object, **in the same order as "filters"**
     # The units of the fluxes need to be maggies (Jy/3631).
@@ -181,25 +182,29 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
 
     # Get (a copy of) one of the prepackaged model set dictionaries.
     # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
-    model_params = TemplateLibrary["alpha"]
-    #model_params = TemplateLibrary["parametric_sfh"]
+    #model_params = TemplateLibrary["alpha"]
+    model_params = TemplateLibrary["parametric_sfh"]
     
     # Let's make some changes to initial values appropriate for our objects and data
-    model_params["total_mass"]["init"] = 1e10
+    #model_params["total_mass"]["init"] = 1e10
     model_params["logzsol"]["init"] = -0.5
     model_params["dust2"]["init"] = 0.05
-    #model_params["mass"]["init"] = 1e10
-    #model_params["tage"]["init"] = 1.0
+    model_params["mass"]["init"] = 1e10
+    model_params["tage"]["init"] = 4.0
 
     # Choose priors
     # Priors not specified in here are left at default values
     model_params["dust2"]["prior"] = priors.TopHat(mini=0.0, maxi=2.0)
-    model_params["total_mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
+    #model_params["total_mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
+    model_params["mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
+    model_params["tau"]["prior"] = priors.LogUniform(mini=1e-1, maxi=1e2)
 
     # If we are going to be using emcee, it is useful to provide a 
     # minimum scale for the cloud of walkers (the default is 0.1)
-    model_params["total_mass"]["disp_floor"] = 1e8
-    #model_params["tage"]["disp_floor"] = 1.0
+    #model_params["total_mass"]["disp_floor"] = 1e8
+    model_params["mass"]["disp_floor"] = 1e8
+    model_params["tau"]["disp_floor"] = 1.0
+    model_params["tage"]["disp_floor"] = 1.0
     
     # Change the model parameter specifications based on some keyword arguments
     if fixed_metallicity is not None:
@@ -234,32 +239,35 @@ def build_sps(zcontinuous=1, **extras):
         have a continuous metallicity parameter (`logzsol`)
         See python-FSPS documentation for details
     """
-    from prospect.sources import FastStepBasis
-    #from prospect.sources import CSPSpecBasis
-    sps = FastStepBasis(zcontinuous=zcontinuous)
+    #from prospect.sources import FastStepBasis
+    from prospect.sources import CSPSpecBasis
+    sps = CSPSpecBasis(zcontinuous=zcontinuous)
     return sps
 
-def main(galaxy_seq):
+def main(field, galaxy_seq):
 
     #vers = (np.__version__, scipy.__version__, h5py.__version__, fsps.__version__, prospect.__version__)
     #print("Numpy: {}\nScipy: {}\nH5PY: {}\nFSPS: {}\nProspect: {}".format(*vers))
 
     # Read in catalog from Lou
-    df = pandas.read_pickle(adap_dir + 'GOODS_South_SNeIa_host_phot.pkl')
+    if 'North' in field:
+        df = pandas.read_pickle(adap_dir + 'GOODS_North_SNeIa_host_phot.pkl')
+    elif 'South' in field:
+        df = pandas.read_pickle(adap_dir + 'GOODS_South_SNeIa_host_phot.pkl')
 
     # Set up for emcee
     nwalkers = 1000
     niter = 500
 
-    ndim = 12
+    ndim = 5
 
     #print('Read in pickle with the following columns:')
     #print(df.columns)
     #print('Rows in DataFrame:', len(df))
 
-    all_filters = ['ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 
-    'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 
-    'WFC3_F098M_FLUX', 'WFC3_F105W_FLUX', 'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 
+    all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 
+    'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 'WFC3_F098M_FLUX', 'WFC3_F105W_FLUX', 
+    'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 'HAWKI_KS_FLUX',
     'IRAC_CH1_FLUX', 'IRAC_CH2_FLUX', 'IRAC_CH3_FLUX', 'IRAC_CH4_FLUX']
 
     seq = np.array(df['Seq'])
@@ -347,7 +355,6 @@ def main(galaxy_seq):
     # starting at the edge of a prior (e.g. dust2=0.0)
     run_params["nmin"] = 5
 
-    """
     run_params["emcee"] = True
     run_params["dynesty"] = False
     # Number of emcee walkers
@@ -372,7 +379,6 @@ def main(galaxy_seq):
                       toptimize=output["optimization"][1])
     
     print('Finished with Seq: ' + str(galaxy_seq))
-    """
 
     """
     print("Now running with Dynesty.")
@@ -383,7 +389,7 @@ def main(galaxy_seq):
     run_params["nlive_init"] = 400
     run_params["nlive_batch"] = 200
     run_params["nested_dlogz_init"] = 0.05
-    run_params["nested_posterior_thresh"] = 0.1
+    run_params["nested_posterior_thresh"] = 0.05
     run_params["nested_maxcall"] = int(1e6)
 
     output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
@@ -435,10 +441,13 @@ def main(galaxy_seq):
     # Get chain for corner plot
     samples = result['chain']
 
-    math_parnames = [r'$\mathrm{log(Z_\odot)}$', r'$\mathrm{dust2}$', 
-    r'$zf_1$', r'$zf_2$', r'$zf_3$', r'$zf_4$', r'$zf_5$', 
-    r'$\mathrm{M_s}$', r'$\mathrm{f_{agn}}$', r'$\mathrm{agn_\tau}$', 
-    r'$\mathrm{dust_{ratio}}$', r'$\mathrm{dust_{index}}$']
+    #math_parnames = [r'$\mathrm{log(Z_\odot)}$', r'$\mathrm{dust2}$', 
+    #r'$zf_1$', r'$zf_2$', r'$zf_3$', r'$zf_4$', r'$zf_5$', 
+    #r'$\mathrm{M_s}$', r'$\mathrm{f_{agn}}$', r'$\mathrm{agn_\tau}$', 
+    #r'$\mathrm{dust_{ratio}}$', r'$\mathrm{dust_{index}}$']
+
+    math_parnames = [r'$\mathrm{M_s}$', r'$\mathrm{log(Z_\odot)}$', 
+    r'$\mathrm{dust2}$', r'$\mathrm{t_{age}}$', r'$\mathrm{log(\tau)}$']
 
     # Fix labels for corner plot and        
     # Figure out ranges for corner plot
@@ -596,7 +605,7 @@ def main(galaxy_seq):
     return None
 
 if __name__ == '__main__':
-    main(int(sys.argv[1]))
+    main(sys.argv[1], int(sys.argv[2]))
     sys.exit(0)
 
 

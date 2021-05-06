@@ -22,8 +22,9 @@ do
     do
         if [ $c -lt $num_galaxies ]
         then
-            echo "$batch $init $c    python prospector_goods_fit.py ${galaxy_seqs[c]} &"
-            python prospector_goods_fit.py ${galaxy_seqs[c]} &  # comment out this line to do a dry run
+            echo "$batch $init $c    python prospector_goods_fit.py South ${galaxy_seqs[c]} &"
+            python prospector_goods_fit.py 'South' ${galaxy_seqs[c]} &
+            # comment out above line to do a dry run
         fi
     done
 wait
