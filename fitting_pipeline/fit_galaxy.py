@@ -456,10 +456,7 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, \
         verbose=True, smooth=1.0, smooth1d=1.0)
 
-    #corner_axes = np.array(fig.axes).reshape((ndim, ndim))
 
-    # redshift is the first axis
-    #corner_axes[0, 0].set_title()
 
     fig.savefig(savedir + 'corner_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
 
@@ -542,12 +539,15 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    datadir = home + '/Desktop/Prism_shallow_hostIa/'
+    datadir = home + '/Desktop/Prism_deep_hostIa/'
     savedir = datadir + 'results/'
 
     # these files don't have galaxy spectra
-    toskip = ['10129', '10460', '10850', '10660', '10043', 
+    toskip_shallow = ['10129', '10460', '10850', '10660', '10043', 
               '10902', '10446', '10441']
+    toskip_deep = []
+
+    toskip = toskip_deep
 
     # Other preliminary stuff
     nwalkers = 1200
@@ -605,7 +605,10 @@ def main():
             ax.set_ylim(ymin, ymax)
 
             plt.show()
-            if ncount > 10: sys.exit(0)
+            if ncount > 10:
+                sys.exit(0)
+            else:
+                continue
             """
 
             # Only consider wavelengths where sensitivity is above 25%
