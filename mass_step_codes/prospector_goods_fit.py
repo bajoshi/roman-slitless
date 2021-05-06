@@ -66,23 +66,38 @@ def build_obs(fluxes, fluxes_unc, bandpasses, **extras):
     ground_u = ['decam_u']
     hst = ['acs_wfc_f435w', 'acs_wfc_f606w', 'acs_wfc_f775w', 'acs_wfc_f814w', 'acs_wfc_f850lp',
            'wfc3_ir_f105w', 'wfc3_ir_f125w', 'wfc3_ir_f160w']
-    k_band = ['Paranal_HAWKI_Ks_thru']
+    k_band = ['HAWKI_Ks']
     spitzer = ['spitzer_irac_ch'+n for n in ['1','2','3','4']]
 
     filternames = ground_u + hst + k_band + spitzer
 
-    #filternames_toload = []
-    #for ft in filternames:
-    #    bp = (ft.split('_')[-1]).upper()
-    #    for j in range(len(bandpasses)):
-    #        bandpass = bandpasses[j]
-    #        if bp in bandpass:
-    #            filternames_toload.append(ft)
-    #            break
+    # This code block is necessary to ensure that we
+    # handle negative since we're ignoring them, i.e.,
+    # need to make sure that we do not load the same
+    # filters each time. The filters are only loaded
+    # depending on the filters given in useable_filters.
+    filternames_toload = []
+    for ft in filternames:
+        if ft == 'decam_u':
+            bp = 'CTIO'
+        else:
+            bp = (ft.split('_')[-1]).upper()
+        #print('\nft:', ft)
+        for j in range(len(bandpasses)):
+            bandpass = bandpasses[j]
+            #print('bp:', bp)
+            #print('bandpass:', bandpass)
+
+            if bp in bandpass:
+                #print("Added:", ft)
+                filternames_toload.append(ft)
+                break
+
+    #print("Filter names to load:", filternames_toload, len(filternames_toload))
 
     # And here we instantiate the `Filter()` objects using methods in `sedpy`,
     # and put the resultinf list of Filter objects in the "filters" key of the `obs` dictionary
-    obs["filters"] = sedpy.observate.load_filters(filternames)
+    obs["filters"] = sedpy.observate.load_filters(filternames_toload)
 
     # Now we store the measured fluxes for a single object, **in the same order as "filters"**
     # The units of the fluxes need to be maggies (Jy/3631).
@@ -275,7 +290,8 @@ def main(field, galaxy_seq):
     i = int(np.where(seq == galaxy_seq)[0])
     print("Match index:", i, "for Seq:", galaxy_seq)
 
-    #for i in range(len(df)):
+    obj_ra = df['RA'][i]
+    obj_dec = df['DEC'][i]
 
     obj_z = df['zbest'][i]
 
@@ -304,8 +320,8 @@ def main(field, galaxy_seq):
 
     #print("\n")
     #print(df.loc[i])
-    #print(fluxes)
-    #print(useable_filters)
+    #print(fluxes, len(fluxes))
+    #print(useable_filters, len(useable_filters))
 
     fluxes = np.array(fluxes)
     fluxes_unc = np.array(fluxes_unc)
@@ -314,6 +330,7 @@ def main(field, galaxy_seq):
     obs = build_obs(fluxes, fluxes_unc, useable_filters)
 
     #plot_data(obs)
+    #sys.exit(0)
 
     # Set params for run
     run_params = {}
@@ -367,18 +384,21 @@ def main(field, galaxy_seq):
     run_params["nburn"] = [8, 16, 32, 64]
     run_params["progress"] = True
 
-    print("Now running with Emcee.")
-    output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
-
-    print('done emcee in {0}s'.format(output["sampling"][1]))
-    
     hfile = adap_dir + "emcee_" + str(galaxy_seq) + ".h5"
-    writer.write_hdf5(hfile, run_params, model, obs,
-                      output["sampling"][0], output["optimization"][0],
-                      tsample=output["sampling"][1],
-                      toptimize=output["optimization"][1])
+
+    if not os.path.isfile(hfile):
+
+        print("Now running with Emcee.")
+        output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
+
+        print('done emcee in {0}s'.format(output["sampling"][1]))
     
-    print('Finished with Seq: ' + str(galaxy_seq))
+        writer.write_hdf5(hfile, run_params, model, obs,
+                          output["sampling"][0], output["optimization"][0],
+                          tsample=output["sampling"][1],
+                          toptimize=output["optimization"][1])
+    
+        print('Finished with Seq: ' + str(galaxy_seq))
 
     """
     print("Now running with Dynesty.")
@@ -407,7 +427,7 @@ def main(field, galaxy_seq):
     # -------------------------
     # Visualizing results
 
-    results_type = "dynesty"  # "emcee" | "dynesty"
+    results_type = "emcee"  # "emcee" | "dynesty"
     # grab results (dictionary), the obs dictionary, and our corresponding models
     # When using parameter files set `dangerous=True`
     #result, obs, _ = reader.results_from("{}_" + str(galaxy_seq) + \
@@ -440,6 +460,9 @@ def main(field, galaxy_seq):
 
     # Get chain for corner plot
     samples = result['chain']
+
+    print(samples)
+    print(samples.shape)
 
     #math_parnames = [r'$\mathrm{log(Z_\odot)}$', r'$\mathrm{dust2}$', 
     #r'$zf_1$', r'$zf_2$', r'$zf_3$', r'$zf_4$', r'$zf_5$', 
