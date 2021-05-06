@@ -76,8 +76,12 @@ def main():
         zinfer_list.append(cq_z[1])
 
     # Make plots 
+    # ----------- z efficiency
     fig = plt.figure()
     ax = fig.add_subplot(111)
+
+    ax.set_xlabel(r'$z$', fontsize=16)
+    ax.set_ylabel(r'$z_\mathrm{eff}$', fontsize=16)
 
     bins = np.arange(0.0, 1.1, 0.1)
 
@@ -86,17 +90,36 @@ def main():
 
     zeff = inferred_counts / true_counts
 
-    print(inferred_counts)
-    print(true_counts)
-    print(zeff)
+    print("\nz inferred counts:", inferred_counts)
+    print("z true counts:    ", true_counts)
+    
 
     bin_cen = np.zeros(len(zeff))
     for i in range(len(bin_cen)):
         bin_cen[i] = (bin_edges[i] + bin_edges[i+1] ) / 2
 
+    print("Bin centers:      ", bin_cen)
+    print("z efficiency:     ", zeff)
+
     ax.scatter(bin_cen, zeff, color='k')
 
-    plt.show()
+    fig.savefig(savedir + 'zefficiency_snanaGALsim.pdf', dpi=300, bbox_inches='tight')
+
+    # ----------- True vs recovered z distribution
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ax.set_xlabel(r'$z$', fontsize=16)
+    ax.set_ylabel(r'$\# \mathrm{objects}$', fontsize=16)
+
+    ax.hist(zinfer_list, 10, range=(0.0, 1.0), histtype='step', 
+        lw=2.0, color='k', label='Inferred distribution')
+    ax.hist(ztrue_list, 10, range=(0.0, 1.0), histtype='step', 
+        lw=2.0, color='tab:red', label='True distribution')
+
+    ax.legend(fontsize=11, frameon=False)
+
+    fig.savefig(savedir + 'zdist_recovery_snanaGALsim.pdf', dpi=300, bbox_inches='tight')
 
     return None
 

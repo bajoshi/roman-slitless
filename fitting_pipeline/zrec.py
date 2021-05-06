@@ -425,14 +425,14 @@ def main():
 
     # Add zoomed in inset for galaxies
     if runtype == 'galaxy':
-        rect = [0.75, 0.1, 0.2, 0.1]  # [left, bottom, width, height]
+        rect = [0.71, 0.14, 0.2, 0.1]  # [left, bottom, width, height]
         ax_inset = fig1.add_axes(rect)
 
         ax_inset.errorbar(z_truth[zoom_idx], z_acc[zoom_idx], yerr=z_err[:, zoom_idx], fmt='o', \
             markersize=2.0, markerfacecolor='k', markeredgecolor='k', ecolor='k', elinewidth=0.3)
         ax_inset.axhline(y=0.0, ls='--', color='steelblue', lw=1.5)
 
-        ax_inset.text(x=0.7, y=0.25, s=r'$\mathrm{N_{\leq1\%}\,=\,}$' + str(len(zoom_idx)), color='k', \
+        ax_inset.text(x=0.48, y=0.25, s=r'$\mathrm{N_{\leq1\%}\,=\,}$' + str(len(zoom_idx)), color='k', \
             verticalalignment='top', horizontalalignment='left', transform=ax_inset.transAxes, size=11)
 
         ax_inset.set_xlim(0.1, 0.8)
