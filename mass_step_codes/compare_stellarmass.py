@@ -110,11 +110,6 @@ def main():
     fit_mass_allbands = np.array(fit_mass_allbands)
     fit_mass_ubriz = np.array(fit_mass_ubriz)
 
-    print(santini_mass.shape)
-    print(santini_mass.ndim)
-    print(fit_mass_allbands.shape)
-    print(fit_mass_allbands.ndim)
-
     santini_mass_err = np.array(santini_mass_err)
 
     fit_mass_ubriz_err = np.array(fit_mass_ubriz_err)
@@ -161,6 +156,21 @@ def main():
     ax.legend(fontsize=10, frameon=False)
 
     fig.savefig(adap_dir + 'candels_mass_comparison.pdf', dpi=300, bbox_inches='tight')
+
+    # --------------
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111)
+
+    ax1.set_xlabel(r'$\mathrm{M_{s;\,(all\ bands)}}$')
+    ax1.set_ylabel(r'$\mathrm{log(M_{s;\,(all\ bands)})  -  log(M_{s;\,(ubriz)}) }$')
+
+    deltamass = np.log10(fit_mass_allbands) - np.log10(fit_mass_ubriz)
+    ax1.axhline(y=0.0, ls='--', color='deepskyblue', zorder=1)
+    ax1.scatter(fit_mass_allbands, deltamass, s=10, color='k', zorder=2)
+
+    ax1.set_xscale('log')
+
+    fig1.savefig(adap_dir + 'mass_residuals.pdf', dpi=300, bbox_inches='tight')
 
     return None
 
