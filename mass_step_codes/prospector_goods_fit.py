@@ -280,10 +280,13 @@ def main(field, galaxy_seq):
     #print(df.columns)
     #print('Rows in DataFrame:', len(df))
 
-    all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 
-    'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 'WFC3_F098M_FLUX', 'WFC3_F105W_FLUX', 
-    'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 'HAWKI_KS_FLUX',
-    'IRAC_CH1_FLUX', 'IRAC_CH2_FLUX', 'IRAC_CH3_FLUX', 'IRAC_CH4_FLUX']
+    #all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 
+    #'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 'WFC3_F098M_FLUX', 'WFC3_F105W_FLUX', 
+    #'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 'HAWKI_KS_FLUX',
+    #'IRAC_CH1_FLUX', 'IRAC_CH2_FLUX', 'IRAC_CH3_FLUX', 'IRAC_CH4_FLUX']
+
+    all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 
+    'ACS_F775W_FLUX', 'ACS_F814W_FLUX']
 
     seq = np.array(df['Seq'])
 
@@ -459,10 +462,16 @@ def main(field, galaxy_seq):
         tracefig.savefig(adap_dir + 'trace_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
 
     # Get chain for corner plot
-    samples = result['chain']
+    if results_type == 'emcee':
 
-    print(samples)
-    print(samples.shape)
+        trace = result['chain']
+        thin = 5
+        trace = trace[:, ::thin, :]
+
+        samples = trace.reshape(trace.shape[0] * trace.shape[1], trace.shape[2])
+
+    else:
+        samples = result['chain']
 
     #math_parnames = [r'$\mathrm{log(Z_\odot)}$', r'$\mathrm{dust2}$', 
     #r'$zf_1$', r'$zf_2$', r'$zf_3$', r'$zf_4$', r'$zf_5$', 
