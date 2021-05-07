@@ -13,6 +13,17 @@ import prospect.io.read_results as reader
 home = os.getenv('HOME')
 adap_dir = home + '/Documents/adap2021/'
 
+def get_cq_mass(result):
+
+    trace = result['chain']
+    thin = 5
+    trace = trace[:, ::thin, :]
+
+    samples = trace.reshape(trace.shape[0] * trace.shape[1], trace.shape[2])
+    cq_mass = corner.quantile(x=samples[:, 0], q=[0.16, 0.5, 0.84])
+
+    return cq_mass
+
 def main():
     
     # Read in df
@@ -32,7 +43,8 @@ def main():
 
     # Empty lists for storing masses
     santini_mass = []
-    fit_mass = []
+    fit_mass_allbands = []
+    fit_mass_ubriz = []
 
     # Loop over all of our objects
     for i in range(len(df)):
@@ -56,23 +68,25 @@ def main():
 
         # Now read in the fitting results and get our stellar masses
         galaxy_seq = df['Seq'][i]
-        h5file = adap_dir +  "emcee_" + str(galaxy_seq) + ".h5"
-        if not os.path.isfile(h5file):
+        h5file_ubriz = adap_dir + "emcee_" + str(galaxy_seq) + ".h5"
+
+        if not os.path.isfile(h5file_ubriz):
             continue
 
-        result, obs, _ = reader.results_from(h5file, dangerous=False)
+        h5file_allbands = adap_dir + 'goodss_param_sfh/' + "emcee_" + str(galaxy_seq) + ".h5"
 
-        print("Read in results from:", h5file)
+        result_optical, obs, _ = reader.results_from(h5file_ubriz, dangerous=False)
+        result_all, obs, _ = reader.results_from(h5file_allbands, dangerous=False)
 
-        trace = result['chain']
-        thin = 5
-        trace = trace[:, ::thin, :]
+        print("Read in ubriz results from:", h5file_ubriz)
+        print("Read in all bands results from:", h5file_allbands)
 
-        samples = trace.reshape(trace.shape[0] * trace.shape[1], trace.shape[2])
-        cq_mass = corner.quantile(x=samples[:, 0], q=[0.16, 0.5, 0.84])
+        cq_mass_optical = get_cq_mass(result_optical)
+        cq_mass_all = get_cq_mass(result_all)
 
         # Append ot plotting arrays
-        fit_mass.append(np.log10(cq_mass[1]))
+        fit_mass_allbands.append(np.log10(cq_mass_all[1]))
+        fit_mass_ubriz.append(np.log10(cq_mass_optical[1]))
         santini_mass.append(np.log10(santini_cat['Mmed'][match_idx]))
 
     # Make plot
@@ -82,7 +96,8 @@ def main():
     ax.set_xlabel(r'$\mathrm{M_s\ (CANDELS;\ Santini\ et\,al.\ 2015)}$')
     ax.set_ylabel(r'$\mathrm{M_s\ (this\ work)}$')
 
-    ax.scatter(santini_mass, fit_mass, color='k', label='UV-Optical-NIR-MIR')
+    ax.scatter(santini_mass, fit_mass_allbands, s=15, color='k', label='UV-Optical-NIR-MIR')
+    ax.scatter(santini_mass, fit_mass_ubriz, s=10, color='forestgreen', label='ubriz')
     ax.plot(np.arange(7.0, 12.5, 0.01), np.arange(7.0, 12.5, 0.01), '--', color='steelblue')
 
     ax.set_xlim(7.0, 12.0)
