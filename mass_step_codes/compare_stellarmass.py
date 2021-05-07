@@ -43,8 +43,13 @@ def main():
 
     # Empty lists for storing masses
     santini_mass = []
+    santini_mass_err = []
+
     fit_mass_allbands = []
+    fit_mass_allbands_err = []
+
     fit_mass_ubriz = []
+    fit_mass_ubriz_err = []
 
     # Loop over all of our objects
     for i in range(len(df)):
@@ -70,9 +75,6 @@ def main():
         galaxy_seq = df['Seq'][i]
         h5file_ubriz = adap_dir + "emcee_" + str(galaxy_seq) + ".h5"
 
-        if not os.path.isfile(h5file_ubriz):
-            continue
-
         h5file_allbands = adap_dir + 'goodss_param_sfh/' + "emcee_" + str(galaxy_seq) + ".h5"
 
         result_optical, obs, _ = reader.results_from(h5file_ubriz, dangerous=False)
@@ -85,9 +87,42 @@ def main():
         cq_mass_all = get_cq_mass(result_all)
 
         # Append ot plotting arrays
-        fit_mass_allbands.append(np.log10(cq_mass_all[1]))
-        fit_mass_ubriz.append(np.log10(cq_mass_optical[1]))
-        santini_mass.append(np.log10(santini_cat['Mmed'][match_idx]))
+        #fit_mass_allbands.append(np.log10(cq_mass_all[1]))
+        #fit_mass_allbands_lowerr = np.log10(cq_mass_all[1] - cq_mass_all[0])
+        #fit_mass_allbands_uperr = np.log10(cq_mass_all[2] - cq_mass_all[1])
+        #fit_mass_allbands_err.append([fit_mass_allbands_lowerr, fit_mass_allbands_uperr])
+
+        #fit_mass_ubriz.append(np.log10(cq_mass_optical[1]))
+        #fit_mass_ubriz_lowerr = np.log10(cq_mass_optical[1] - cq_mass_optical[0])
+        #fit_mass_ubriz_uperr = np.log10(cq_mass_optical[2] - cq_mass_optical[1])
+        #fit_mass_ubriz_err.append([fit_mass_ubriz_lowerr, fit_mass_ubriz_uperr])
+
+        #santini_mass.append(np.log10(santini_cat['Mmed'][match_idx]))
+        #santini_mass_err.append(np.log10(float(santini_cat['smed'][match_idx])))
+
+
+        fit_mass_allbands.append(cq_mass_all[1])
+        fit_mass_allbands_lowerr = cq_mass_all[1] - cq_mass_all[0]
+        fit_mass_allbands_uperr = cq_mass_all[2] - cq_mass_all[1]
+        fit_mass_allbands_err.append([fit_mass_allbands_lowerr, fit_mass_allbands_uperr])
+
+        fit_mass_ubriz.append(cq_mass_optical[1])
+        fit_mass_ubriz_lowerr = cq_mass_optical[1] - cq_mass_optical[0]
+        fit_mass_ubriz_uperr = cq_mass_optical[2] - cq_mass_optical[1]
+        fit_mass_ubriz_err.append([fit_mass_ubriz_lowerr, fit_mass_ubriz_uperr])
+
+        santini_mass.append(santini_cat['Mmed'][match_idx])
+        santini_mass_err.append(float(santini_cat['smed'][match_idx]))
+
+
+    # --------- Reshape error arrays
+    santini_mass_err = np.array(santini_mass_err)
+
+    fit_mass_ubriz_err = np.array(fit_mass_ubriz_err)
+    fit_mass_ubriz_err = fit_mass_ubriz_err.reshape((2, len(df)))
+
+    fit_mass_allbands_err = np.array(fit_mass_allbands_err)
+    fit_mass_allbands_err = fit_mass_allbands_err.reshape((2, len(df)))
 
     # Make plot
     fig = plt.figure()
@@ -96,12 +131,18 @@ def main():
     ax.set_xlabel(r'$\mathrm{M_s\ (CANDELS;\ Santini\ et\,al.\ 2015)}$')
     ax.set_ylabel(r'$\mathrm{M_s\ (this\ work)}$')
 
-    ax.scatter(santini_mass, fit_mass_allbands, s=15, color='k', label='UV-Optical-NIR-MIR')
-    ax.scatter(santini_mass, fit_mass_ubriz, s=10, color='forestgreen', label='ubriz')
-    ax.plot(np.arange(7.0, 12.5, 0.01), np.arange(7.0, 12.5, 0.01), '--', color='steelblue')
+    ax.errorbar(santini_mass, fit_mass_allbands, xerr=santini_mass_err, yerr=fit_mass_allbands_err,
+        fmt='o', ms=5.5, elinewidth=1.3, color='k', label='UV-Optical-NIR-MIR')
+    ax.errorbar(santini_mass, fit_mass_ubriz, xerr=santini_mass_err, yerr=fit_mass_ubriz_err,
+        fmt='o', ms=4.5, elinewidth=0.9, color='forestgreen', label='ubriz')
 
-    ax.set_xlim(7.0, 12.0)
-    ax.set_ylim(7.0, 12.0)
+    ax.plot(np.arange(1e7, 1e13, 1e11), np.arange(1e7, 1e13, 1e11), '--', color='steelblue')
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    ax.set_xlim(1e7, 1e12)
+    ax.set_ylim(1e7, 1e12)
 
     ax.legend(fontsize=10, frameon=False)
 

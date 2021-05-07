@@ -366,7 +366,7 @@ def main(field, galaxy_seq):
     # If set to true then another round of optmization will be performed 
     # before sampling begins and the "optmization" entry of the output
     # will be populated.
-    run_params["optimize"] = True
+    run_params["optimize"] = False
     run_params["min_method"] = 'lm'
     # We'll start minimization from "nmin" separate places, 
     # the first based on the current values of each parameter and the 
