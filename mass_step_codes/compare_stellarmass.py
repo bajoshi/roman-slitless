@@ -1,5 +1,6 @@
 import pandas
 import numpy as np
+import scipy
 
 import os
 import sys
@@ -23,6 +24,9 @@ def get_cq_mass(result):
     cq_mass = corner.quantile(x=samples[:, 0], q=[0.16, 0.5, 0.84])
 
     return cq_mass
+
+def fitfunc(x, b, m):
+    return 10**b * np.power(x, m)
 
 def main():
     
@@ -87,20 +91,6 @@ def main():
         cq_mass_all = get_cq_mass(result_all)
 
         # Append ot plotting arrays
-        #fit_mass_allbands.append(np.log10(cq_mass_all[1]))
-        #fit_mass_allbands_lowerr = np.log10(cq_mass_all[1] - cq_mass_all[0])
-        #fit_mass_allbands_uperr = np.log10(cq_mass_all[2] - cq_mass_all[1])
-        #fit_mass_allbands_err.append([fit_mass_allbands_lowerr, fit_mass_allbands_uperr])
-
-        #fit_mass_ubriz.append(np.log10(cq_mass_optical[1]))
-        #fit_mass_ubriz_lowerr = np.log10(cq_mass_optical[1] - cq_mass_optical[0])
-        #fit_mass_ubriz_uperr = np.log10(cq_mass_optical[2] - cq_mass_optical[1])
-        #fit_mass_ubriz_err.append([fit_mass_ubriz_lowerr, fit_mass_ubriz_uperr])
-
-        #santini_mass.append(np.log10(santini_cat['Mmed'][match_idx]))
-        #santini_mass_err.append(np.log10(float(santini_cat['smed'][match_idx])))
-
-
         fit_mass_allbands.append(cq_mass_all[1])
         fit_mass_allbands_lowerr = cq_mass_all[1] - cq_mass_all[0]
         fit_mass_allbands_uperr = cq_mass_all[2] - cq_mass_all[1]
@@ -111,11 +101,20 @@ def main():
         fit_mass_ubriz_uperr = cq_mass_optical[2] - cq_mass_optical[1]
         fit_mass_ubriz_err.append([fit_mass_ubriz_lowerr, fit_mass_ubriz_uperr])
 
-        santini_mass.append(santini_cat['Mmed'][match_idx])
+        santini_mass.append(float(santini_cat['Mmed'][match_idx]))
         santini_mass_err.append(float(santini_cat['smed'][match_idx]))
 
 
-    # --------- Reshape error arrays
+    # ---------Convert to numpy arrays and reshape
+    santini_mass = np.array(santini_mass)
+    fit_mass_allbands = np.array(fit_mass_allbands)
+    fit_mass_ubriz = np.array(fit_mass_ubriz)
+
+    print(santini_mass.shape)
+    print(santini_mass.ndim)
+    print(fit_mass_allbands.shape)
+    print(fit_mass_allbands.ndim)
+
     santini_mass_err = np.array(santini_mass_err)
 
     fit_mass_ubriz_err = np.array(fit_mass_ubriz_err)
@@ -124,20 +123,35 @@ def main():
     fit_mass_allbands_err = np.array(fit_mass_allbands_err)
     fit_mass_allbands_err = fit_mass_allbands_err.reshape((2, len(df)))
 
-    # Make plot
+    # --------- Make plot
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
     ax.set_xlabel(r'$\mathrm{M_s\ (CANDELS;\ Santini\ et\,al.\ 2015)}$')
     ax.set_ylabel(r'$\mathrm{M_s\ (this\ work)}$')
 
+    # plot points
     ax.errorbar(santini_mass, fit_mass_allbands, xerr=santini_mass_err, yerr=fit_mass_allbands_err,
         fmt='o', ms=5.5, elinewidth=1.3, color='k', label='UV-Optical-NIR-MIR')
     ax.errorbar(santini_mass, fit_mass_ubriz, xerr=santini_mass_err, yerr=fit_mass_ubriz_err,
         fmt='o', ms=4.5, elinewidth=0.9, color='forestgreen', label='ubriz')
 
-    ax.plot(np.arange(1e7, 1e13, 1e11), np.arange(1e7, 1e13, 1e11), '--', color='steelblue')
+    ax.plot(np.arange(1e7, 1e13, 1e11), np.arange(1e7, 1e13, 1e11), '--', color='deepskyblue')
 
+    # add a regression line
+    xdata = np.log10(santini_mass)
+    ydata1 = np.log10(fit_mass_allbands)
+    ydata2 = np.log10(fit_mass_ubriz)
+
+    x_arr = np.logspace(5.0, 12.5, num=1000, base=10)
+
+    m1, logb1 = np.polyfit(xdata, ydata1, 1)
+    ax.plot(x_arr, 10**logb1 * x_arr**m1, '--', color='slategrey')
+
+    m2, logb2 = np.polyfit(xdata, ydata2, 1)
+    ax.plot(x_arr, 10**logb2 * x_arr**m2, '--', color='limegreen')
+
+    # -------------- 
     ax.set_xscale('log')
     ax.set_yscale('log')
 
