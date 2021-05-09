@@ -206,6 +206,7 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
     model_params["dust2"]["init"] = 0.05
     model_params["mass"]["init"] = 1e10
     model_params["tage"]["init"] = 4.0
+    model_params["tau"]["init"] = 1.0
 
     # Choose priors
     # Priors not specified in here are left at default values
@@ -285,8 +286,7 @@ def main(field, galaxy_seq):
     #'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 'HAWKI_KS_FLUX',
     #'IRAC_CH1_FLUX', 'IRAC_CH2_FLUX', 'IRAC_CH3_FLUX', 'IRAC_CH4_FLUX']
 
-    all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 
-    'ACS_F775W_FLUX', 'ACS_F814W_FLUX']
+    all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F850LP_FLUX']
 
     seq = np.array(df['Seq'])
 
