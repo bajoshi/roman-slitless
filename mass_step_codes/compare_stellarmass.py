@@ -193,7 +193,7 @@ def main():
     dm1_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,ubriz})}$'
     dm2_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,briz})}$'
 
-    ax1.scatter(fit_mass_allbands, deltamass1, s=10, color='darkviolet', zorder=2, label=dm1_lbl)
+    ax1.scatter(fit_mass_allbands, deltamass1, s=12, color='darkviolet', zorder=2, label=dm1_lbl)
     ax1.scatter(fit_mass_allbands, deltamass2, s=10, color='forestgreen', zorder=2, label=dm2_lbl)
 
     ax1.set_xscale('log')

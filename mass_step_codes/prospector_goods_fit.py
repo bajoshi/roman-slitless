@@ -63,13 +63,13 @@ def build_obs(fluxes, fluxes_unc, bandpasses, **extras):
        'IRAC_CH1', 'IRAC_CH2', 'IRAC_CH3', 'IRAC_CH4'
     """
 
-    ground_u = ['decam_u']
+    ground_u = ['decam_u', 'LBT_LBCB_besselU']
     hst = ['acs_wfc_f435w', 'acs_wfc_f606w', 'acs_wfc_f775w', 'acs_wfc_f814w', 'acs_wfc_f850lp',
-           'wfc3_ir_f105w', 'wfc3_ir_f125w', 'wfc3_ir_f160w']
-    k_band = ['HAWKI_Ks']
+           'wfc3_ir_f098m', 'wfc3_ir_f105w', 'wfc3_ir_f125w', 'wfc3_ir_f140w', 'wfc3_ir_f160w']
+    k_bands = ['HAWKI_Ks', 'Subaru_MOIRCS_K', 'CFHT_Wircam_Ks']
     spitzer = ['spitzer_irac_ch'+n for n in ['1','2','3','4']]
 
-    filternames = ground_u + hst + k_band + spitzer
+    filternames = ground_u + hst + k_bands + spitzer
 
     # This code block is necessary to ensure that we
     # handle negative since we're ignoring them, i.e.,
@@ -80,20 +80,28 @@ def build_obs(fluxes, fluxes_unc, bandpasses, **extras):
     for ft in filternames:
         if ft == 'decam_u':
             bp = 'CTIO'
+        elif ft == 'LBT_LBCB_besselU':
+            bp = 'LBC'
+        elif ft == 'HAWKI_Ks':
+            bp = 'HAWKI'
+        elif ft == 'Subaru_MOIRCS_K':
+            bp = 'MOIRCS'
+        elif ft == 'CFHT_Wircam_Ks':
+            bp = 'CFHT'
         else:
             bp = (ft.split('_')[-1]).upper()
         #print('\nft:', ft)
         for j in range(len(bandpasses)):
             bandpass = bandpasses[j]
-            #print('bp:', bp)
-            #print('bandpass:', bandpass)
+            #print('bp and bandpass:', bp, bandpass)
 
             if bp in bandpass:
-                #print("Added:", ft)
+                #print("----- Added:", ft)
                 filternames_toload.append(ft)
                 break
 
     #print("Filter names to load:", filternames_toload, len(filternames_toload))
+    #sys.exit(0)
 
     # And here we instantiate the `Filter()` objects using methods in `sedpy`,
     # and put the resultinf list of Filter objects in the "filters" key of the `obs` dictionary
@@ -199,7 +207,14 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
     # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
     #model_params = TemplateLibrary["alpha"]
     model_params = TemplateLibrary["parametric_sfh"]
-    
+
+    # This will give the stellar mass as the surviving
+    # mass which is what we want. Otherwise by default
+    # it gives total mass formed.
+    model_params["mass"]["units"] = 'mstar'
+    # Set dust type. # Fixed for parametric sfh
+    #model_params["dust_type"] = 4
+
     # Let's make some changes to initial values appropriate for our objects and data
     #model_params["total_mass"]["init"] = 1e10
     model_params["logzsol"]["init"] = -0.5
@@ -265,39 +280,55 @@ def main(field, galaxy_seq):
     #vers = (np.__version__, scipy.__version__, h5py.__version__, fsps.__version__, prospect.__version__)
     #print("Numpy: {}\nScipy: {}\nH5PY: {}\nFSPS: {}\nProspect: {}".format(*vers))
 
+    # -------------- Decide field and filters
     # Read in catalog from Lou
     if 'North' in field:
         df = pandas.read_pickle(adap_dir + 'GOODS_North_SNeIa_host_phot.pkl')
+
+        all_filters = ['LBC_U_FLUX',
+       'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F814W_FLUX',
+       'ACS_F850LP_FLUX', 'WFC3_F105W_FLUX', 'WFC3_F125W_FLUX',
+       'WFC3_F140W_FLUX', 'WFC3_F160W_FLUX', 'MOIRCS_K_FLUX', 'CFHT_Ks_FLUX',
+       'IRAC_CH1_SCANDELS_FLUX', 'IRAC_CH2_SCANDELS_FLUX', 'IRAC_CH3_FLUX',
+       'IRAC_CH4_FLUX',]
+
+        seq = np.array(df['ID'])
+        i = int(np.where(seq == galaxy_seq)[0])
+
     elif 'South' in field:
         df = pandas.read_pickle(adap_dir + 'GOODS_South_SNeIa_host_phot.pkl')
 
+        all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 
+        'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 'WFC3_F098M_FLUX', 'WFC3_F105W_FLUX', 
+        'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 'HAWKI_KS_FLUX',
+        'IRAC_CH1_FLUX', 'IRAC_CH2_FLUX', 'IRAC_CH3_FLUX', 'IRAC_CH4_FLUX']
+
+        #all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 
+        #'ACS_F775W_FLUX', 'ACS_F850LP_FLUX']
+
+        seq = np.array(df['Seq'])
+        i = int(np.where(seq == galaxy_seq)[0])
+
+    #print('Read in pickle with the following columns:')
+    #print(df.columns)
+    #print('Rows in DataFrame:', len(df)
+
+    print("Match index:", i, "for Seq:", galaxy_seq)
+
+    # -------------- Preliminary stuff
     # Set up for emcee
     nwalkers = 1000
     niter = 500
 
     ndim = 5
 
-    #print('Read in pickle with the following columns:')
-    #print(df.columns)
-    #print('Rows in DataFrame:', len(df))
-
-    #all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 
-    #'ACS_F814W_FLUX', 'ACS_F850LP_FLUX', 'WFC3_F098M_FLUX', 'WFC3_F105W_FLUX', 
-    #'WFC3_F125W_FLUX', 'WFC3_F160W_FLUX', 'HAWKI_KS_FLUX',
-    #'IRAC_CH1_FLUX', 'IRAC_CH2_FLUX', 'IRAC_CH3_FLUX', 'IRAC_CH4_FLUX']
-
-    all_filters = ['CTIO_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F850LP_FLUX']
-
-    seq = np.array(df['Seq'])
-
-    i = int(np.where(seq == galaxy_seq)[0])
-    print("Match index:", i, "for Seq:", galaxy_seq)
-
+    # Other set up
     obj_ra = df['RA'][i]
     obj_dec = df['DEC'][i]
 
     obj_z = df['zbest'][i]
 
+    # ------------- Get obs data
     fluxes = []
     fluxes_unc = []
     useable_filters = []
@@ -305,16 +336,16 @@ def main(field, galaxy_seq):
     for ft in range(len(all_filters)):
         filter_name = all_filters[ft]
 
-        if 'F098M' in filter_name:  # all of these F098M fluxes are NaN
-            continue
-
         flux = df[filter_name][i]
         fluxerr = df[filter_name + 'ERR'][i]
+
+        if np.isnan(flux):
+            continue
 
         if flux <= 0.0:
             continue
 
-        if fluxerr < 0:
+        if (fluxerr < 0) or np.isnan(fluxerr):
             fluxerr = 0.1 * flux
 
         fluxes.append(flux)
@@ -340,6 +371,7 @@ def main(field, galaxy_seq):
     run_params["object_redshift"] = obj_z
     run_params["fixed_metallicity"] = None
     run_params["add_duste"] = True
+    #run_params["dust_type"] = 4
 
     #model = build_model(**run_params)
     #print("\nInitial free parameter vector theta:\n  {}\n".format(model.theta))
@@ -366,7 +398,7 @@ def main(field, galaxy_seq):
     # If set to true then another round of optmization will be performed 
     # before sampling begins and the "optmization" entry of the output
     # will be populated.
-    run_params["optimize"] = False
+    run_params["optimize"] = True
     run_params["min_method"] = 'lm'
     # We'll start minimization from "nmin" separate places, 
     # the first based on the current values of each parameter and the 
@@ -387,7 +419,7 @@ def main(field, galaxy_seq):
     run_params["nburn"] = [8, 16, 32, 64]
     run_params["progress"] = True
 
-    hfile = adap_dir + "emcee_" + str(galaxy_seq) + ".h5"
+    hfile = adap_dir + "emcee_" + field + "_" + str(galaxy_seq) + ".h5"
 
     if not os.path.isfile(hfile):
 
@@ -437,7 +469,7 @@ def main(field, galaxy_seq):
     #                 ".h5".format(results_type), dangerous=False)
     
     result, obs, _ = reader.results_from(adap_dir + results_type + "_" + \
-                     str(galaxy_seq) + ".h5", dangerous=False)
+                     field + "_" + str(galaxy_seq) + ".h5", dangerous=False)
 
     #The following commented lines reconstruct the model and sps object, 
     # if a parameter file continaing the `build_*` methods was saved along with the results
