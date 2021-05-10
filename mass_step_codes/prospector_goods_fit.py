@@ -211,7 +211,7 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
     # This will give the stellar mass as the surviving
     # mass which is what we want. Otherwise by default
     # it gives total mass formed.
-    model_params["mass"]["units"] = 'mstar'
+    #model_params["mass"]["units"] = 'mstar'
     # Set dust type. # Fixed for parametric sfh
     #model_params["dust_type"] = 4
 

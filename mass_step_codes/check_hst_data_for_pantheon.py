@@ -29,7 +29,8 @@ def main():
     # Read in the Pantheon+ catalog from Ben
     adap_dir = home + '/Documents/adap2021/'
     pantheon_datadir = adap_dir + 'pantheon_data/'
-    cat = np.genfromtxt(adap_dir + 'pantheon_plus.csv', dtype=None, names=True, delimiter=',', encoding='ascii')
+    cat = np.genfromtxt(adap_dir + 'pantheon_plus.csv', 
+        dtype=None, names=True, delimiter=',', encoding='ascii')
 
     print("Read in Pantheon+ catalog with the following header names:")
     print(cat.dtype.names)

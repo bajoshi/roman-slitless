@@ -28,7 +28,7 @@ def get_cq_mass(result):
 def fitfunc(x, b, m):
     return 10**b * np.power(x, m)
 
-def main():
+def do_south_comparison():
     
     # Read in df
     df = pandas.read_pickle(adap_dir + 'GOODS_South_SNeIa_host_phot.pkl')
@@ -81,9 +81,12 @@ def main():
         # Now read in the fitting results and get our stellar masses
         galaxy_seq = df['Seq'][i]
 
-        h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + "emcee_" + str(galaxy_seq) + ".h5"
-        h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + "emcee_" + str(galaxy_seq) + ".h5"
-        h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + "emcee_" + str(galaxy_seq) + ".h5"
+        h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + 
+                          "emcee_South_" + str(galaxy_seq) + ".h5"
+        h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + 
+                          "emcee_South_" + str(galaxy_seq) + ".h5"
+        h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + 
+                          "emcee_South_" + str(galaxy_seq) + ".h5"
 
         result_all, obs, _ = reader.results_from(h5file_allbands, dangerous=False)
         result_ubriz, obs, _ = reader.results_from(h5file_ubriz, dangerous=False)
@@ -198,7 +201,115 @@ def main():
 
     ax1.set_xscale('log')
 
-    ax.legend(fontsize=10, frameon=False)
+    ax1.legend(fontsize=10, frameon=False)
+
+    fig1.savefig(adap_dir + 'mass_residuals.pdf', dpi=300, bbox_inches='tight')
+
+    return None
+
+def main():
+
+    # Empty lists for storing masses
+    fit_mass_allbands = []
+    fit_mass_allbands_err = []
+
+    fit_mass_ubriz = []
+    fit_mass_ubriz_err = []
+
+    fit_mass_briz = []
+    fit_mass_briz_err = []
+
+    for field in ['North', 'South']:
+
+        # Read in catalog from Lou
+        if 'North' in field:
+            df = pandas.read_pickle(adap_dir + 'GOODS_North_SNeIa_host_phot.pkl')
+
+        elif 'South' in field:
+            df = pandas.read_pickle(adap_dir + 'GOODS_South_SNeIa_host_phot.pkl')
+
+        # Loop over all of our objects
+        for i in range(len(df)):
+
+            # Now read in the fitting results and get our stellar masses
+            galaxy_seq = df['Seq'][i]
+
+            h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + "emcee_" + 
+                              field + "_" + str(galaxy_seq) + ".h5"
+            h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + "emcee_" + 
+                              field + "_" + str(galaxy_seq) + ".h5"
+            h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + "emcee_" + 
+                              field + "_" + str(galaxy_seq) + ".h5"
+
+            result_all, obs, _ = reader.results_from(h5file_allbands, dangerous=False)
+            result_ubriz, obs, _ = reader.results_from(h5file_ubriz, dangerous=False)
+            result_briz, obs, _ = reader.results_from(h5file_briz, dangerous=False)
+
+            cq_mass_all = get_cq_mass(result_all)
+            cq_mass_ubriz = get_cq_mass(result_ubriz)
+            cq_mass_briz = get_cq_mass(result_briz)
+
+            # Append ot plotting arrays
+            fit_mass_allbands.append(cq_mass_all[1])
+            fit_mass_allbands_lowerr = cq_mass_all[1] - cq_mass_all[0]
+            fit_mass_allbands_uperr = cq_mass_all[2] - cq_mass_all[1]
+            fit_mass_allbands_err.append([fit_mass_allbands_lowerr, fit_mass_allbands_uperr])
+
+            fit_mass_ubriz.append(cq_mass_ubriz[1])
+            fit_mass_ubriz_lowerr = cq_mass_ubriz[1] - cq_mass_ubriz[0]
+            fit_mass_ubriz_uperr = cq_mass_ubriz[2] - cq_mass_ubriz[1]
+            fit_mass_ubriz_err.append([fit_mass_ubriz_lowerr, fit_mass_ubriz_uperr])
+
+            fit_mass_briz.append(cq_mass_briz[1])
+            fit_mass_briz_lowerr = cq_mass_briz[1] - cq_mass_briz[0]
+            fit_mass_briz_uperr = cq_mass_briz[2] - cq_mass_briz[1]
+            fit_mass_briz_err.append([fit_mass_briz_lowerr, fit_mass_briz_uperr])
+
+    # ---------Convert to numpy arrays and reshape
+    fit_mass_allbands = np.array(fit_mass_allbands)
+    fit_mass_allbands_err = np.array(fit_mass_allbands_err)
+    fit_mass_allbands_err = fit_mass_allbands_err.reshape((2, 66))
+
+    fit_mass_ubriz = np.array(fit_mass_ubriz)
+    fit_mass_ubriz_err = np.array(fit_mass_ubriz_err)
+    fit_mass_ubriz_err = fit_mass_ubriz_err.reshape((2, 66))
+
+    fit_mass_briz = np.array(fit_mass_briz)
+    fit_mass_briz_err = np.array(fit_mass_briz_err)
+    fit_mass_briz_err = fit_mass_briz_err.reshape((2, 66))
+
+    # make residual figure
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111)
+
+    ax1.set_xlabel(r'$\mathrm{M_{s;\,all\ bands}}$')
+    ax1.set_ylabel(r'$\mathrm{log(M_{s;\,all\ bands})  -  log(M_{s;\,(u)briz}) }$')
+
+    deltamass1 = np.log10(fit_mass_allbands) - np.log10(fit_mass_ubriz)
+    deltamass2 = np.log10(fit_mass_allbands) - np.log10(fit_mass_briz)
+
+    ax1.axhline(y=0.0, ls='--', color='deepskyblue', zorder=1)
+
+    dm1_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,ubriz})}$'
+    dm2_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,briz})}$'
+
+    ax1.scatter(fit_mass_allbands, deltamass1, s=12, color='darkviolet', zorder=2, label=dm1_lbl)
+    ax1.scatter(fit_mass_allbands, deltamass2, s=10, color='forestgreen', zorder=2, label=dm2_lbl)
+
+    # Fit a line to the points
+    x_arr = np.logspace(5.0, 12.5, num=1000, base=10)
+
+    xdata = np.log10(fit_mass_allbands)
+
+    m1, b1 = np.polyfit(xdata, deltamass1, 1)
+    ax1.plot(x_arr, b1 * x_arr**m1, '--', color='violet')
+
+    m2, b2 = np.polyfit(xdata, deltamass2, 1)
+    ax1.plot(x_arr, b2 * x_arr**m2, '--', color='limegreen')
+
+    ax1.set_xscale('log')
+
+    ax1.legend(fontsize=10, frameon=False)
 
     fig1.savefig(adap_dir + 'mass_residuals.pdf', dpi=300, bbox_inches='tight')
 
