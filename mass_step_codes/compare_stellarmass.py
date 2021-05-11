@@ -81,11 +81,11 @@ def do_south_comparison():
         # Now read in the fitting results and get our stellar masses
         galaxy_seq = df['Seq'][i]
 
-        h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + 
+        h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + \
                           "emcee_South_" + str(galaxy_seq) + ".h5"
-        h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + 
+        h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + \
                           "emcee_South_" + str(galaxy_seq) + ".h5"
-        h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + 
+        h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + \
                           "emcee_South_" + str(galaxy_seq) + ".h5"
 
         result_all, obs, _ = reader.results_from(h5file_allbands, dangerous=False)
@@ -224,21 +224,23 @@ def main():
         # Read in catalog from Lou
         if 'North' in field:
             df = pandas.read_pickle(adap_dir + 'GOODS_North_SNeIa_host_phot.pkl')
+            key = 'ID'
 
         elif 'South' in field:
             df = pandas.read_pickle(adap_dir + 'GOODS_South_SNeIa_host_phot.pkl')
+            key = 'Seq'
 
         # Loop over all of our objects
         for i in range(len(df)):
 
             # Now read in the fitting results and get our stellar masses
-            galaxy_seq = df['Seq'][i]
+            galaxy_seq = df[key][i]
 
-            h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + "emcee_" + 
+            h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + "emcee_" + \
                               field + "_" + str(galaxy_seq) + ".h5"
-            h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + "emcee_" + 
+            h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + "emcee_" + \
                               field + "_" + str(galaxy_seq) + ".h5"
-            h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + "emcee_" + 
+            h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + "emcee_" + \
                               field + "_" + str(galaxy_seq) + ".h5"
 
             result_all, obs, _ = reader.results_from(h5file_allbands, dangerous=False)
@@ -278,11 +280,15 @@ def main():
     fit_mass_briz_err = np.array(fit_mass_briz_err)
     fit_mass_briz_err = fit_mass_briz_err.reshape((2, 66))
 
-    # make residual figure
+    # ------------------ histogram and KDE
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111)
+
+    # ------------------ make residual figure
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111)
 
-    ax1.set_xlabel(r'$\mathrm{M_{s;\,all\ bands}}$')
+    ax1.set_xlabel(r'$\mathrm{log(M_{s;\,all\ bands})}$')
     ax1.set_ylabel(r'$\mathrm{log(M_{s;\,all\ bands})  -  log(M_{s;\,(u)briz}) }$')
 
     deltamass1 = np.log10(fit_mass_allbands) - np.log10(fit_mass_ubriz)
@@ -293,8 +299,8 @@ def main():
     dm1_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,ubriz})}$'
     dm2_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,briz})}$'
 
-    ax1.scatter(fit_mass_allbands, deltamass1, s=12, color='darkviolet', zorder=2, label=dm1_lbl)
-    ax1.scatter(fit_mass_allbands, deltamass2, s=10, color='forestgreen', zorder=2, label=dm2_lbl)
+    ax1.scatter(np.log10(fit_mass_allbands), deltamass1, s=12, color='darkviolet', zorder=2, label=dm1_lbl)
+    ax1.scatter(np.log10(fit_mass_allbands), deltamass2, s=10, color='forestgreen', zorder=2, label=dm2_lbl)
 
     # Fit a line to the points
     x_arr = np.logspace(5.0, 12.5, num=1000, base=10)
@@ -302,14 +308,14 @@ def main():
     xdata = np.log10(fit_mass_allbands)
 
     m1, b1 = np.polyfit(xdata, deltamass1, 1)
-    ax1.plot(x_arr, b1 * x_arr**m1, '--', color='violet')
+    ax1.plot(x_arr, b1 + x_arr*m1, '--', color='violet')
 
     m2, b2 = np.polyfit(xdata, deltamass2, 1)
-    ax1.plot(x_arr, b2 * x_arr**m2, '--', color='limegreen')
-
-    ax1.set_xscale('log')
+    ax1.plot(x_arr, b2 + x_arr*m2, '--', color='limegreen')
 
     ax1.legend(fontsize=10, frameon=False)
+    ax1.set_xlim(7.8, 12.2)
+    ax1.set_ylim(-1.6, 0.8)
 
     fig1.savefig(adap_dir + 'mass_residuals.pdf', dpi=300, bbox_inches='tight')
 

@@ -285,12 +285,15 @@ def main(field, galaxy_seq):
     if 'North' in field:
         df = pandas.read_pickle(adap_dir + 'GOODS_North_SNeIa_host_phot.pkl')
 
-        all_filters = ['LBC_U_FLUX',
-       'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F814W_FLUX',
-       'ACS_F850LP_FLUX', 'WFC3_F105W_FLUX', 'WFC3_F125W_FLUX',
-       'WFC3_F140W_FLUX', 'WFC3_F160W_FLUX', 'MOIRCS_K_FLUX', 'CFHT_Ks_FLUX',
-       'IRAC_CH1_SCANDELS_FLUX', 'IRAC_CH2_SCANDELS_FLUX', 'IRAC_CH3_FLUX',
-       'IRAC_CH4_FLUX',]
+        #all_filters = ['LBC_U_FLUX',
+        #'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F814W_FLUX',
+        #'ACS_F850LP_FLUX', 'WFC3_F105W_FLUX', 'WFC3_F125W_FLUX',
+        #'WFC3_F140W_FLUX', 'WFC3_F160W_FLUX', 'MOIRCS_K_FLUX', 'CFHT_Ks_FLUX',
+        #'IRAC_CH1_SCANDELS_FLUX', 'IRAC_CH2_SCANDELS_FLUX', 'IRAC_CH3_FLUX',
+        #'IRAC_CH4_FLUX']
+
+        all_filters = ['LBC_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 
+        'ACS_F775W_FLUX', 'ACS_F850LP_FLUX']
 
         seq = np.array(df['ID'])
         i = int(np.where(seq == galaxy_seq)[0])
@@ -398,7 +401,7 @@ def main(field, galaxy_seq):
     # If set to true then another round of optmization will be performed 
     # before sampling begins and the "optmization" entry of the output
     # will be populated.
-    run_params["optimize"] = True
+    run_params["optimize"] = False
     run_params["min_method"] = 'lm'
     # We'll start minimization from "nmin" separate places, 
     # the first based on the current values of each parameter and the 
