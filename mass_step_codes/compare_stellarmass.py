@@ -280,9 +280,58 @@ def main():
     fit_mass_briz_err = np.array(fit_mass_briz_err)
     fit_mass_briz_err = fit_mass_briz_err.reshape((2, 66))
 
+    # --------
+    xdata = np.log10(fit_mass_allbands)
+    x_arr = np.arange(5.0, 13.0, 0.01)
+
     # ------------------ histogram and KDE
-    #fig = plt.figure()
-    #ax = fig.add_subplot(111)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ax.set_xlabel(r'$\mathrm{log(M_s)}$')
+    ax.set_ylabel(r'$\mathrm{Normalized\ Density}$')
+
+    from sklearn.neighbors import KernelDensity
+    from sklearn.model_selection import GridSearchCV, LeaveOneOut
+
+    xdata_for_kde = xdata[:, None]
+    x2 = np.log10(fit_mass_ubriz)[:, None]
+    x3 = np.log10(fit_mass_briz)[:, None]
+    x_arr_for_kde = x_arr[:, None]
+
+    # ---- get bandwidth estimates
+    bandwidths = 10 ** np.linspace(-1, 1, 100)
+    grid = GridSearchCV(KernelDensity(kernel='gaussian'),
+                        {'bandwidth': bandwidths},
+                        cv=LeaveOneOut())
+
+    grid.fit(xdata_for_kde)
+    bw1 = grid.best_params_['bandwidth']
+    grid.fit(x2)
+    bw2 = grid.best_params_['bandwidth']
+    grid.fit(x3)
+    bw3 = grid.best_params_['bandwidth']
+
+    print(bw1, bw2, bw3)
+
+    # Now estimate KDEs
+    kde1 = KernelDensity(kernel='gaussian', bandwidth=bw1).fit(xdata_for_kde)
+    log_dens1 = kde1.score_samples(x_arr_for_kde)
+    kde2 = KernelDensity(kernel='gaussian', bandwidth=bw2).fit(x2)
+    log_dens2 = kde2.score_samples(x_arr_for_kde)
+    kde3 = KernelDensity(kernel='gaussian', bandwidth=bw3).fit(x3)
+    log_dens3 = kde3.score_samples(x_arr_for_kde)
+
+    # Plot KDEs
+    ax.plot(x_arr, np.exp(log_dens1), color='gray', lw=2.0, label='UV-Optical-NIR-MIR')
+    ax.plot(x_arr, np.exp(log_dens2), color='violet', lw=2.0, label='ubriz')
+    ax.plot(x_arr, np.exp(log_dens3), color='forestgreen', lw=2.0, label='briz')
+
+    ax.legend(loc=2, fontsize=10, frameon=False)
+
+    ax.set_xlim(7.5, 12.5)
+
+    fig.savefig(adap_dir + 'mass_hist.pdf', dpi=300, bbox_inches='tight')
 
     # ------------------ make residual figure
     fig1 = plt.figure()
@@ -291,27 +340,28 @@ def main():
     ax1.set_xlabel(r'$\mathrm{log(M_{s;\,all\ bands})}$')
     ax1.set_ylabel(r'$\mathrm{log(M_{s;\,all\ bands})  -  log(M_{s;\,(u)briz}) }$')
 
-    deltamass1 = np.log10(fit_mass_allbands) - np.log10(fit_mass_ubriz)
-    deltamass2 = np.log10(fit_mass_allbands) - np.log10(fit_mass_briz)
+    deltamass1 = xdata - np.log10(fit_mass_ubriz)
+    deltamass2 = xdata - np.log10(fit_mass_briz)
 
-    ax1.axhline(y=0.0, ls='--', color='deepskyblue', zorder=1)
+    ax1.axhline(y=0.0, ls='--', color='k', zorder=1)
 
     dm1_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,ubriz})}$'
     dm2_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,briz})}$'
 
-    ax1.scatter(np.log10(fit_mass_allbands), deltamass1, s=12, color='darkviolet', zorder=2, label=dm1_lbl)
-    ax1.scatter(np.log10(fit_mass_allbands), deltamass2, s=10, color='forestgreen', zorder=2, label=dm2_lbl)
+    ax1.scatter(xdata, deltamass1, s=12, 
+        color='darkviolet', zorder=2, label=dm1_lbl)
+    ax1.scatter(xdata, deltamass2, s=10, 
+        color='forestgreen', zorder=2, label=dm2_lbl)
 
     # Fit a line to the points
-    x_arr = np.logspace(5.0, 12.5, num=1000, base=10)
-
-    xdata = np.log10(fit_mass_allbands)
-
     m1, b1 = np.polyfit(xdata, deltamass1, 1)
-    ax1.plot(x_arr, b1 + x_arr*m1, '--', color='violet')
-
     m2, b2 = np.polyfit(xdata, deltamass2, 1)
+
+    ax1.plot(x_arr, b1 + x_arr*m1, '--', color='violet')
     ax1.plot(x_arr, b2 + x_arr*m2, '--', color='limegreen')
+
+    print("Errors for the points and the line estimate --")
+
 
     ax1.legend(fontsize=10, frameon=False)
     ax1.set_xlim(7.8, 12.2)
