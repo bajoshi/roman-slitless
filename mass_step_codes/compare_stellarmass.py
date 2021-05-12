@@ -323,9 +323,9 @@ def main():
     log_dens3 = kde3.score_samples(x_arr_for_kde)
 
     # Plot KDEs
-    ax.plot(x_arr, np.exp(log_dens1), color='gray', lw=2.0, label='UV-Optical-NIR-MIR')
-    ax.plot(x_arr, np.exp(log_dens2), color='violet', lw=2.0, label='ubriz')
-    ax.plot(x_arr, np.exp(log_dens3), color='forestgreen', lw=2.0, label='briz')
+    ax.plot(x_arr, np.exp(log_dens1), color='k', lw=2.5, label='UV-Optical-NIR-MIR', zorder=2)
+    ax.plot(x_arr, np.exp(log_dens2), color='mediumblue', lw=1.4, label='ubriz', zorder=1)
+    ax.plot(x_arr, np.exp(log_dens3), color='darkturquoise', lw=1.4, label='briz', zorder=1)
 
     ax.legend(loc=2, fontsize=10, frameon=False)
 
@@ -343,22 +343,49 @@ def main():
     deltamass1 = xdata - np.log10(fit_mass_ubriz)
     deltamass2 = xdata - np.log10(fit_mass_briz)
 
+    xdata_err = np.empty((2, 66))
+    deltamass1_err = np.empty((2, 66))
+    deltamass2_err = np.empty((2, 66))
+
+    for j in range(len(xdata)):
+        xd = fit_mass_allbands[j]
+        xdl = np.abs(np.log10(1 - fit_mass_allbands_err[0, j]/xd))
+        xdu = np.log10(1 + fit_mass_allbands_err[1, j]/xd)
+        xdata_err[:, j] = [xdl, xdu]
+
+        val1 = fit_mass_ubriz[j]
+        dm1l = np.abs(np.log10(1 - fit_mass_allbands_err[0, j]/xd) + np.log10(1 + fit_mass_ubriz_err[1, j]/val1))
+        dm1u = np.log10(1 + fit_mass_allbands_err[1, j]/xd) + np.log10(1 - fit_mass_ubriz_err[0, j]/val1)
+        deltamass1_err[:, j] = [dm1l, dm1u]
+
+        val2 = fit_mass_briz[j]
+        dm2l = np.abs(np.log10(1 - fit_mass_allbands_err[0, j]/xd) + np.log10(1 + fit_mass_briz_err[1, j]/val2))
+        dm2u = np.log10(1 + fit_mass_allbands_err[1, j]/xd) + np.log10(1 - fit_mass_briz_err[0, j]/val2)
+        deltamass2_err[:, j] = [dm2l, dm2u]
+
     ax1.axhline(y=0.0, ls='--', color='k', zorder=1)
 
     dm1_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,ubriz})}$'
     dm2_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,briz})}$'
 
+    #ax1.errorbar(xdata, deltamass1, xerr=xdata_err, yerr=deltamass1_err,
+    #    fmt='o', ms=2.0, elinewidth=1.0, ecolor='mediumblue',
+    #    color='mediumblue', zorder=2, label=dm1_lbl)
+    #ax1.errorbar(xdata, deltamass2, xerr=xdata_err, yerr=deltamass2_err,
+    #    fmt='o', ms=2.0, elinewidth=1.0, ecolor='darkturquoise',
+    #    color='darkturquoise', zorder=2, label=dm2_lbl)
+
     ax1.scatter(xdata, deltamass1, s=12, 
-        color='darkviolet', zorder=2, label=dm1_lbl)
+        color='mediumblue', zorder=2, label=dm1_lbl)
     ax1.scatter(xdata, deltamass2, s=10, 
-        color='forestgreen', zorder=2, label=dm2_lbl)
+        color='darkturquoise', zorder=2, label=dm2_lbl)
 
     # Fit a line to the points
     m1, b1 = np.polyfit(xdata, deltamass1, 1)
     m2, b2 = np.polyfit(xdata, deltamass2, 1)
 
-    ax1.plot(x_arr, b1 + x_arr*m1, '--', color='violet')
-    ax1.plot(x_arr, b2 + x_arr*m2, '--', color='limegreen')
+    ax1.plot(x_arr, b1 + x_arr*m1, '--', color='mediumblue')
+    ax1.plot(x_arr, b2 + x_arr*m2, '--', color='darkturquoise')
 
     print("Errors for the points and the line estimate --")
 
@@ -374,3 +401,9 @@ def main():
 if __name__ == '__main__':
     main()
     sys.exit(0)
+
+
+
+
+
+
