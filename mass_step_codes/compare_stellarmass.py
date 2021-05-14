@@ -412,6 +412,19 @@ def main():
 
     fig1.savefig(adap_dir + 'mass_residuals.pdf', dpi=300, bbox_inches='tight')
 
+    # --------------
+    # Histograms of measurement significance
+    allbands_sig = fit_mass_allbands / np.mean(fit_mass_allbands_err, axis=0)
+
+    print(allbands_sig)
+
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot(111)
+
+    ax2.hist(allbands_sig, 20, range=(0, 60))
+
+    plt.show()
+
     return None
 
 if __name__ == '__main__':

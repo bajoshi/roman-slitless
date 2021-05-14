@@ -9,6 +9,7 @@ import pandas
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import fsps
 import sedpy
@@ -27,6 +28,7 @@ from prospect.fitting import fit_model
 from prospect.io import write_results as writer
 import prospect.io.read_results as reader
 from prospect.utils.obsutils import fix_obs
+from prospect.models.transforms import zfrac_to_sfr
 
 home = os.getenv('HOME')
 adap_dir = home + '/Documents/adap2021/'
@@ -205,7 +207,7 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
 
     # Get (a copy of) one of the prepackaged model set dictionaries.
     # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
-    model_params = TemplateLibrary["continuity_sfh"]
+    model_params = TemplateLibrary["alpha"]
     #model_params = TemplateLibrary["parametric_sfh"]
 
     # This will give the stellar mass as the surviving
@@ -321,7 +323,7 @@ def main(field, galaxy_seq):
     nwalkers = 1000
     niter = 500
 
-    ndim = 5
+    ndim = 12
 
     # Other set up
     obj_ra = df['RA'][i]
@@ -439,27 +441,30 @@ def main(field, galaxy_seq):
 
     """
 
-    print("Now running with Dynesty.")
+    hfile = adap_dir + "dynesty_" + field + "_" + str(galaxy_seq) + ".h5"
 
-    run_params["emcee"] = False
-    run_params["dynesty"] = True
-    run_params["nested_method"] = "rwalk"
-    run_params["nlive_init"] = 400
-    run_params["nlive_batch"] = 200
-    run_params["nested_dlogz_init"] = 0.05
-    run_params["nested_posterior_thresh"] = 0.05
-    run_params["nested_maxcall"] = int(1e6)
+    if not os.path.isfile(hfile):
 
-    output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
-    print('done dynesty in {0}s'.format(output["sampling"][1]))
+        print("Now running with Dynesty.")
 
-    hfile = adap_dir + "dynesty_" + field + "_" + str(galaxy_seq) + "_csfh.h5"
-    writer.write_hdf5(hfile, run_params, model, obs,
-                      output["sampling"][0], output["optimization"][0],
-                      tsample=output["sampling"][1],
-                      toptimize=output["optimization"][1])
+        run_params["emcee"] = False
+        run_params["dynesty"] = True
+        run_params["nested_method"] = "rwalk"
+        run_params["nlive_init"] = 400
+        run_params["nlive_batch"] = 200
+        run_params["nested_dlogz_init"] = 0.05
+        run_params["nested_posterior_thresh"] = 0.05
+        run_params["nested_maxcall"] = int(1e6)
 
-    print('Finished with Seq: ' + str(galaxy_seq))
+        output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
+        print('done dynesty in {0}s'.format(output["sampling"][1]))
+
+        writer.write_hdf5(hfile, run_params, model, obs,
+                          output["sampling"][0], output["optimization"][0],
+                          tsample=output["sampling"][1],
+                          toptimize=output["optimization"][1])
+
+        print('Finished with Seq: ' + str(galaxy_seq))
 
     # -------------------------
     # Visualizing results
@@ -489,11 +494,13 @@ def main(field, galaxy_seq):
         chosen = np.random.choice(result["run_params"]["nwalkers"], size=150, replace=False)
         tracefig = reader.traceplot(result, figsize=(10,6), chains=chosen)
 
-        tracefig.savefig(adap_dir + 'trace_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
+        tracefig.savefig(adap_dir + 'trace_' + field + '_' + str(galaxy_seq) + '.pdf', 
+            dpi=200, bbox_inches='tight')
 
     else:
         tracefig = reader.traceplot(result, figsize=(10,6))
-        tracefig.savefig(adap_dir + 'trace_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
+        tracefig.savefig(adap_dir + 'trace_' + field + '_' + str(galaxy_seq) + '.pdf', 
+            dpi=200, bbox_inches='tight')
 
     # Get chain for corner plot
     if results_type == 'emcee':
@@ -507,13 +514,82 @@ def main(field, galaxy_seq):
     else:
         samples = result['chain']
 
-    #math_parnames = [r'$\mathrm{log(Z_\odot)}$', r'$\mathrm{dust2}$', 
-    #r'$zf_1$', r'$zf_2$', r'$zf_3$', r'$zf_4$', r'$zf_5$', 
-    #r'$\mathrm{M_s}$', r'$\mathrm{f_{agn}}$', r'$\mathrm{agn_\tau}$', 
-    #r'$\mathrm{dust_{ratio}}$', r'$\mathrm{dust_{index}}$']
+    # Plot SFH
+    print(model) # to copy paste agebins from print out
+    
+    agebins = np.array([[ 0. ,        8.        ],
+                        [ 8.   ,       8.47712125],
+                        [ 8.47712125 , 9.        ],
+                        [ 9. ,         9.47712125],
+                        [ 9.47712125,  9.77815125],
+                        [ 9.77815125, 10.13353891]])
 
-    math_parnames = [r'$\mathrm{M_s}$', r'$\mathrm{log(Z_\odot)}$', 
-    r'$\mathrm{dust2}$', r'$\mathrm{t_{age}}$', r'$\mathrm{log(\tau)}$']
+    nagebins = 6
+
+    # Get the zfractions from corner quantiles
+    zf1 = corner.quantile(samples[:, 2], q=[0.16, 0.5, 0.84])
+    zf2 = corner.quantile(samples[:, 3], q=[0.16, 0.5, 0.84])
+    zf3 = corner.quantile(samples[:, 4], q=[0.16, 0.5, 0.84])
+    zf4 = corner.quantile(samples[:, 5], q=[0.16, 0.5, 0.84])
+    zf5 = corner.quantile(samples[:, 6], q=[0.16, 0.5, 0.84])
+
+    zf_arr = np.array([zf1[1], zf2[1], zf3[1], zf4[1], zf5[1]])
+    zf_arr_l = np.array([zf1[0], zf2[0], zf3[0], zf4[0], zf5[0]])
+    zf_arr_u = np.array([zf1[2], zf2[2], zf3[2], zf4[2], zf5[2]])
+
+    cq_mass = corner.quantile(samples[:, 7], q=[0.16, 0.5, 0.84])
+
+    # now convert to sfh and its errors
+    sfr = zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr, agebins=agebins)
+    sfr_l = zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_l, agebins=agebins)
+    sfr_u = zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_u, agebins=agebins)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ax.set_xlabel(r'$\mathrm{Time\, [Gyr]}$', fontsize=13)
+    ax.set_ylabel(r'$\mathrm{SFR\, [M_\odot/yr]}$', fontsize=13)
+
+    # combination of linear and log axis from
+    # https://stackoverflow.com/questions/21746491/combining-a-log-and-linear-scale-in-matplotlib
+
+    # linear part i.e., first age bin
+    ax.plot(agebins[0], np.ones(len(agebins[0])) * sfr[0], color='k', lw=2.5)
+    ax.fill_between(agebins[0], np.ones(len(agebins[0])) * sfr_l[0], 
+                   np.ones(len(agebins[0])) * sfr_u[0], color='k', alpha=0.5)
+
+    ax.set_xlim(0.0, 8.0)
+    ax.spines['right'].set_visible(False)
+    ax.yaxis.set_ticks_position('left')
+
+    # now log axis 
+    divider = make_axes_locatable(ax)
+    axlog = divider.append_axes("right", size=3.0, pad=0, sharey=ax)
+    axlog.set_xscale('log')
+
+    for a in range(1, nagebins):
+        axlog.plot(agebins[a], np.ones(len(agebins[a])) * sfr[a], color='k', lw=2.5)
+        axlog.fill_between(agebins[a], np.ones(len(agebins[a])) * sfr_l[a], 
+                        np.ones(len(agebins[a])) * sfr_u[a], color='k', alpha=0.5)
+
+    axlog.set_xlim(8.0, agebins[-1, -1])
+    axlog.spines['left'].set_visible(False)
+    axlog.yaxis.set_ticks_position('right')
+    axlog.tick_params(labelright=False)
+
+    fig.savefig(adap_dir + 'sfh_' + field + '_' + str(galaxy_seq) + '.pdf')
+
+    sys.exit(0)
+
+    # ---------- corner plot 
+    # set up corner ranges and labels
+    math_parnames = [r'$\mathrm{log(Z_\odot)}$', r'$\mathrm{dust2}$', 
+    r'$zf_1$', r'$zf_2$', r'$zf_3$', r'$zf_4$', r'$zf_5$', 
+    r'$\mathrm{M_s}$', r'$\mathrm{f_{agn}}$', r'$\mathrm{agn_\tau}$', 
+    r'$\mathrm{dust_{ratio}}$', r'$\mathrm{dust_{index}}$']
+
+    #math_parnames = [r'$\mathrm{M_s}$', r'$\mathrm{log(Z_\odot)}$', 
+    #r'$\mathrm{dust2}$', r'$\mathrm{t_{age}}$', r'$\mathrm{log(\tau)}$']
 
     # Fix labels for corner plot and        
     # Figure out ranges for corner plot
@@ -556,7 +632,7 @@ def main(field, galaxy_seq):
 
     # Corner plot
     cornerfig = corner.corner(samples, quantiles=[0.16, 0.5, 0.84], 
-        labels=parnames, label_kwargs={"fontsize": 14},
+        labels=math_parnames, label_kwargs={"fontsize": 14},
         range=corner_range, smooth=0.5, smooth1d=0.5)
 
     # loop over all axes *again* and set title
@@ -584,7 +660,8 @@ def main(field, galaxy_seq):
             r"$\substack{+$" + r"${:.3f}$".format(up_err) + r"$\\ -$" + \
             r"${:.3f}$".format(low_err) + r"$}$", fontsize=11, pad=10)
 
-    cornerfig.savefig(adap_dir + 'corner_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
+    cornerfig.savefig(adap_dir + 'corner_' + field + '_' + \
+        str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
 
     # maximum a posteriori (of the locations visited by the MCMC sampler)
     pmax = np.argmax(result['lnprobability'])
@@ -662,7 +739,8 @@ def main(field, galaxy_seq):
     ax3.set_ylim([ymin, ymax])
     ax3.legend(loc='best', fontsize=11)
 
-    fig3.savefig(adap_dir + 'sedplot_' + str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
+    fig3.savefig(adap_dir + 'sedplot_' + field + '_' + str(galaxy_seq) + '.pdf', 
+        dpi=200, bbox_inches='tight')
 
     plt.clf()
     plt.cla()
