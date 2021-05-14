@@ -219,6 +219,9 @@ def main():
     fit_mass_briz = []
     fit_mass_briz_err = []
 
+    # List for storing redshifts
+    redshifts = []
+
     for field in ['North', 'South']:
 
         # Read in catalog from Lou
@@ -267,6 +270,10 @@ def main():
             fit_mass_briz_uperr = cq_mass_briz[2] - cq_mass_briz[1]
             fit_mass_briz_err.append([fit_mass_briz_lowerr, fit_mass_briz_uperr])
 
+
+            redshifts.append(df['zbest'][i])
+
+
     # ---------Convert to numpy arrays and reshape
     fit_mass_allbands = np.array(fit_mass_allbands)
     fit_mass_allbands_err = np.array(fit_mass_allbands_err)
@@ -294,6 +301,8 @@ def main():
     from sklearn.neighbors import KernelDensity
     from sklearn.model_selection import GridSearchCV, LeaveOneOut
 
+    from scipy.stats import gaussian_kde
+
     xdata_for_kde = xdata[:, None]
     x2 = np.log10(fit_mass_ubriz)[:, None]
     x3 = np.log10(fit_mass_briz)[:, None]
@@ -315,11 +324,11 @@ def main():
     print(bw1, bw2, bw3)
 
     # Now estimate KDEs
-    kde1 = KernelDensity(kernel='gaussian', bandwidth=bw1).fit(xdata_for_kde)
+    kde1 = KernelDensity(kernel='gaussian', bandwidth=0.25).fit(xdata_for_kde)
     log_dens1 = kde1.score_samples(x_arr_for_kde)
-    kde2 = KernelDensity(kernel='gaussian', bandwidth=bw2).fit(x2)
+    kde2 = KernelDensity(kernel='gaussian', bandwidth=0.25).fit(x2)
     log_dens2 = kde2.score_samples(x_arr_for_kde)
-    kde3 = KernelDensity(kernel='gaussian', bandwidth=bw3).fit(x3)
+    kde3 = KernelDensity(kernel='gaussian', bandwidth=0.25).fit(x3)
     log_dens3 = kde3.score_samples(x_arr_for_kde)
 
     # Plot KDEs
@@ -327,11 +336,18 @@ def main():
     ax.plot(x_arr, np.exp(log_dens2), color='mediumblue', lw=1.4, label='ubriz', zorder=1)
     ax.plot(x_arr, np.exp(log_dens3), color='darkturquoise', lw=1.4, label='briz', zorder=1)
 
+    x1_kde = gaussian_kde(xdata)
+    ax.plot(x_arr, x1_kde(x_arr), ls='--', color='k', lw=2.5, zorder=2)
+    x2_kde = gaussian_kde(np.log10(fit_mass_ubriz))
+    ax.plot(x_arr, x2_kde(x_arr), ls='--', color='mediumblue', lw=1.4, zorder=2)
+    x3_kde = gaussian_kde(np.log10(fit_mass_briz))
+    ax.plot(x_arr, x3_kde(x_arr), ls='--', color='darkturquoise', lw=1.4, zorder=2)
+
     ax.legend(loc=2, fontsize=10, frameon=False)
 
     ax.set_xlim(7.5, 12.5)
 
-    fig.savefig(adap_dir + 'mass_hist.pdf', dpi=300, bbox_inches='tight')
+    fig.savefig(adap_dir + 'mass_dist.pdf', dpi=300, bbox_inches='tight')
 
     # ------------------ make residual figure
     fig1 = plt.figure()

@@ -205,8 +205,8 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
 
     # Get (a copy of) one of the prepackaged model set dictionaries.
     # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
-    #model_params = TemplateLibrary["alpha"]
-    model_params = TemplateLibrary["parametric_sfh"]
+    model_params = TemplateLibrary["continuity_sfh"]
+    #model_params = TemplateLibrary["parametric_sfh"]
 
     # This will give the stellar mass as the surviving
     # mass which is what we want. Otherwise by default
@@ -216,26 +216,24 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
     #model_params["dust_type"] = 4
 
     # Let's make some changes to initial values appropriate for our objects and data
-    #model_params["total_mass"]["init"] = 1e10
-    model_params["logzsol"]["init"] = -0.5
-    model_params["dust2"]["init"] = 0.05
-    model_params["mass"]["init"] = 1e10
-    model_params["tage"]["init"] = 4.0
-    model_params["tau"]["init"] = 1.0
+    #model_params["logmass"]["init"] = 10
+    #model_params["logzsol"]["init"] = -0.5
+    #model_params["dust2"]["init"] = 0.05
+    #model_params["mass"]["init"] = 1e10
+    #model_params["tage"]["init"] = 4.0
+    #model_params["tau"]["init"] = 1.0
 
     # Choose priors
     # Priors not specified in here are left at default values
-    model_params["dust2"]["prior"] = priors.TopHat(mini=0.0, maxi=2.0)
-    #model_params["total_mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
-    model_params["mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
-    model_params["tau"]["prior"] = priors.LogUniform(mini=1e-1, maxi=1e2)
+    
+    #model_params["mass"]["prior"] = priors.LogUniform(mini=1e8, maxi=1e12)
+    #model_params["tau"]["prior"] = priors.LogUniform(mini=1e-1, maxi=1e2)
 
     # If we are going to be using emcee, it is useful to provide a 
     # minimum scale for the cloud of walkers (the default is 0.1)
-    #model_params["total_mass"]["disp_floor"] = 1e8
-    model_params["mass"]["disp_floor"] = 1e8
-    model_params["tau"]["disp_floor"] = 1.0
-    model_params["tage"]["disp_floor"] = 1.0
+    #model_params["mass"]["disp_floor"] = 1e8
+    #model_params["tau"]["disp_floor"] = 1.0
+    #model_params["tage"]["disp_floor"] = 1.0
     
     # Change the model parameter specifications based on some keyword arguments
     if fixed_metallicity is not None:
@@ -270,9 +268,9 @@ def build_sps(zcontinuous=1, **extras):
         have a continuous metallicity parameter (`logzsol`)
         See python-FSPS documentation for details
     """
-    #from prospect.sources import FastStepBasis
-    from prospect.sources import CSPSpecBasis
-    sps = CSPSpecBasis(zcontinuous=zcontinuous)
+    from prospect.sources import FastStepBasis
+    #from prospect.sources import CSPSpecBasis
+    sps = FastStepBasis(zcontinuous=zcontinuous)
     return sps
 
 def main(field, galaxy_seq):
@@ -285,15 +283,15 @@ def main(field, galaxy_seq):
     if 'North' in field:
         df = pandas.read_pickle(adap_dir + 'GOODS_North_SNeIa_host_phot.pkl')
 
-        #all_filters = ['LBC_U_FLUX',
-        #'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F814W_FLUX',
-        #'ACS_F850LP_FLUX', 'WFC3_F105W_FLUX', 'WFC3_F125W_FLUX',
-        #'WFC3_F140W_FLUX', 'WFC3_F160W_FLUX', 'MOIRCS_K_FLUX', 'CFHT_Ks_FLUX',
-        #'IRAC_CH1_SCANDELS_FLUX', 'IRAC_CH2_SCANDELS_FLUX', 'IRAC_CH3_FLUX',
-        #'IRAC_CH4_FLUX']
+        all_filters = ['LBC_U_FLUX',
+        'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 'ACS_F775W_FLUX', 'ACS_F814W_FLUX',
+        'ACS_F850LP_FLUX', 'WFC3_F105W_FLUX', 'WFC3_F125W_FLUX',
+        'WFC3_F140W_FLUX', 'WFC3_F160W_FLUX', 'MOIRCS_K_FLUX', 'CFHT_Ks_FLUX',
+        'IRAC_CH1_SCANDELS_FLUX', 'IRAC_CH2_SCANDELS_FLUX', 'IRAC_CH3_FLUX',
+        'IRAC_CH4_FLUX']
 
-        all_filters = ['LBC_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 
-        'ACS_F775W_FLUX', 'ACS_F850LP_FLUX']
+        #all_filters = ['LBC_U_FLUX', 'ACS_F435W_FLUX', 'ACS_F606W_FLUX', 
+        #'ACS_F775W_FLUX', 'ACS_F850LP_FLUX']
 
         seq = np.array(df['ID'])
         i = int(np.where(seq == galaxy_seq)[0])
@@ -366,9 +364,6 @@ def main(field, galaxy_seq):
     # Now build the prospector observation
     obs = build_obs(fluxes, fluxes_unc, useable_filters)
 
-    #plot_data(obs)
-    #sys.exit(0)
-
     # Set params for run
     run_params = {}
     run_params["object_redshift"] = obj_z
@@ -394,6 +389,9 @@ def main(field, galaxy_seq):
     sps = build_sps(**run_params)
     model = build_model(**run_params)
 
+    #plot_data(obs)
+    #sys.exit(0)
+
     # --- start fitting ----
     # Set this to False if you don't want to do another optimization
     # before emcee sampling (but note that the "optimization" entry 
@@ -401,6 +399,7 @@ def main(field, galaxy_seq):
     # If set to true then another round of optmization will be performed 
     # before sampling begins and the "optmization" entry of the output
     # will be populated.
+    """
     run_params["optimize"] = False
     run_params["min_method"] = 'lm'
     # We'll start minimization from "nmin" separate places, 
@@ -439,6 +438,7 @@ def main(field, galaxy_seq):
         print('Finished with Seq: ' + str(galaxy_seq))
 
     """
+
     print("Now running with Dynesty.")
 
     run_params["emcee"] = False
@@ -453,19 +453,18 @@ def main(field, galaxy_seq):
     output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
     print('done dynesty in {0}s'.format(output["sampling"][1]))
 
-    hfile = adap_dir + "dynesty_" + str(galaxy_seq) + ".h5"
+    hfile = adap_dir + "dynesty_" + field + "_" + str(galaxy_seq) + "_csfh.h5"
     writer.write_hdf5(hfile, run_params, model, obs,
                       output["sampling"][0], output["optimization"][0],
                       tsample=output["sampling"][1],
                       toptimize=output["optimization"][1])
 
     print('Finished with Seq: ' + str(galaxy_seq))
-    """
 
     # -------------------------
     # Visualizing results
 
-    results_type = "emcee"  # "emcee" | "dynesty"
+    results_type = "dynesty"  # "emcee" | "dynesty"
     # grab results (dictionary), the obs dictionary, and our corresponding models
     # When using parameter files set `dangerous=True`
     #result, obs, _ = reader.results_from("{}_" + str(galaxy_seq) + \
@@ -557,7 +556,7 @@ def main(field, galaxy_seq):
 
     # Corner plot
     cornerfig = corner.corner(samples, quantiles=[0.16, 0.5, 0.84], 
-        labels=math_parnames, label_kwargs={"fontsize": 14},
+        labels=parnames, label_kwargs={"fontsize": 14},
         range=corner_range, smooth=0.5, smooth1d=0.5)
 
     # loop over all axes *again* and set title
