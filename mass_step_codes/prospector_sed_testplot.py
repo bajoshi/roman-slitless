@@ -5,18 +5,55 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
+import corner
 import prospect.io.read_results as reader
 
-home = os.getenv('HOME')
-adap_dir = home + '/Documents/adap2021/'
-
-from prospector_goods_fit import plot_data, build_sps, build_model
+from prospector_goods_fit import plot_data
 from prospect.models.sedmodel import SedModel
 from prospect.models.templates import TemplateLibrary
 
-field = 'North'
-galaxy_seq = 27438
+home = os.getenv('HOME')
+adap_dir = home + '/Documents/adap2021/'
+utils_dir = home + '/Documents/GitHub/roman-slitless/fitting_pipeline/utils/'
+
+sys.path.append(utils_dir)
+from convert_to_sci_not import convert_to_sci_not as csn
+
+field = 'South'
+galaxy_seq = 3456
 nsamp = 500  # random samples from the posterior for plotting
+
+def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, **extras):
+
+    # Get (a copy of) one of the prepackaged model set dictionaries.
+    # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
+    model_params = TemplateLibrary["parametric_sfh"]
+    
+    # Change the model parameter specifications based on some keyword arguments
+    if fixed_metallicity is not None:
+        # make it a fixed parameter
+        model_params["logzsol"]["isfree"] = False
+        #And use value supplied by fixed_metallicity keyword
+        model_params["logzsol"]['init'] = fixed_metallicity 
+
+    if object_redshift is not None:
+        # make sure zred is fixed
+        model_params["zred"]['isfree'] = False
+        # And set the value to the object_redshift keyword
+        model_params["zred"]['init'] = object_redshift
+
+    if add_duste:
+        model_params.update(TemplateLibrary["dust_emission"])
+        
+    # Now instantiate the model object using this dictionary of parameter specifications
+    model = SedModel(model_params)
+
+    return model
+
+def build_sps(zcontinuous=1, **extras):
+    from prospect.sources import CSPSpecBasis
+    sps = CSPSpecBasis(zcontinuous=zcontinuous)
+    return sps
 
 # -------------- Decide field and filters
 # Read in catalog from Lou
@@ -105,7 +142,7 @@ model = build_model(**run_params)
 #plot_data(obs)
 #sys.exit(0)
 
-results_type = 'dynesty'
+results_type = 'emcee'
 
 result, obs, _ = reader.results_from(adap_dir + results_type + "_" + \
                  field + "_" + str(galaxy_seq) + ".h5", dangerous=False)
@@ -120,6 +157,7 @@ from prospect.plotting.utils import sample_posterior
 wts = result.get("weights", None)
 theta = sample_posterior(result["chain"], weights=wts, nsample=nsamp)
 
+"""
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(111)
 
@@ -142,6 +180,7 @@ ax1.plot(t, sfr, color='k', lw=2.5)
 ax1.fill_between(t, sfr_min, sfr_max, color='gray', alpha=0.5)
 
 fig1.savefig(adap_dir + 'sfh_' + field + str(galaxy_seq) + '.png', dpi=150, bbox_inches='tight')
+"""
 
 # -------------
 fig = plt.figure(figsize=(8,4))
@@ -181,25 +220,53 @@ mspec_map, mphot_map, _ = model.mean_model(theta_max, obs, sps=sps)
 
 # plot map spec
 ax.plot(wspec, mspec_map, lw=1.5, color='k', label=r'$\mathrm{MAP\ model}$', zorder=2)
+ax.errorbar(wphot, mphot_map, label=r'$\mathrm{MAP\ model\ photometry}$',
+         marker='o', markersize=10, alpha=0.8, ls='', lw=1.5, 
+         markerfacecolor='none', markeredgecolor='tab:blue', 
+         markeredgewidth=2.5)
+
+# plot filters
+ymin, ymax = obs["maggies"].min()*0.75, obs["maggies"].max()/0.1
+
+for f in obs['filters']:
+    print(f, f.name)
+
+    w, t = f.wavelength.copy(), f.transmission.copy()
+    t = t / t.max()
+    t = 10**(0.2*(np.log10(ymax/ymin)))*t * ymin
+    ax.loglog(w, t, lw=2.0, color='seagreen', alpha=0.6)
 
 # plot uncertainties by plotting randomly selected samples
 for i in range(nsamp):
     spec, phot, mfrac = model.mean_model(theta[i], obs, sps=sps)
     ax.plot(wspec, spec, color='gray', alpha=0.002, zorder=1)
 
-# plot filters
-ymin, ymax = obs["maggies"].min()*0.8, obs["maggies"].max()/0.4
+# Put in inferred stellar mass in the plot
+# Get the samples in the correct shape first
+if results_type == 'emcee':
+    trace = result['chain']
+    thin = 5
+    trace = trace[:, ::thin, :]
+    samples = trace.reshape(trace.shape[0] * trace.shape[1], trace.shape[2])
+else:
+    samples = result['chain']
+cq_mass = corner.quantile(samples[:, 0], q=[0.16, 0.5, 0.84])
+print("Corner mass:", cq_mass)
 
-for f in obs['filters']:
-    print(f)
-    w, t = f.wavelength.copy(), f.transmission.copy()
-    t = t / t.max()
-    t = 10**(0.2*(np.log10(ymax/ymin)))*t * ymin
-    ax.loglog(w, t, lw=2.0, color='seagreen', alpha=0.6)
+low_err = cq_mass[1] - cq_mass[0]
+up_err  = cq_mass[2] - cq_mass[1]
+
+mass_str = r'$\mathrm{M_s}$' + r"$ \, =\,$" + csn(cq_mass[1], sigfigs=3) + \
+           r"$\substack{+$" + csn(up_err, sigfigs=3) + r"$\\ -$" + \
+           csn(low_err, sigfigs=3) + r"$}$"
+
+ax.text(x=0.55, y=0.42, s=mass_str, 
+    verticalalignment='top', horizontalalignment='left', 
+    transform=ax.transAxes, color='k', size=14)
 
 ax.legend(loc=0, fontsize=12, frameon=False)
 
-ax.set_xlim(2000, 150000)
+ax.set_xlim(3000, 150000)
 ax.set_ylim(ymin, ymax)
 
 ax.set_xscale('log')

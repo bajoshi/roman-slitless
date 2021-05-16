@@ -6,6 +6,10 @@ import h5py
 import numpy as np
 import scipy
 import pandas
+import astropy.units as u
+from astropy.cosmology import FlatLambdaCDM
+astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
+
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -28,7 +32,7 @@ from prospect.fitting import fit_model
 from prospect.io import write_results as writer
 import prospect.io.read_results as reader
 from prospect.utils.obsutils import fix_obs
-from prospect.models.transforms import zfrac_to_sfr
+import prospect.models.transforms as pt
 
 home = os.getenv('HOME')
 adap_dir = home + '/Documents/adap2021/'
@@ -210,6 +214,20 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
     model_params = TemplateLibrary["alpha"]
     #model_params = TemplateLibrary["parametric_sfh"]
 
+    nagebins = 6
+    age_at_z = astropy_cosmo.age(object_redshift).value
+
+    print( np.linspace(0.0, age_at_z, nagebins) )
+    
+    agebins = np.array([[ 0., 0.75],
+                        [ 0.75, 1.5],
+                        [ 1.5, 2.25],
+                        [ 2.25, 3.0],
+                        [ 3.0, 3.5],
+                        [ 3.5, age_at_z]])
+
+    model_params["agebins"]["init"] = agebins
+
     # This will give the stellar mass as the surviving
     # mass which is what we want. Otherwise by default
     # it gives total mass formed.
@@ -331,6 +349,10 @@ def main(field, galaxy_seq):
 
     obj_z = df['zbest'][i]
 
+    print("Object redshift:", obj_z)
+    age_at_z = astropy_cosmo.age(obj_z).value
+    print("Age of Universe at object redshift [Gyr]:", age_at_z)
+
     # ------------- Get obs data
     fluxes = []
     fluxes_unc = []
@@ -373,10 +395,6 @@ def main(field, galaxy_seq):
     run_params["add_duste"] = True
     #run_params["dust_type"] = 4
 
-    #model = build_model(**run_params)
-    #print("\nInitial free parameter vector theta:\n  {}\n".format(model.theta))
-    #print("Initial parameter dictionary:\n{}".format(model.params))
-
     run_params["zcontinuous"] = 1
 
     # Generate the model SED at the initial value of theta
@@ -386,10 +404,15 @@ def main(field, galaxy_seq):
     verbose = True
     run_params["verbose"] = verbose
 
+    model = build_model(**run_params)
+    print("\nInitial free parameter vector theta:\n  {}\n".format(model.theta))
+    #print("Initial parameter dictionary:\n{}".format(model.params))
+
+    print(model)
+
     # Here we will run all our building functions
     obs = build_obs(fluxes, fluxes_unc, useable_filters)
     sps = build_sps(**run_params)
-    model = build_model(**run_params)
 
     #plot_data(obs)
     #sys.exit(0)
@@ -456,6 +479,9 @@ def main(field, galaxy_seq):
         run_params["nested_posterior_thresh"] = 0.05
         run_params["nested_maxcall"] = int(1e6)
 
+        #from multiprocessing import Pool
+        #with Pool(6) as pool:
+        #    run_params["pool"] = pool
         output = fit_model(obs, model, sps, lnprobfn=lnprobfn, **run_params)
         print('done dynesty in {0}s'.format(output["sampling"][1]))
 
@@ -516,15 +542,14 @@ def main(field, galaxy_seq):
 
     # Plot SFH
     print(model) # to copy paste agebins from print out
-    
-    agebins = np.array([[ 0. ,        8.        ],
-                        [ 8.   ,       8.47712125],
-                        [ 8.47712125 , 9.        ],
-                        [ 9. ,         9.47712125],
-                        [ 9.47712125,  9.77815125],
-                        [ 9.77815125, 10.13353891]])
 
     nagebins = 6
+    agebins = np.array([[ 0., 0.75],
+                        [ 0.75, 1.5],
+                        [ 1.5, 2.25],
+                        [ 2.25, 3.0],
+                        [ 3.0, 3.5],
+                        [ 3.5, age_at_z]])
 
     # Get the zfractions from corner quantiles
     zf1 = corner.quantile(samples[:, 2], q=[0.16, 0.5, 0.84])
@@ -539,10 +564,14 @@ def main(field, galaxy_seq):
 
     cq_mass = corner.quantile(samples[:, 7], q=[0.16, 0.5, 0.84])
 
+    print("Corner mass:", cq_mass)
+
     # now convert to sfh and its errors
-    sfr = zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr, agebins=agebins)
-    sfr_l = zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_l, agebins=agebins)
-    sfr_u = zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_u, agebins=agebins)
+    sfr = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr, agebins=agebins)
+    sfr_l = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_l, agebins=agebins)
+    sfr_u = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_u, agebins=agebins)
+
+    print("Inferred SFR:", sfr)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -577,7 +606,8 @@ def main(field, galaxy_seq):
     axlog.yaxis.set_ticks_position('right')
     axlog.tick_params(labelright=False)
 
-    fig.savefig(adap_dir + 'sfh_' + field + '_' + str(galaxy_seq) + '.pdf')
+    fig.savefig(adap_dir + 'sfh_' + field + '_' + str(galaxy_seq) + '.pdf', \
+        dpi=200, bbox_inches='tight')
 
     sys.exit(0)
 
