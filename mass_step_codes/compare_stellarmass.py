@@ -321,8 +321,6 @@ def main():
     grid.fit(x3)
     bw3 = grid.best_params_['bandwidth']
 
-    print(bw1, bw2, bw3)
-
     # Now estimate KDEs
     kde1 = KernelDensity(kernel='gaussian', bandwidth=0.25).fit(xdata_for_kde)
     log_dens1 = kde1.score_samples(x_arr_for_kde)
@@ -336,6 +334,7 @@ def main():
     ax.plot(x_arr, np.exp(log_dens2), color='mediumblue', lw=1.4, label='ubriz', zorder=1)
     ax.plot(x_arr, np.exp(log_dens3), color='darkturquoise', lw=1.4, label='briz', zorder=1)
 
+    # KDEs using Scipy
     x1_kde = gaussian_kde(xdata)
     ax.plot(x_arr, x1_kde(x_arr), ls='--', color='k', lw=2.5, zorder=2)
     x2_kde = gaussian_kde(np.log10(fit_mass_ubriz))
@@ -405,23 +404,55 @@ def main():
 
     print("Errors for the points and the line estimate --")
 
-
     ax1.legend(fontsize=10, frameon=False)
-    ax1.set_xlim(7.8, 12.2)
+    ax1.set_xlim(6.8, 12.5)
     ax1.set_ylim(-1.6, 0.8)
+
+    ax1.text(x=0.38, y=0.15, s=r'$\mathrm{Slope}\,=\,$' + "{:.2f}".format(m1), 
+        verticalalignment='top', horizontalalignment='left', 
+        transform=ax.transAxes, color='mediumblue', size=14)
+    ax1.text(x=0.38, y=0.11, s=r'$\mathrm{Slope}\,=\,$' + "{:.2f}".format(m2), 
+        verticalalignment='top', horizontalalignment='left', 
+        transform=ax.transAxes, color='darkturquoise', size=14)
 
     fig1.savefig(adap_dir + 'mass_residuals.pdf', dpi=300, bbox_inches='tight')
 
     # --------------
     # Histograms of measurement significance
     allbands_sig = fit_mass_allbands / np.mean(fit_mass_allbands_err, axis=0)
-
-    print(allbands_sig)
+    ubriz_sig = fit_mass_ubriz / np.mean(fit_mass_ubriz_err, axis=0)
+    briz_sig = fit_mass_briz / np.mean(fit_mass_briz_err, axis=0)
 
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111)
 
-    ax2.hist(allbands_sig, 20, range=(0, 60))
+    # Resahpe data
+    allbands_sig_kde = allbands_sig[:, None]
+    ubriz_sig_kde = ubriz_sig[:, None]
+    briz_sig_kde = briz_sig[:, None]
+
+    xsig = np.arange(0.0, 10.0, 0.01)
+    xsig_kde = xsig[:, None]
+
+    # Estimate optimal bandwidth
+    # I think I can use the same grid of bandwidths as before
+    grid.fit(allbands_sig_kde)
+    bw1 = grid.best_params_['bandwidth']
+
+    print("BW1:", bw1)
+
+    # Now estimate KDEs
+    kde1 = KernelDensity(kernel='gaussian', bandwidth=1.0).fit(allbands_sig_kde)
+    log_dens1 = kde1.score_samples(xsig_kde)
+    kde2 = KernelDensity(kernel='gaussian', bandwidth=1.0).fit(ubriz_sig_kde)
+    log_dens2 = kde2.score_samples(xsig_kde)
+    kde3 = KernelDensity(kernel='gaussian', bandwidth=1.0).fit(briz_sig_kde)
+    log_dens3 = kde3.score_samples(xsig_kde)
+
+    # Plot KDEs
+    ax2.plot(xsig, np.exp(log_dens1), color='k', lw=2.5, label='UV-Optical-NIR-MIR', zorder=2)
+    ax2.plot(xsig, np.exp(log_dens2), color='mediumblue', lw=1.4, label='ubriz', zorder=1)
+    ax2.plot(xsig, np.exp(log_dens3), color='darkturquoise', lw=1.4, label='briz', zorder=1)
 
     plt.show()
 
