@@ -214,19 +214,12 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
     model_params = TemplateLibrary["alpha"]
     #model_params = TemplateLibrary["parametric_sfh"]
 
-    nagebins = 6
-    age_at_z = astropy_cosmo.age(object_redshift).value
+    # Set agebins manually
+    #age_at_z = astropy_cosmo.age(object_redshift).value
 
-    print( np.linspace(0.0, age_at_z, nagebins) )
-    
-    agebins = np.array([[ 0., 0.75],
-                        [ 0.75, 1.5],
-                        [ 1.5, 2.25],
-                        [ 2.25, 3.0],
-                        [ 3.0, 3.5],
-                        [ 3.5, age_at_z]])
-
-    model_params["agebins"]["init"] = agebins
+    nbins_sfh = 8
+    model_params['agebins']['N'] = nbins_sfh
+    model_params['mass']['N'] = nbins_sfh
 
     # This will give the stellar mass as the surviving
     # mass which is what we want. Otherwise by default
@@ -407,8 +400,9 @@ def main(field, galaxy_seq):
     model = build_model(**run_params)
     print("\nInitial free parameter vector theta:\n  {}\n".format(model.theta))
     #print("Initial parameter dictionary:\n{}".format(model.params))
-
+    print("\n----------------------- Model details: -----------------------")
     print(model)
+    print("----------------------- End model details. -----------------------\n")
 
     # Here we will run all our building functions
     obs = build_obs(fluxes, fluxes_unc, useable_filters)
@@ -515,6 +509,7 @@ def main(field, galaxy_seq):
     parnames = np.array(result['theta_labels'])
     print('Parameters in this model:', parnames)
 
+    """
     if results_type == "emcee":
 
         chosen = np.random.choice(result["run_params"]["nwalkers"], size=150, replace=False)
@@ -527,29 +522,27 @@ def main(field, galaxy_seq):
         tracefig = reader.traceplot(result, figsize=(10,6))
         tracefig.savefig(adap_dir + 'trace_' + field + '_' + str(galaxy_seq) + '.pdf', 
             dpi=200, bbox_inches='tight')
+    """
 
     # Get chain for corner plot
     if results_type == 'emcee':
-
         trace = result['chain']
         thin = 5
         trace = trace[:, ::thin, :]
-
         samples = trace.reshape(trace.shape[0] * trace.shape[1], trace.shape[2])
-
     else:
         samples = result['chain']
 
     # Plot SFH
-    print(model) # to copy paste agebins from print out
+    #print(model) # to copy paste agebins from print out
 
     nagebins = 6
-    agebins = np.array([[ 0., 0.75],
-                        [ 0.75, 1.5],
-                        [ 1.5, 2.25],
-                        [ 2.25, 3.0],
-                        [ 3.0, 3.5],
-                        [ 3.5, age_at_z]])
+    agebins = np.array([[ 0.        ,  8.        ],
+                        [ 8.        ,  8.47712125],
+                        [ 8.47712125,  9.        ],
+                        [ 9.        ,  9.47712125],
+                        [ 9.47712125,  9.77815125],
+                        [ 9.77815125, 10.13353891]])
 
     # Get the zfractions from corner quantiles
     zf1 = corner.quantile(samples[:, 2], q=[0.16, 0.5, 0.84])
@@ -564,28 +557,44 @@ def main(field, galaxy_seq):
 
     cq_mass = corner.quantile(samples[:, 7], q=[0.16, 0.5, 0.84])
 
-    print("Corner mass:", cq_mass)
+    print("Total mass:", "{:.3e}".format(cq_mass[1]), 
+          "+", "{:.3e}".format(cq_mass[2] - cq_mass[1]), 
+          "-", "{:.3e}".format(cq_mass[1] - cq_mass[0]))
+    # -----------
 
+    new_agebins = pt.zred_to_agebins(zred=obj_z, agebins=agebins)
+    print("New agebins:", new_agebins)
+
+    # -----------------------
     # now convert to sfh and its errors
-    sfr = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr, agebins=agebins)
-    sfr_l = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_l, agebins=agebins)
-    sfr_u = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_u, agebins=agebins)
+    sfr = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr, agebins=new_agebins)
+    sfr_l = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_l, agebins=new_agebins)
+    sfr_u = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr_u, agebins=new_agebins)
 
-    print("Inferred SFR:", sfr)
+    print("----------")
+    print("z fractions:      ", zf_arr)
+    print("Lower z fractions:", zf_arr_l)
+    print("Upper z fractions:", zf_arr_u)
 
-    fig = plt.figure()
+    print("----------")
+    print("Inferred SFR:  ", sfr)
+    print("Lower sfr vals:", sfr_l)
+    print("Upper sfr vals:", sfr_u)
+
+    fig = plt.figure(figsize=(8,4))
     ax = fig.add_subplot(111)
 
-    ax.set_xlabel(r'$\mathrm{Time\, [Gyr]}$', fontsize=13)
-    ax.set_ylabel(r'$\mathrm{SFR\, [M_\odot/yr]}$', fontsize=13)
+    ax.set_xlabel(r'$\mathrm{log(Time\, [yr];\, since\ galaxy\ formation)}$', fontsize=20)
+    ax.xaxis.set_label_coords(x=1.2,y=-0.06)
+    ax.set_ylabel(r'$\mathrm{SFR\, [M_\odot/yr]}$', fontsize=20)
 
     # combination of linear and log axis from
     # https://stackoverflow.com/questions/21746491/combining-a-log-and-linear-scale-in-matplotlib
 
     # linear part i.e., first age bin
-    ax.plot(agebins[0], np.ones(len(agebins[0])) * sfr[0], color='k', lw=2.5)
-    ax.fill_between(agebins[0], np.ones(len(agebins[0])) * sfr_l[0], 
-                   np.ones(len(agebins[0])) * sfr_u[0], color='k', alpha=0.5)
+    ax.plot(new_agebins[0], np.ones(len(new_agebins[0])) * sfr[0], color='mediumblue', lw=3.5)
+    #ax.fill_between(new_agebins[0], np.ones(len(new_agebins[0])) * sfr_l[0], 
+    #               np.ones(len(new_agebins[0])) * sfr_u[0], color='gray', alpha=0.5)
 
     ax.set_xlim(0.0, 8.0)
     ax.spines['right'].set_visible(False)
@@ -597,19 +606,25 @@ def main(field, galaxy_seq):
     axlog.set_xscale('log')
 
     for a in range(1, nagebins):
-        axlog.plot(agebins[a], np.ones(len(agebins[a])) * sfr[a], color='k', lw=2.5)
-        axlog.fill_between(agebins[a], np.ones(len(agebins[a])) * sfr_l[a], 
-                        np.ones(len(agebins[a])) * sfr_u[a], color='k', alpha=0.5)
+        axlog.plot(new_agebins[a], np.ones(len(new_agebins[a])) * sfr[a], color='mediumblue', lw=3.5)
+        #axlog.fill_between(new_agebins[a], np.ones(len(new_agebins[a])) * sfr_l[a], 
+        #                np.ones(len(new_agebins[a])) * sfr_u[a], color='gray', alpha=0.5)
 
-    axlog.set_xlim(8.0, agebins[-1, -1])
+    axlog.set_xlim(8.0, new_agebins[-1, -1] + 0.1)
     axlog.spines['left'].set_visible(False)
     axlog.yaxis.set_ticks_position('right')
     axlog.tick_params(labelright=False)
 
-    fig.savefig(adap_dir + 'sfh_' + field + '_' + str(galaxy_seq) + '.pdf', \
+    axlog.xaxis.set_ticks(ticks=[8.0, 9.0])
+    axlog.xaxis.set_ticks(ticks=[8.2, 8.4, 8.6, 8.8, 9.2, 9.4, 9.6], minor=True)
+
+    axlog.set_xticklabels(['8', '9'])
+    axlog.set_xticklabels(labels=[], minor=True)
+
+    fig.savefig(adap_dir + 'sfh_' + field + '_' + str(galaxy_seq) + '.pdf',
         dpi=200, bbox_inches='tight')
 
-    sys.exit(0)
+    sys.exit()
 
     # ---------- corner plot 
     # set up corner ranges and labels
@@ -692,6 +707,8 @@ def main(field, galaxy_seq):
 
     cornerfig.savefig(adap_dir + 'corner_' + field + '_' + \
         str(galaxy_seq) + '.pdf', dpi=200, bbox_inches='tight')
+
+    sys.exit(0)
 
     # maximum a posteriori (of the locations visited by the MCMC sampler)
     pmax = np.argmax(result['lnprobability'])

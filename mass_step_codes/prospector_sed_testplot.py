@@ -8,7 +8,7 @@ import sys
 import corner
 import prospect.io.read_results as reader
 
-from prospector_goods_fit import plot_data
+from prospector_goods_fit import plot_data, build_model, build_sps
 from prospect.models.sedmodel import SedModel
 from prospect.models.templates import TemplateLibrary
 
@@ -19,10 +19,11 @@ utils_dir = home + '/Documents/GitHub/roman-slitless/fitting_pipeline/utils/'
 sys.path.append(utils_dir)
 from convert_to_sci_not import convert_to_sci_not as csn
 
-field = 'South'
-galaxy_seq = 3456
+field = 'North'
+galaxy_seq = 27438
 nsamp = 500  # random samples from the posterior for plotting
 
+"""
 def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, **extras):
 
     # Get (a copy of) one of the prepackaged model set dictionaries.
@@ -54,6 +55,7 @@ def build_sps(zcontinuous=1, **extras):
     from prospect.sources import CSPSpecBasis
     sps = CSPSpecBasis(zcontinuous=zcontinuous)
     return sps
+"""
 
 # -------------- Decide field and filters
 # Read in catalog from Lou
@@ -88,7 +90,7 @@ print("Match index:", i, "for Seq:", galaxy_seq)
 nwalkers = 1000
 niter = 500
 
-ndim = 5
+ndim = 12
 
 # Other set up
 obj_ra = df['RA'][i]
@@ -142,7 +144,7 @@ model = build_model(**run_params)
 #plot_data(obs)
 #sys.exit(0)
 
-results_type = 'emcee'
+results_type = 'dynesty'
 
 result, obs, _ = reader.results_from(adap_dir + results_type + "_" + \
                  field + "_" + str(galaxy_seq) + ".h5", dangerous=False)
@@ -249,8 +251,13 @@ if results_type == 'emcee':
     trace = trace[:, ::thin, :]
     samples = trace.reshape(trace.shape[0] * trace.shape[1], trace.shape[2])
 else:
-    samples = result['chain']
-cq_mass = corner.quantile(samples[:, 0], q=[0.16, 0.5, 0.84])
+    samples = result['chain']    
+
+if ndim == 5:  # parametric delayed tau
+    cq_mass = corner.quantile(samples[:, 0], q=[0.16, 0.5, 0.84])
+elif ndim == 12:  # non-parametric prospector alpha
+    cq_mass = corner.quantile(samples[:, 7], q=[0.16, 0.5, 0.84])
+
 print("Corner mass:", cq_mass)
 
 low_err = cq_mass[1] - cq_mass[0]
@@ -260,7 +267,7 @@ mass_str = r'$\mathrm{M_s}$' + r"$ \, =\,$" + csn(cq_mass[1], sigfigs=3) + \
            r"$\substack{+$" + csn(up_err, sigfigs=3) + r"$\\ -$" + \
            csn(low_err, sigfigs=3) + r"$}$"
 
-ax.text(x=0.55, y=0.42, s=mass_str, 
+ax.text(x=0.55, y=0.96, s=mass_str, 
     verticalalignment='top', horizontalalignment='left', 
     transform=ax.transAxes, color='k', size=14)
 
