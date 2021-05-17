@@ -581,24 +581,46 @@ def main(field, galaxy_seq):
     print("Lower sfr vals:", sfr_l)
     print("Upper sfr vals:", sfr_u)
 
+    #############
+    x_agebins = 10**new_agebins / 1e9
+
     fig = plt.figure(figsize=(8,4))
     ax = fig.add_subplot(111)
 
-    ax.set_xlabel(r'$\mathrm{log(Time\, [yr];\, since\ galaxy\ formation)}$', fontsize=20)
-    ax.xaxis.set_label_coords(x=1.2,y=-0.06)
+    ax.set_xlabel(r'$\mathrm{Time\, [Gyr];\, since\ galaxy\ formation}$', fontsize=20)
     ax.set_ylabel(r'$\mathrm{SFR\, [M_\odot/yr]}$', fontsize=20)
 
+    for a in range(len(agebins)):
+        ax.plot(x_agebins[a], np.ones(len(x_agebins[a])) * sfr[a], color='mediumblue', lw=3.0)
+        # put in some poisson errors
+        sfr_err = np.ones(len(x_agebins[a])) * np.sqrt(sfr[a])
+        sfr_plt = np.ones(len(x_agebins[a])) * sfr[a]
+        sfr_low_fill = sfr_plt - sfr_err
+        sfr_up_fill = sfr_plt + sfr_err
+        ax.fill_between(x_agebins[a], sfr_low_fill, sfr_up_fill, 
+            color='gray', alpha=0.6)
+
+    #ax.set_ylim(np.min(sfr_low_fill) * 0.3, np.max(sfr_up_fill) * 1.1)
+
+    fig.savefig(adap_dir + 'sfh_' + field + '_' + str(galaxy_seq) + '.pdf',
+        dpi=200, bbox_inches='tight')
+
+    sys.exit(0)
+
+    # Keep code block for future use if needed
+    """
     # combination of linear and log axis from
     # https://stackoverflow.com/questions/21746491/combining-a-log-and-linear-scale-in-matplotlib
 
     # linear part i.e., first age bin
-    ax.plot(new_agebins[0], np.ones(len(new_agebins[0])) * sfr[0], color='mediumblue', lw=3.5)
-    #ax.fill_between(new_agebins[0], np.ones(len(new_agebins[0])) * sfr_l[0], 
-    #               np.ones(len(new_agebins[0])) * sfr_u[0], color='gray', alpha=0.5)
+    ax.plot(x_agebins[0], np.ones(len(x_agebins[0])) * sfr[0], color='mediumblue', lw=3.5)
+    #ax.fill_between(x_agebins[0], np.ones(len(x_agebins[0])) * sfr_l[0], 
+    #               np.ones(len(x_agebins[0])) * sfr_u[0], color='gray', alpha=0.5)
 
     ax.set_xlim(0.0, 8.0)
     ax.spines['right'].set_visible(False)
     ax.yaxis.set_ticks_position('left')
+    ax.xaxis.set_label_coords(x=1.2,y=-0.06)
 
     # now log axis 
     divider = make_axes_locatable(ax)
@@ -606,11 +628,11 @@ def main(field, galaxy_seq):
     axlog.set_xscale('log')
 
     for a in range(1, nagebins):
-        axlog.plot(new_agebins[a], np.ones(len(new_agebins[a])) * sfr[a], color='mediumblue', lw=3.5)
-        #axlog.fill_between(new_agebins[a], np.ones(len(new_agebins[a])) * sfr_l[a], 
-        #                np.ones(len(new_agebins[a])) * sfr_u[a], color='gray', alpha=0.5)
+        axlog.plot(x_agebins[a], np.ones(len(x_agebins[a])) * sfr[a], color='mediumblue', lw=3.5)
+        #axlog.fill_between(x_agebins[a], np.ones(len(x_agebins[a])) * sfr_l[a], 
+        #                np.ones(len(x_agebins[a])) * sfr_u[a], color='gray', alpha=0.5)
 
-    axlog.set_xlim(8.0, new_agebins[-1, -1] + 0.1)
+    axlog.set_xlim(8.0, x_agebins[-1, -1] + 0.1)
     axlog.spines['left'].set_visible(False)
     axlog.yaxis.set_ticks_position('right')
     axlog.tick_params(labelright=False)
@@ -623,8 +645,7 @@ def main(field, galaxy_seq):
 
     fig.savefig(adap_dir + 'sfh_' + field + '_' + str(galaxy_seq) + '.pdf',
         dpi=200, bbox_inches='tight')
-
-    sys.exit()
+    """
 
     # ---------- corner plot 
     # set up corner ranges and labels
