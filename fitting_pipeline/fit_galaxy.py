@@ -542,12 +542,14 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    datadir = home + '/Desktop/Prism_deep_hostIa/'
+    datadir = home + '/Documents/sn_sit_hackday/hackday_testset_prism_deep_hostIav2/'
     savedir = datadir + 'results/'
 
+    checkplot = True
+
     # these files don't have galaxy spectra
-    toskip_shallow = ['10129', '10460', '10850', '10660', '10043', 
-              '10902', '10446', '10441']
+    #toskip_shallow = ['10129', '10460', '10850', '10660', '10043', 
+    #          '10902', '10446', '10441']
     toskip_deep = []
 
     toskip = toskip_deep
@@ -585,41 +587,42 @@ def main():
             galid = int(fl_name_base.split('_')[-1].lstrip('SN'))
             print("Galaxy ID:", galid)
 
-            # Code block to check figure
-            fig = plt.figure(figsize=(10,5))
-            ax = fig.add_subplot(111)
+            if checkplot:
+                # Code block to check figure
+                fig = plt.figure(figsize=(10,5))
+                ax = fig.add_subplot(111)
             
-            ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-            ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
-            fontsize=15)
+                ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+                ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
+                fontsize=15)
             
-            ax.plot(gal_wav, gal_flam, lw=2.0, color='k')
-            ax.fill_between(gal_wav, gal_flam - gal_ferr, gal_flam + gal_ferr, 
-            color='gray', alpha=0.5)
+                ax.plot(gal_wav, gal_flam, lw=2.0, color='k')
+                ax.fill_between(gal_wav, gal_flam - gal_ferr, gal_flam + gal_ferr, 
+                color='gray', alpha=0.5)
 
-            ax.plot(gal_wav, gal_simflam, lw=2.0, color='firebrick')
+                ax.plot(gal_wav, gal_simflam, lw=2.0, color='firebrick')
 
-            # Get plotting limits
-            xmin, xmax = 7600, 18000
-            yidx = np.where((gal_wav >= xmin) & (gal_wav <= xmax))[0]
+                # Get plotting limits
+                xmin, xmax = 7600, 18000
+                yidx = np.where((gal_wav >= xmin) & (gal_wav <= xmax))[0]
 
-            ymin = np.min(gal_flam[yidx]) * 0.7
-            ymax = np.max(gal_flam[yidx]) * 1.4
+                ymin = np.min(gal_flam[yidx]) * 0.7
+                ymax = np.max(gal_flam[yidx]) * 1.4
             
-            ax.set_xlim(xmin, xmax)
-            ax.set_ylim(ymin, ymax)
+                ax.set_xlim(xmin, xmax)
+                ax.set_ylim(ymin, ymax)
 
-            plt.show()
-            if ncount > 10:
-                sys.exit(0)
-            else:
-                continue
+                plt.show()
+                if ncount > 10:
+                    sys.exit(0)
+                else:
+                    continue
 
             # Only consider wavelengths where sensitivity is above 25%
             #x0 = np.where( (gal_wav >= prism_sens_wav[prism_wav_idx][0]  ) &
             #               (gal_wav <= prism_sens_wav[prism_wav_idx][-1] ) )[0]
 
-            x0 = np.where( (gal_wav >= 7600  ) & (gal_wav <= 17800 ) )[0]
+            x0 = np.where( (gal_wav >= 7700  ) & (gal_wav <= 18000 ) )[0]
 
             # Setup for emcee
             # Labels for corner and trace plots
