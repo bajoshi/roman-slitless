@@ -21,7 +21,7 @@ import numpy as np
 import emcee
 import corner
 from multiprocessing import Pool
-from lmfit import Parameters, fit_report, Minimizer
+#from lmfit import Parameters, fit_report, Minimizer
 
 from numba import njit
 
@@ -545,7 +545,7 @@ def main():
     datadir = home + '/Documents/sn_sit_hackday/hackday_testset_prism_deep_hostIav2/'
     savedir = datadir + 'results/'
 
-    checkplot = True
+    checkplot = False
 
     # these files don't have galaxy spectra
     #toskip_shallow = ['10129', '10460', '10850', '10660', '10043', 
