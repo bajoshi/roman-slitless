@@ -71,80 +71,52 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
         ra_list.append(ra_cen   - 1.5*pix_to_deg)
         dec_list.append(dec_cen + 2.5*pix_to_deg)
 
-    if nobs == 5:
-        pass
-
-    if nobs == 6:
-        pass
-
     return ra_list, dec_list
 
 def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
-    simroot, ra_cen, dec_cen, disp_elem, exptime_list):
+    simroot, ra_cen, dec_cen, disp_elem, exptime_list, nobs_list):
 
     # Format the ra dec
     ra_cen_fmt = "{:.7f}".format(ra_cen)
     dec_cen_fmt = "{:.7f}".format(dec_cen)
 
-    print("RA center :", ra_cen)
-    print("DEC center:", dec_cen)
-
     # Generate all dither positions based on exptime
-    show_dither_loc = True
-    for e in exptime_list:
-        print("Working with EXPTIME [seconds]:", e)
-        nobs = int(e / 600)  # i.e, min exptime is 600 and anything more gets dithered
-        print("NOBS:", nobs)
-        if nobs == 0:
-            nobs = 1
+    for e in range(len(exptime_list)):
+        nobs = nobs_list[e]
+        #print("EXPTIME and NOBS:", exptime_list[e], nobs)
         ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
 
-        print("--------")
-        print("RA dithered list :", ra_list)
-        print("DEC dithered list:", dec_list)
-        print("--------")
+        #print("RA dithered list :", ra_list)
+        #print("DEC dithered list:", dec_list)
+        #print("--------")
 
-        if show_dither_loc:
-            import matplotlib
-            matplotlib.use('TkAgg')
-            # this change in backend is required 
-            # because we've previously changed the backend
-            # to be non-interactive to work wtih MARCC.
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
+        # Write list
+        wcs_filename = 'wcs_' + img_suffix + '_' + str(exptime_list[e]) + 's.lst'
 
-            ax.scatter(ra_cen, dec_cen, s=20, color='tab:red', facecolor='tab:red')
-            ax.scatter(ra_list, dec_list, s=40, color='crimson', facecolor='None', lw=2.0)
-            
-            plt.show()
+        with open(lst_dir + wcs_filename, 'w') as fh:
+            fh.write("# TELESCOPE = Roman" + "\n")
+            fh.write("# INSTRUMENT = WFI" + "\n")
+            fh.write("# DETECTOR = WFI" + "\n")
+            fh.write("# GRISM = " + disp_elem + "\n")
+            fh.write("# BLOCKING = " + "\n")
 
+            for r in range(len(roll_angle_list)):
 
-    sys.exit(0)
+                for d in range(nobs):
 
-    # Write list
-    wcs_filename = 'wcs_' + img_suffix + '.lst'
+                    roll_angle = "{:.1f}".format(roll_angle_list[r])
+                    ra = "{:.7f}".format(ra_list[d])
+                    dec = "{:.7f}".format(dec_list[d])
 
-    with open(lst_dir + wcs_filename, 'w') as fh:
-        fh.write("# TELESCOPE = Roman" + "\n")
-        fh.write("# INSTRUMENT = WFI" + "\n")
-        fh.write("# DETECTOR = WFI" + "\n")
-        fh.write("# GRISM = " + disp_elem + "\n")
-        fh.write("# BLOCKING = " + "\n")
+                    ditherstr = 'd' + str(d)
 
-        for r in range(len(roll_angle_list)):
+                    str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
+                    '_' + ditherstr + '  ' + \
+                    ra + '  ' + dec + '  ' + roll_angle + '  ' + disp_elem
+                
+                    fh.write(str_to_write)
 
-            for d in range(nobs):
-
-                roll_angle = "{:.1f}".format(roll_angle_list[r])
-                ra = "{:.7f}".format(ra_list[d])
-                dec = "{:.7f}".format(dec_list[d])
-
-                str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + '  ' + \
-                ra + '  ' + dec + '  ' + roll_angle + '  ' + disp_elem
-            
-                fh.write(str_to_write)
-
-    print("Written WCS LST:", wcs_filename)
+        print("Written WCS LST:", wcs_filename)
 
     return None
 
@@ -206,15 +178,20 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
     return None
 
 def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
-    machine, roll_angle_list):
+    nobs_list, machine, roll_angle_list):
 
     # There is a unique flt lst for each exptime
     # Also unique to machine and direct image
     # Loop over all exptimes
-    for t in exptime_list:
+    for t in range(len(exptime_list)):
+
+        e = exptime_list[t]
+        nobs = nobs_list[t]
+
+        dithertime = int(e / nobs)
 
         # Assign name and write list
-        flt_filename = 'flt_' + img_suffix + '_' + str(t) + 's' + machine + '.lst'
+        flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
 
         with open(lst_dir + flt_filename, 'w') as fh:
             fh.write("# Path to each flt image" + "\n")
@@ -222,9 +199,13 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
             for r in range(len(roll_angle_list)):
 
-                str_to_write = '\n' + result_path + simroot + str(r+1) + '_' \
-                + img_suffix + '_' + str(t) + 's_flt.fits'
-                fh.write(str_to_write)
+                for d in range(nobs):
+
+                    ditherstr = 'd' + str(d)
+
+                    str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
+                    '_' + ditherstr + '_' + str(dithertime) + 's_flt.fits'
+                    fh.write(str_to_write)
 
         print("Written FLT LST:", flt_filename)
 
@@ -232,7 +213,7 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
 def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
     dir_img_path, dir_img_filt, dir_img_name, seds_path, result_path, \
-    exptime_list, simroot):
+    exptime_list, nobs_list, simroot):
     """
     This function creates the lst files needed as pylinear inputs.
     It requires the following args --
@@ -272,11 +253,11 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 
     # WCS LST
     create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
-        simroot, ra_cen, dec_cen, 'P120', exptime_list)
+        simroot, ra_cen, dec_cen, 'P120', exptime_list, nobs_list)
 
     # FLT LST
     create_flt_lst(lst_dir, result_path, simroot, img_suffix, 
-        exptime_list, machine, roll_angle_list)
+        exptime_list, nobs_list, machine, roll_angle_list)
 
     # SED LST
     create_sed_lst(lst_dir, seds_path, img_suffix, machine)
@@ -399,7 +380,8 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [900, 2400, 3600]#, 7200, 10800]
+    exptime_list = [900, 1800, 3600]
+    nobs_list = [2, 3, 4]  # no of dithers
     roll_angle_list = [70.0, 130.0, 190.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
@@ -417,10 +399,10 @@ def main():
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
-        create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, \
-            img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
-            exptime_list, simroot)
-        sys.exit(0)
+        #create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, \
+        #    img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
+        #    exptime_list, nobs_list, simroot)
+        #sys.exit(0)
 
         # ---------------------- 
         # Now check that there are SNe planted in this image since
@@ -436,7 +418,7 @@ def main():
 
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
             img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
-            exptime_list, simroot)
+            exptime_list, nobs_list, simroot)
 
         # Change directory to where the simulation results will go
         # This MUST be done after creating lst files otherwise
@@ -497,6 +479,8 @@ def main():
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         fltnames = simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
+
+        sys.exit(0)
     
         for e in range(len(exptime_list)):
             
