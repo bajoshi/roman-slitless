@@ -550,7 +550,7 @@ def main():
     # these files don't have galaxy spectra
     #toskip_shallow = ['10129', '10460', '10850', '10660', '10043', 
     #          '10902', '10446', '10441']
-    toskip_deep = []
+    toskip_deep = ['10043', '10037', '10038', '10015']
 
     toskip = toskip_deep
 
@@ -677,20 +677,22 @@ def main():
 
             ## ----------- Set up the HDF5 file to incrementally save progress to
             emcee_savefile = savedir + 'emcee_sampler_' + str(galid) + '.h5'
-            backend = emcee.backends.HDFBackend(emcee_savefile)
-            backend.reset(nwalkers, ndim_gal)
+            if not os.path.isfile(emcee_savefile):
 
-            with Pool() as pool:
+                backend = emcee.backends.HDFBackend(emcee_savefile)
+                backend.reset(nwalkers, ndim_gal)
 
-                sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, 
-                    args=args_galaxy, backend=backend, pool=pool, moves=emcee.moves.KDEMove())
-                sampler.run_mcmc(pos_gal, niter, progress=True)
+                with Pool() as pool:
 
-            print("Finished running emcee.")
-            print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+                    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, 
+                        args=args_galaxy, backend=backend, pool=pool, moves=emcee.moves.KDEMove())
+                    sampler.run_mcmc(pos_gal, niter, progress=True)
 
-            read_pickle_make_plots(savedir, str(galid), ndim_gal, 
-                args_galaxy, label_list_galaxy)
+                print("Finished running emcee.")
+                print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+
+                read_pickle_make_plots(savedir, str(galid), ndim_gal, 
+                    args_galaxy, label_list_galaxy)
 
     return None
 

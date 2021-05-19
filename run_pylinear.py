@@ -12,6 +12,8 @@ import socket
 
 import logging
 
+import matplotlib.pyplot as plt
+
 def get_dithered_locations(ra_cen, dec_cen, nobs):
     """
     For an illustration of all dither patterns see
@@ -20,36 +22,54 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
 
     e.g., A simple 4-point dither looks like this,
                         *
-         |---- xoff ----|
-       - * 
-       |
-       |
-      yoff                  *
-       |     |---- xoff ----|
-       -     *
+
+         * 
+       
+       
+                            *
+        
+             *
+
+    where the coords are:
+    (0, 0), (4.0, 1.5), (2.5, 4.0), and (-1.5, 2.5)
+    with the lower left being (0,0).
+    I'm using the WFC3 IR patterns.
 
     See fig 3 in Dahlen et al. above
-    in their DITHER BOX (-MIN) pattern
-    the xoff above is 4.0 and yoff is 2.5.
+    their DITHER BOX (-MIN) pattern.
 
-
-
+    The code below assumes (0, 0) wrt dithering
+    is the lower left of dither pattern
+    and that x and y are aligned with
+    ra and dec respectively.
     """
 
-    ra_list, dec_list = [], []
+    # We need to convert our pixel offsets to angular measures
+    pix_to_arcsec = 0.15  # wfc3 ir avg
+    pix_to_deg = pix_to_arcsec / 3600
+
+    ra_list, dec_list = [ra_cen], [dec_cen]
 
     if nobs == 2:
-        pass
+        ra_list.append(ra_cen   + 3.5*pix_to_deg)
+        dec_list.append(dec_cen + 3.5*pix_to_deg)
 
     if nobs == 3:
-        pass
+        ra_list.append(ra_cen   + 3.33*pix_to_deg)
+        dec_list.append(dec_cen + 3.33*pix_to_deg)
+
+        ra_list.append(ra_cen   + 6.67*pix_to_deg)
+        dec_list.append(dec_cen + 6.67*pix_to_deg)
 
     if nobs == 4:
-        # Hardcoded offsets
-        xoff = 4.0
-        yoff = 2.5
+        ra_list.append(ra_cen   + 4.0*pix_to_deg)
+        dec_list.append(dec_cen + 1.5*pix_to_deg)
 
+        ra_list.append(ra_cen   + 2.5*pix_to_deg)
+        dec_list.append(dec_cen + 4.0*pix_to_deg)
 
+        ra_list.append(ra_cen   - 1.5*pix_to_deg)
+        dec_list.append(dec_cen + 2.5*pix_to_deg)
 
     if nobs == 5:
         pass
@@ -60,17 +80,46 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     return ra_list, dec_list
 
 def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
-    simroot, ra_cen, dec_cen, disp_elem, exptime):
+    simroot, ra_cen, dec_cen, disp_elem, exptime_list):
 
     # Format the ra dec
     ra_cen_fmt = "{:.7f}".format(ra_cen)
     dec_cen_fmt = "{:.7f}".format(dec_cen)
 
+    print("RA center :", ra_cen)
+    print("DEC center:", dec_cen)
+
     # Generate all dither positions based on exptime
-    nobs = int(exptime / 600)  # i.e, min exptime is 600 and anything more gets dithered
-    if nobs == 0:
-        nobs = 1
-    ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
+    show_dither_loc = True
+    for e in exptime_list:
+        print("Working with EXPTIME [seconds]:", e)
+        nobs = int(e / 600)  # i.e, min exptime is 600 and anything more gets dithered
+        print("NOBS:", nobs)
+        if nobs == 0:
+            nobs = 1
+        ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
+
+        print("--------")
+        print("RA dithered list :", ra_list)
+        print("DEC dithered list:", dec_list)
+        print("--------")
+
+        if show_dither_loc:
+            import matplotlib
+            matplotlib.use('TkAgg')
+            # this change in backend is required 
+            # because we've previously changed the backend
+            # to be non-interactive to work wtih MARCC.
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+
+            ax.scatter(ra_cen, dec_cen, s=20, color='tab:red', facecolor='tab:red')
+            ax.scatter(ra_list, dec_list, s=40, color='crimson', facecolor='None', lw=2.0)
+            
+            plt.show()
+
+
+    sys.exit(0)
 
     # Write list
     wcs_filename = 'wcs_' + img_suffix + '.lst'
@@ -223,7 +272,7 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 
     # WCS LST
     create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
-        simroot, ra_cen, dec_cen, 'P120', exptime)
+        simroot, ra_cen, dec_cen, 'P120', exptime_list)
 
     # FLT LST
     create_flt_lst(lst_dir, result_path, simroot, img_suffix, 
@@ -350,7 +399,7 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [900, 1800, 3600, 600]
+    exptime_list = [900, 2400, 3600]#, 7200, 10800]
     roll_angle_list = [70.0, 130.0, 190.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
@@ -368,10 +417,10 @@ def main():
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
-        #create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, \
-        #    img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
-        #    exptime_list, simroot)
-        #sys.exit(0)
+        create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, \
+            img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
+            exptime_list, simroot)
+        sys.exit(0)
 
         # ---------------------- 
         # Now check that there are SNe planted in this image since
@@ -388,8 +437,6 @@ def main():
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
             img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
             exptime_list, simroot)
-
-        sys.exit(0)
 
         # Change directory to where the simulation results will go
         # This MUST be done after creating lst files otherwise
