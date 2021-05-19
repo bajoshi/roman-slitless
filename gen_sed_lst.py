@@ -20,6 +20,7 @@ home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_codes/"
+fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
 sys.path.append(stacking_util_codes)
 import proper_and_lum_dist as cosmo
@@ -51,6 +52,15 @@ for t in range(tau_low, tau_high, 1):
 # load models with large tau separately
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
 
+# Also load in lookup table for luminosity distance
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', dtype=None, names=True)
+# Get arrays 
+dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
+dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
+age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
+
+del dl_cat
+
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
@@ -63,6 +73,24 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+
+def get_dl_at_z(z):
+
+    adiff = np.abs(dl_z_arr - z)
+    z_idx = np.argmin(adiff)
+    dl = dl_cm_arr[z_idx]
+
+    return dl
+
+def apply_redshift(restframe_wav, restframe_lum, redshift):
+
+    dl = get_dl_at_z(redshift)
+
+    redshifted_wav = restframe_wav * (1 + redshift)
+    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
+
+    return redshifted_wav, redshifted_flux
 
 def get_sn_spec_path(redshift):
     """
@@ -103,7 +131,7 @@ def get_sn_spec_path(redshift):
     sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
 
     # Apply redshift
-    sn_wav_z, sn_flux = cosmo.apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
+    sn_wav_z, sn_flux = apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
 
     # Save individual spectrum file if it doesn't already exist
     sn_spec_path = roman_sims_seds + "salt2_spec_day" + str(day_chosen) + \
@@ -252,7 +280,7 @@ def get_gal_spec_path(redshift):
     #if apply_igm:
     #    pass
 
-    bc03_wav_z, bc03_flux = cosmo.apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
+    bc03_wav_z, bc03_flux = apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
 
     if plot_tocheck:
         
@@ -322,7 +350,8 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
     # Find closest match in case of multiple matches
     if len(idx) > 1:
-        #tqdm.write(f"{bcolors.WARNING}" + "Multiple matches found. Picking closest one." + f"{bcolors.ENDC}")
+        #tqdm.write(f"{bcolors.WARNING}")
+        #tqdm.write("Multiple matches found. Picking closest one." + f"{bcolors.ENDC}")
 
         ra_two = ra_to_check
         dec_two = dec_to_check
@@ -346,7 +375,8 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
     # Increase tolerance if no match found at first
     elif len(idx) == 0:
-        #tqdm.write(f"{bcolors.WARNING}" + "No matches found. Redoing search within greater radius.")
+        #tqdm.write(f"{bcolors.WARNING}" + "No matches found.")
+        #tqdm.write("Redoing search within greater radius.")
         #tqdm.write("CAUTION: This method needs a LOT more testing." + f"{bcolors.ENDC}")
         #tqdm.write("Search centered on " + str(ra_to_check) + "   " + str(dec_to_check))
         #idx = get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=tol_arcsec+0.1)
@@ -391,13 +421,15 @@ def gen_sed_lst():
             # Open empty file for saving sed.lst
             sed_filename = roman_slitless_dir + 'pylinear_lst_files/' + \
             'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
-            tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + sed_filename + f"{bcolors.ENDC}")
+            tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + \
+                sed_filename + f"{bcolors.ENDC}")
 
             # Check if the file exists 
             if os.path.isfile(sed_filename):
                 # Now check that it isn't empty
                 sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
-                if sed_filesize > 30:  # I chose this limit somewhat randomly after looking at file sizes by eye
+                if sed_filesize > 30:  
+                    # I chose this limit after looking at file sizes by eye
                     continue
 
             fh = open(sed_filename, 'w')
@@ -407,7 +439,8 @@ def gen_sed_lst():
             fh.write("# 2: SED FILE" + "\n")
 
             # Read in catalog from SExtractor
-            cat_filename = img_sim_dir + img_basename + img_filt + str(pt) + '_' + str(det) + '.cat'
+            cat_filename = img_sim_dir + img_basename + img_filt + \
+                           str(pt) + '_' + str(det) + '.cat'
             tqdm.write("Checking for catalog: " + cat_filename)
 
             if not os.path.isfile(cat_filename):
@@ -423,11 +456,13 @@ def gen_sed_lst():
 
                 # First check that the files have been unzipped
                 if not os.path.isfile(img_filename):
-                    tqdm.write(f"{bcolors.GREEN}" + "Unzipping file: " + img_filename + ".gz" + f"{bcolors.ENDC}")
+                    tqdm.write(f"{bcolors.GREEN}" + "Unzipping file: " + \
+                        img_filename + ".gz" + f"{bcolors.ENDC}")
                     subprocess.run(['gzip', '-fd', img_filename + '.gz'])
 
                 # Now divide by the exptime to get the image to counts per sec
-                cps_img_filename = img_basename + img_filt + str(pt) + '_' + str(det) + '_cps.fits'
+                cps_img_filename = img_basename + img_filt + str(pt) + \
+                                   '_' + str(det) + '_cps.fits'
                 img_hdu = fits.open(img_filename)
                 cps_sci_arr = img_hdu[1].data / float(img_hdu[1].header['EXPTIME'])
                 cps_hdu = fits.PrimaryHDU(data=cps_sci_arr, header=img_hdu[1].header)
@@ -435,8 +470,10 @@ def gen_sed_lst():
                 img_hdu.close()
                 del cps_hdu
 
-                tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + cps_img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
-                    " -CATALOG_NAME " + os.path.basename(cat_filename) + " -CHECKIMAGE_NAME " + checkimage + f"{bcolors.ENDC}")
+                tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + \
+                    cps_img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
+                    " -CATALOG_NAME " + os.path.basename(cat_filename) + \
+                    " -CHECKIMAGE_NAME " + checkimage + f"{bcolors.ENDC}")
 
                 # Use subprocess to call sextractor.
                 # The args passed MUST be passed in this way.
@@ -445,8 +482,10 @@ def gen_sed_lst():
                 # It will not work if you join all of these args in a 
                 # string with spaces where they are supposed to be; 
                 # even if the command looks right when printed out.
-                sextractor = subprocess.run(['sex', cps_img_filename, '-c', 'roman_sims_sextractor_config.txt', \
-                    '-CATALOG_NAME', os.path.basename(cat_filename), '-CHECKIMAGE_NAME', checkimage], check=True)
+                sextractor = subprocess.run(['sex', cps_img_filename, \
+                    '-c', 'roman_sims_sextractor_config.txt', \
+                    '-CATALOG_NAME', os.path.basename(cat_filename), \
+                    '-CHECKIMAGE_NAME', checkimage], check=True)
                 
                 tqdm.write("Finished SExtractor run. Check cat and segmap if needed.")
 
@@ -459,8 +498,10 @@ def gen_sed_lst():
 
             # Loop over all objects and assign spectra
             # Read in the truth files first
-            truth_hdu_gal = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '.fits')
-            truth_hdu_sn = fits.open(truth_dir + truth_basename + img_filt + str(pt) + '_' + str(det) + '_sn.fits')
+            truth_hdu_gal = fits.open(truth_dir + truth_basename + \
+                            img_filt + str(pt) + '_' + str(det) + '.fits')
+            truth_hdu_sn = fits.open(truth_dir + truth_basename + \
+                            img_filt + str(pt) + '_' + str(det) + '_sn.fits')
 
             #print(repr(truth_hdu_gal[1].header))
             #print("-------------------------------------")
@@ -528,7 +569,9 @@ def gen_sed_lst():
 
                     sn_idx = get_match(cat['ALPHA_J2000'], cat['DELTA_J2000'], sn_ra, sn_dec)
                     if sn_idx == -99:
-                        tqdm.write(f"{bcolors.FAIL}" + "Match not found for SN with hostid " + str(id_fetch) + f"{bcolors.ENDC}")
+                        tqdm.write(f"{bcolors.FAIL}")
+                        tqdm.write("Match not found for SN with hostid " + str(id_fetch))
+                        tqdm.write(f"{bcolors.ENDC}")
                         continue
 
                     snid = cat['NUMBER'][sn_idx]
@@ -550,7 +593,8 @@ def gen_sed_lst():
 
                         tqdm.write("SN SExtractor ID: " + str(snid))
                         tqdm.write("HOST SExtractor ID: " + str(current_sextractor_id))
-                        tqdm.write("SN and HOST mags respectively: " + str(cat['MAG_AUTO'][sn_idx]) + "   " + str(cat['MAG_AUTO'][i]))
+                        tqdm.write("SN and HOST mags respectively: " + \
+                                str(cat['MAG_AUTO'][sn_idx]) + "   " + str(cat['MAG_AUTO'][i]))
 
                 else:  # i.e., for a generic galaxy
                     spec_path = get_gal_spec_path(z)

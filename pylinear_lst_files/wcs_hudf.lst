@@ -1,8 +1,0 @@
-# 1: ROOTNAME
-# 2: CRVAL1 (deg)
-# 3: CRVAL2 (deg)
-# 4: ORIENTAT (deg; ranges from -180 to +180)
-
-roman_orient1  53.16041667  -27.78333333  -80.0
-roman_orient2  53.16041667  -27.78333333  -120.0
-roman_orient3  53.16041667  -27.78333333  +50.0

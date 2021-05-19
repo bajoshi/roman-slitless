@@ -203,8 +203,9 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
                     ditherstr = 'd' + str(d)
 
-                    str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
-                    '_' + ditherstr + '_' + str(dithertime) + 's_flt.fits'
+                    str_to_write = "\n" + result_path + simroot + str(r+1) + '_' + \
+                    img_suffix + '_' + ditherstr + '_' + str(dithertime) + 's_flt.fits'
+
                     fh.write(str_to_write)
 
         print("Written FLT LST:", flt_filename)
@@ -427,24 +428,21 @@ def main():
 
         # ---------------------- Define list files and other preliminary stuff
         segfile = img_sim_dir + img_basename + img_suffix + '_segmap.fits'
-    
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
-        wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
         sedlst = pylinear_lst_dir + 'sed_' + img_suffix + obsstr + '.lst'
+        
         beam = '+1'
         maglim = 99.0
-    
+
         # make sure the files exist
         assert os.path.isfile(segfile)
         assert os.path.isfile(obslst)
         assert os.path.isfile(sedlst)
-        assert os.path.isfile(wcslst)
     
         logger.info("Using the following paths to lst files and segmap: ")
         logger.info("Segmentation map: " + segfile)
         logger.info("OBS LST: " + obslst)
         logger.info("SED LST: " + sedlst)
-        logger.info("WCS LST: " + wcslst)
 
         # ---------------------- Need to also check that there is at least 
         # one SN spectrum in the sed.lst file. This check is required because
@@ -464,25 +462,31 @@ def main():
             logger.info("Skipping image due to no or only one SNe matches.")
             sim_count += 1
             continue
-    
-        # ---------------------- Get sources
-        sources = pylinear.source.SourceCollection(segfile, obslst, 
-            detindex=0, maglim=maglim)
-    
-        # Set up and tabulate
-        grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-        tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
-        tabnames = tabulate.run(grisms, sources, beam)
-    
-        ## ---------------------- Simulate
-        logger.info("Simulating...")
-        simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
-        fltnames = simulate.run(grisms, sources, beam)
-        logger.info("Simulation done.")
 
-        sys.exit(0)
-    
+        # ---------------------- Now do the exptime dependent stuff    
         for e in range(len(exptime_list)):
+
+            wcslst = pylinear_lst_dir + \
+                     'wcs_' + img_suffix + '_' + str(exptime_list[e]) + 's.lst'
+            assert os.path.isfile(wcslst)
+            logger.info("WCS LST: " + wcslst)
+
+            # ---------------------- Get sources
+            """
+            sources = pylinear.source.SourceCollection(segfile, obslst, 
+                detindex=0, maglim=maglim)
+    
+            # Set up
+            grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
+            tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
+            tabnames = tabulate.run(grisms, sources, beam)
+
+            ## ---------------------- Simulate
+            logger.info("Simulating...")
+            simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
+            fltnames = simulate.run(grisms, sources, beam)
+            logger.info("Simulation done.")
+            """
             
             # ---------------------- Add noise
             logger.info("Adding noise... ")
@@ -496,69 +500,73 @@ def main():
             read = 10.0    # electrons
     
             exptime = exptime_list[e]  # seconds
+            nobs = nobs_list[e]
+
+            dithertime = int(exptime / nobs)
             
             for i in range(len(roll_angle_list)):
-                oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
-                logger.info("Working on... " + oldf)
-                logger.info("Putting in an exposure time of: " + str(exptime) + " seconds.")
-    
-                #if e == 0:
-                #    # let's save the file in case we want to compare
-                #    savefile = oldf.replace('_flt', '_flt_noiseless')
-                #    shutil.copyfile(oldf, savefile)
-    
-                # open the fits file
-                with fits.open(oldf) as hdul:
-                    sci = hdul[('SCI',1)].data    # the science image
-                    size = sci.shape              # dimensionality of the image
-    
-                    # update the science extension with sky background and dark current
-                    signal = (sci + sky + dark)
-    
-                    # Handling of pixels with negative signal
-                    neg_idx = np.where(signal < 0.0)
-                    neg_idx = np.asarray(neg_idx)
-                    if neg_idx.size:
-                        signal[neg_idx] = 0.0 
-                        logger.error("Setting negative values to zero in signal.")
-                        logger.error("This is wrong but should allow the rest of")
-                        logger.error("the program to work for now.")
 
-                    # Stop if you find nans
-                    nan_idx = np.where(np.isnan(signal))
-                    nan_idx = np.asarray(nan_idx)
-                    if nan_idx.size:
-                        logger.critical("Found NaNs. Resolve this issue first. Exiting.")
-                        sys.exit(0)
-                    
-                    # Multiply the science image with the exptime
-                    # sci image originally in electrons/s
-                    signal = signal * exptime  # this is now in electrons
+                for d in range(nobs):
+
+                    ditherstr = 'd' + str(d)
+                    oldf = simroot + str(i+1) + '_' + img_suffix + '_' + \
+                           ditherstr + '_flt.fits'
+                    logger.info("Working on... " + oldf)
+                    logger.info("Putting in an exposure time of: " + \
+                                str(dithertime) + " seconds.")
     
-                    # Randomly vary signal about its mean. Assuming Gaussian distribution
-                    # first get the uncertainty
-                    variance = signal + read**2
-                    sigma = np.sqrt(variance)
-                    new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
+                    # open the fits file
+                    with fits.open(oldf) as hdul:
+                        sci = hdul[('SCI',1)].data    # the science image
+                        size = sci.shape              # dimensionality of the image
     
-                    # now divide by the exptime and subtract the sky again 
-                    # to get back to e/s. LINEAR expects a background subtracted image
-                    final_sig = (new_sig / exptime) - sky
+                        # update the science extension with sky background and dark current
+                        signal = (sci + sky + dark)
     
-                    # Assign updated sci image to the first [SCI] extension
-                    hdul[('SCI',1)].data = final_sig
+                        # Handling of pixels with negative signal
+                        neg_idx = np.where(signal < 0.0)
+                        neg_idx = np.asarray(neg_idx)
+                        if neg_idx.size:
+                            signal[neg_idx] = 0.0 
+                            logger.error("Setting negative values to zero in signal.")
+                            logger.error("This is wrong but should allow the rest of")
+                            logger.error("the program to work for now.")
+
+                        # Stop if you find nans
+                        nan_idx = np.where(np.isnan(signal))
+                        nan_idx = np.asarray(nan_idx)
+                        if nan_idx.size:
+                            logger.critical("Found NaNs. Resolve this issue first. Exiting.")
+                            sys.exit(0)
+                        
+                        # Multiply the science image with the exptime
+                        # sci image originally in electrons/s
+                        signal = signal * exptime  # this is now in electrons
     
-                    # update the uncertainty extension with the sigma
-                    err = np.sqrt(signal) / exptime
+                        # Randomly vary signal about its mean. Assuming Gaussian distribution
+                        # first get the uncertainty
+                        variance = signal + read**2
+                        sigma = np.sqrt(variance)
+                        new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
     
-                    hdul[('ERR',1)].data = err
+                        # now divide by the exptime and subtract the sky again 
+                        # to get back to e/s. LINEAR expects a background subtracted image
+                        final_sig = (new_sig / exptime) - sky
     
-                    # now write to a new file name
-                    newfilename = oldf.replace('_flt', '_' + str(exptime) + 's' + '_flt')
-                    hdul.writeto(newfilename, overwrite=True)
-                    
-                logger.info("Written: " + newfilename)
-            
+                        # Assign updated sci image to the first [SCI] extension
+                        hdul[('SCI',1)].data = final_sig
+    
+                        # update the uncertainty extension with the sigma
+                        err = np.sqrt(signal) / exptime
+    
+                        hdul[('ERR',1)].data = err
+    
+                        # now write to a new file name
+                        newfilename = oldf.replace('_flt', '_' + str(dithertime) + 's' + '_flt')
+                        hdul.writeto(newfilename, overwrite=True)
+
+                    logger.info("Written: " + newfilename)
+
             logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
