@@ -92,7 +92,8 @@ age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
 
 del dl_cat
 
-print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
+print("Done loading all models. Time taken:")
+print("{:.3f}".format(time.time()-start), "seconds.")
 
 # ------------------
 grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/' + \
@@ -248,7 +249,8 @@ def model_galaxy(x, z, ms, age, logtau, av):
         age_idx = np.argmin(abs(model_ages - age*1e9))
         model_idx = tau_int_idx * len(model_ages)  +  age_idx
 
-        models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
+        models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - \
+        	int(np.floor(tau))))
         models_arr = all_m62_models[models_taurange_idx]
 
     elif tau >= 20.0:
@@ -305,7 +307,8 @@ def get_chi2(model, flam, ferr, apply_a=True, indices=None):
     # Compute a and chi2
     if isinstance(indices, np.ndarray):
 
-        a = np.nansum(flam[indices] * model / ferr[indices]**2) / np.nansum(model**2 / ferr[indices]**2)
+        a = np.nansum(flam[indices] * model / ferr[indices]**2) / \
+            np.nansum(model**2 / ferr[indices]**2)
         if apply_a:
             model = a*model
 
@@ -427,11 +430,12 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
         ax = fig.add_subplot(111)
 
         ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-        ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
+        ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
+        	fontsize=15)
 
         # extracted spectra
-        ax.plot(wav1, flam1, label='900 s')
-        ax.plot(wav2, flam2, label='1800 s')
+        #ax.plot(wav1, flam1, label='900 s')
+        #ax.plot(wav2, flam2, label='1800 s')
         ax.plot(wav3, flam3, label='3600 s')
 
         # models
@@ -474,12 +478,16 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
         ax.plot(w, m, label='model')
 
         # Add some text to the plot
-        ax.text(x=0.85, y=0.45, s=r'$\mathrm{SegID:\ }$' + str(segid), color='k', \
-            verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, size=14)
-        ax.text(x=0.85, y=0.4, s=r'$m_{Y106}\, = \, $' + obj_mag, color='k', \
-            verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, size=14)
-        ax.text(x=0.85, y=0.35, s=r'$\mathrm{SNR}_{3600}\, = \, $' + "{:.2f}".format(snr), color='k', \
-            verticalalignment='top', horizontalalignment='left', transform=ax.transAxes, size=14)
+        ax.text(x=0.85, y=0.45, s=r'$\mathrm{SegID:\ }$' + str(segid), color='k', 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, size=14)
+        ax.text(x=0.85, y=0.4, s=r'$m_{Y106}\, = \, $' + obj_mag, color='k', 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, size=14)
+        ax.text(x=0.85, y=0.35, s=r'$\mathrm{SNR}_{3600}\, = \, $' + "{:.2f}".format(snr), 
+        	color='k', 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, size=14)
 
         ax.legend(loc=4, fontsize=14)
 
@@ -638,7 +646,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, label_list, truth_arr):
 
     fig.savefig('corner_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
 
-    # ------------ Plot 100 random models from the parameter space within +-1sigma of corner estimates
+    # ------------ Plot 100 random models from the parameter 
+    # space within +-1sigma of corner estimates
     # first pull out required stuff from args
     wav = args_obj[0]
     flam = args_obj[1]
@@ -648,7 +657,8 @@ def read_pickle_make_plots(object_type, ndim, args_obj, label_list, truth_arr):
     ax3 = fig3.add_subplot(111)
 
     ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
+    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
+    	fontsize=15)
 
     model_count = 0
     ind_list = []
@@ -823,7 +833,8 @@ if __name__ == '__main__':
 
         pos_gal[i] = rg
 
-    print("Starting position for galaxies from where ball of walkers will be generated:\n", rgal_init)
+    print("Starting position for galaxies from where")
+    print("ball of walkers will be generated:\n", rgal_init)
 
     print("logpost at starting position for galaxy:")
     print(logpost_galaxy(rgal_init, wav, flam, ferr, zprior, zprior_sigma, x0))

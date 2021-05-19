@@ -91,7 +91,8 @@ all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap
 
 # Read in all models and parameters
 model_lam_grid = np.load(pears_figs_dir + 'model_lam_grid_withlines_chabrier.npy')
-model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy', mmap_mode='r')
+model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy', 
+    mmap_mode='r')
 
 ml = np.asarray(model_lam_grid, dtype=np.float64)
 
@@ -460,7 +461,8 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 
     fig.savefig(savedir + 'corner_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
 
-    # ------------ Plot 100 random models from the parameter space within +-1sigma of corner estimates
+    # ------------ Plot 100 random models from the parameter space 
+    # within +-1sigma of corner estimates
     # first pull out required stuff from args
     wav = args_obj[0]
     flam = args_obj[1]
@@ -532,7 +534,8 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
     ax3.set_xlim(prism_wmin, prism_wmax)
     ax3.set_ylim(ymin, ymax)
 
-    fig3.savefig(savedir + 'emcee_overplot_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
+    fig3.savefig(savedir + 'emcee_overplot_' + object_type + '.pdf', 
+        dpi=200, bbox_inches='tight')
 
     return None
 
@@ -570,7 +573,8 @@ def main():
 
             print("\n----------------")
             print("Filename:", os.path.basename(fl))
-            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = read_galaxy_data(fl)
+            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = \
+            read_galaxy_data(fl)
 
             # Basic plot to check data quality
             snr = get_snr(gal_wav, gal_flam)
@@ -582,15 +586,16 @@ def main():
             print("Galaxy ID:", galid)
 
             # Code block to check figure
-            """
             fig = plt.figure(figsize=(10,5))
             ax = fig.add_subplot(111)
             
             ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-            ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
+            ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
+            fontsize=15)
             
             ax.plot(gal_wav, gal_flam, lw=2.0, color='k')
-            ax.fill_between(gal_wav, gal_flam - gal_ferr, gal_flam + gal_ferr, color='gray', alpha=0.5)
+            ax.fill_between(gal_wav, gal_flam - gal_ferr, gal_flam + gal_ferr, 
+            color='gray', alpha=0.5)
 
             ax.plot(gal_wav, gal_simflam, lw=2.0, color='firebrick')
 
@@ -609,7 +614,6 @@ def main():
                 sys.exit(0)
             else:
                 continue
-            """
 
             # Only consider wavelengths where sensitivity is above 25%
             #x0 = np.where( (gal_wav >= prism_sens_wav[prism_wav_idx][0]  ) &
@@ -619,7 +623,8 @@ def main():
 
             # Setup for emcee
             # Labels for corner and trace plots
-            label_list_galaxy = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', r'$\mathrm{Age\, [Gyr]}$', \
+            label_list_galaxy = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', 
+            r'$\mathrm{Age\, [Gyr]}$', \
             r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$'] 
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
@@ -656,11 +661,13 @@ def main():
 
                 pos_gal[i] = rg
 
-            print("Starting position for galaxies from where ball of walkers will be generated:")
+            print("Starting position for galaxies from where")
+            print("ball of walkers will be generated:")
             print(rgal_init)
 
             print("logpost at starting position for galaxy:")
-            print(logpost_galaxy(rgal_init, gal_wav, gal_flam, gal_ferr, zprior, zprior_sigma, x0))
+            print(logpost_galaxy(rgal_init, gal_wav, gal_flam, gal_ferr, \
+                zprior, zprior_sigma, x0))
 
             # Running emcee
             print("\nRunning emcee...")
@@ -679,7 +686,8 @@ def main():
             print("Finished running emcee.")
             print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
 
-            read_pickle_make_plots(savedir, str(galid), ndim_gal, args_galaxy, label_list_galaxy)
+            read_pickle_make_plots(savedir, str(galid), ndim_gal, 
+                args_galaxy, label_list_galaxy)
 
     return None
 

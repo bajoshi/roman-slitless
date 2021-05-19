@@ -13,22 +13,49 @@ import socket
 import logging
 
 def get_dithered_locations(ra_cen, dec_cen, nobs):
+    """
+    For an illustration of all dither patterns see
+    WFC3 ISR 2010-09 by Dahlen et al.
+    And also see WFC3 ISR 2016-14 by Jay Anderson.
 
-    if nobs = 4:
-        # A simple 4-point dither
-        # Looks like this,
-        #   * --- xoff --- *
-        #   |              |
-        #   |     yoff     |
-        #   |              |
-        #   * --- xoff ---  *
+    e.g., A simple 4-point dither looks like this,
+                        *
+         |---- xoff ----|
+       - * 
+       |
+       |
+      yoff                  *
+       |     |---- xoff ----|
+       -     *
 
+    See fig 3 in Dahlen et al. above
+    in their DITHER BOX (-MIN) pattern
+    the xoff above is 4.0 and yoff is 2.5.
+
+
+
+    """
+
+    ra_list, dec_list = [], []
+
+    if nobs == 2:
+        pass
+
+    if nobs == 3:
+        pass
+
+    if nobs == 4:
         # Hardcoded offsets
-        xoff = 0.5
-        yoff = 0.5
+        xoff = 4.0
+        yoff = 2.5
 
-        # 
 
+
+    if nobs == 5:
+        pass
+
+    if nobs == 6:
+        pass
 
     return ra_list, dec_list
 
@@ -41,6 +68,8 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
 
     # Generate all dither positions based on exptime
     nobs = int(exptime / 600)  # i.e, min exptime is 600 and anything more gets dithered
+    if nobs == 0:
+        nobs = 1
     ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
 
     # Write list
@@ -189,13 +218,16 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
     dec_cen = float(h[0].header['CRVAL2'])
 
     # OBS LST
-    create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name, img_suffix, machine)
+    create_obs_lst(lst_dir, dir_img_path, dir_img_filt, 
+        dir_img_name, img_suffix, machine)
 
     # WCS LST
-    create_wcs_lst(lst_dir, img_suffix, roll_angle_list, simroot, ra_cen, dec_cen, 'P120', exptime)
+    create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
+        simroot, ra_cen, dec_cen, 'P120', exptime)
 
     # FLT LST
-    create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, machine, roll_angle_list)
+    create_flt_lst(lst_dir, result_path, simroot, img_suffix, 
+        exptime_list, machine, roll_angle_list)
 
     # SED LST
     create_sed_lst(lst_dir, seds_path, img_suffix, machine)
@@ -357,6 +389,8 @@ def main():
             img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
             exptime_list, simroot)
 
+        sys.exit(0)
+
         # Change directory to where the simulation results will go
         # This MUST be done after creating lst files otherwise
         # sed lst generation will fail.
@@ -403,7 +437,8 @@ def main():
             continue
     
         # ---------------------- Get sources
-        sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
+        sources = pylinear.source.SourceCollection(segfile, obslst, 
+            detindex=0, maglim=maglim)
     
         # Set up and tabulate
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
@@ -498,7 +533,8 @@ def main():
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
 
             # ---------------------- Extraction
-            fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + str(exptime) + 's' + obsstr + '.lst'
+            fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
+                     str(exptime) + 's' + obsstr + '.lst'
             assert os.path.isfile(fltlst)
             print("FLT LST:", fltlst)
     
