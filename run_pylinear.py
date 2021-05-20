@@ -51,8 +51,8 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     ra_list, dec_list = [ra_cen], [dec_cen]
 
     if nobs == 2:
-        ra_list.append(ra_cen   + 3.5*pix_to_deg)
-        dec_list.append(dec_cen + 3.5*pix_to_deg)
+        ra_list.append(ra_cen   + 30*pix_to_deg)
+        dec_list.append(dec_cen + 30*pix_to_deg)
 
     if nobs == 3:
         ra_list.append(ra_cen   + 3.33*pix_to_deg)
@@ -375,6 +375,7 @@ def main():
         seds_path = home + '/Documents/roman_slitless_sims_seds/'
         result_path = home + '/Documents/roman_slitless_sims_results/'
         obsstr = ''
+        tablespath = result_path + 'tables/'
     
     # Set imaging sims dir
     img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
@@ -472,10 +473,9 @@ def main():
             logger.info("WCS LST: " + wcslst)
 
             # ---------------------- Get sources
-            """
             sources = pylinear.source.SourceCollection(segfile, obslst, 
                 detindex=0, maglim=maglim)
-    
+
             # Set up
             grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
             tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
@@ -486,7 +486,8 @@ def main():
             simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
             fltnames = simulate.run(grisms, sources, beam)
             logger.info("Simulation done.")
-            """
+
+            sys.exit(0)
             
             # ---------------------- Add noise
             logger.info("Adding noise... ")

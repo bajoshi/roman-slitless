@@ -542,17 +542,20 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    datadir = home + '/Documents/sn_sit_hackday/hackday_testset_prism_deep_hostIav2/'
+    datadir = home + '/Documents/sn_sit_hackday/hackday_testset_prism_shallow_hostIav2/'
     savedir = datadir + 'results/'
 
     checkplot = False
 
     # these files don't have galaxy spectra
-    #toskip_shallow = ['10129', '10460', '10850', '10660', '10043', 
-    #          '10902', '10446', '10441']
-    toskip_deep = ['10043', '10037', '10038', '10015']
+    toskip_shallow = ['10847', '10417', '10172', '10367',
+                      '10015', '10996', '10605', '10611',
+                      '10378', '10230', '10034', '10552',
+                      '10247', '10907', '10043', '10254',
+                      '10485']
+    #toskip_deep = ['10043', '10037', '10038', '10015']
 
-    toskip = toskip_deep
+    toskip = toskip_shallow
 
     # Other preliminary stuff
     nwalkers = 1200
@@ -586,6 +589,8 @@ def main():
             fl_name_base = os.path.basename(fl).split('.DAT')[0]
             galid = int(fl_name_base.split('_')[-1].lstrip('SN'))
             print("Galaxy ID:", galid)
+
+            continue
 
             if checkplot:
                 # Code block to check figure
