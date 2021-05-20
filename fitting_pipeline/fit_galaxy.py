@@ -537,6 +537,10 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
     fig3.savefig(savedir + 'emcee_overplot_' + object_type + '.pdf', 
         dpi=200, bbox_inches='tight')
 
+    plt.clf()
+    plt.cla()
+    plt.close()
+
     return None
 
 def main():
