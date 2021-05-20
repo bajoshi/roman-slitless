@@ -590,8 +590,6 @@ def main():
             galid = int(fl_name_base.split('_')[-1].lstrip('SN'))
             print("Galaxy ID:", galid)
 
-            continue
-
             if checkplot:
                 # Code block to check figure
                 fig = plt.figure(figsize=(10,5))
