@@ -487,6 +487,7 @@ def main():
             simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
             fltnames = simulate.run(grisms, sources, beam)
             logger.info("Simulation done.")
+            """
             
             # ---------------------- Add noise
             logger.info("Adding noise... ")
@@ -504,6 +505,7 @@ def main():
 
             dithertime = int(exptime / nobs)
             
+            """
             for i in range(len(roll_angle_list)):
 
                 for d in range(nobs):
