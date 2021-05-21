@@ -51,8 +51,8 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     ra_list, dec_list = [ra_cen], [dec_cen]
 
     if nobs == 2:
-        ra_list.append(ra_cen   + 30*pix_to_deg)
-        dec_list.append(dec_cen + 30*pix_to_deg)
+        ra_list.append(ra_cen   + 3.5*pix_to_deg)
+        dec_list.append(dec_cen + 3.5*pix_to_deg)
 
     if nobs == 3:
         ra_list.append(ra_cen   + 3.33*pix_to_deg)
@@ -254,7 +254,7 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 
     # WCS LST
     create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
-        simroot, ra_cen, dec_cen, 'P120', exptime_list, nobs_list)
+        simroot, ra_cen, dec_cen, 'P127', exptime_list, nobs_list)
 
     # FLT LST
     create_flt_lst(lst_dir, result_path, simroot, img_suffix, 
@@ -476,6 +476,7 @@ def main():
             sources = pylinear.source.SourceCollection(segfile, obslst, 
                 detindex=0, maglim=maglim)
 
+            """
             # Set up
             grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
             tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
@@ -486,8 +487,6 @@ def main():
             simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
             fltnames = simulate.run(grisms, sources, beam)
             logger.info("Simulation done.")
-
-            sys.exit(0)
             
             # ---------------------- Add noise
             logger.info("Adding noise... ")
@@ -538,7 +537,7 @@ def main():
                         nan_idx = np.asarray(nan_idx)
                         if nan_idx.size:
                             logger.critical("Found NaNs. Resolve this issue first. Exiting.")
-                            sys.exit(0)
+                            sys.exit(1)
                         
                         # Multiply the science image with the exptime
                         # sci image originally in electrons/s
@@ -571,6 +570,7 @@ def main():
             logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
+            """
 
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
