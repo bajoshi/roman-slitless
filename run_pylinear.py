@@ -214,7 +214,7 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
 def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
     dir_img_path, dir_img_filt, dir_img_name, seds_path, result_path, \
-    exptime_list, nobs_list, simroot):
+    exptime_list, nobs_list, simroot, disp_elem):
     """
     This function creates the lst files needed as pylinear inputs.
     It requires the following args --
@@ -254,7 +254,7 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 
     # WCS LST
     create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
-        simroot, ra_cen, dec_cen, 'P127', exptime_list, nobs_list)
+        simroot, ra_cen, dec_cen, disp_elem, exptime_list, nobs_list)
 
     # FLT LST
     create_flt_lst(lst_dir, result_path, simroot, img_suffix, 
@@ -388,6 +388,7 @@ def main():
 
     dir_img_filt = 'hst_wfc3_f105w'
     simroot = 'romansim_prism'
+    disp_elem = 'P127'
     
     # ---------------------- Now set simulation counter and loop
     sim_count = 0
@@ -403,7 +404,7 @@ def main():
         # Calling sequence for testing on laptop
         #create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, \
         #    img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
-        #    exptime_list, nobs_list, simroot)
+        #    exptime_list, nobs_list, simroot, disp_elem)
         #sys.exit(0)
 
         # ---------------------- 
@@ -420,7 +421,7 @@ def main():
 
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
             img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
-            exptime_list, nobs_list, simroot)
+            exptime_list, nobs_list, simroot, disp_elem)
 
         # Change directory to where the simulation results will go
         # This MUST be done after creating lst files otherwise
@@ -585,6 +586,11 @@ def main():
             tabnames = tabulate.run(grisms, sources, beam)
     
             extraction_parameters = grisms.get_default_extraction()
+
+            # Reset dlamb to 50.0 for the prism
+            # Hack for now. This should be hardcoded to 50 in the xml file.
+            if disp_elem == 'P127':
+                extraction_parameters['dlamb'] = 50.0
     
             extpar_fmt = '\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
             print(extpar_fmt.format(**extraction_parameters))
@@ -598,7 +604,7 @@ def main():
             print("Extracting...")
             pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
                 method, extroot, tablespath, 
-                inverter='lsqr', ncpu=0, group=False)
+                inverter='lsqr', ncpu=1, group=False)
     
             print("Simulation and extraction done.")
             try:
