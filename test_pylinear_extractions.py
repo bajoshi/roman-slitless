@@ -95,6 +95,9 @@ del dl_cat
 print("Done loading all models. Time taken:")
 print("{:.3f}".format(time.time()-start), "seconds.")
 
+# Set pylinear f_lambda scaling factor
+pylinear_flam_scale_fac = 1e-17
+
 # ------------------
 grism_sens_cat = np.genfromtxt(home + '/Documents/pylinear_ref_files/' + \
     'pylinear_config/Roman/roman_throughput_20190325.txt', \
@@ -250,7 +253,7 @@ def model_galaxy(x, z, ms, age, logtau, av):
         model_idx = tau_int_idx * len(model_ages)  +  age_idx
 
         models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - \
-        	int(np.floor(tau))))
+            int(np.floor(tau))))
         models_arr = all_m62_models[models_taurange_idx]
 
     elif tau >= 20.0:
@@ -365,6 +368,137 @@ def model_sn(x, z, day, sn_av):
 
     return sn_mod
 
+def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
+
+    # --------------- plot each spectrum in a for loop
+    for i in range(len(sedlst)):
+
+        # Get spectra
+        segid = sedlst['segid'][i]
+
+        print("\nPlotting SegID:", segid)
+
+        wav = ext_hdu[('SOURCE', segid)].data['wavelength']
+        flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+
+        # Check SNR
+        snr = get_snr(wav, flam)
+
+        print("SNR for this spectrum:", "{:.2f}".format(snr))
+
+        # Also get magnitude
+        segid_idx = np.where(cat['NUMBER'] == int(segid))[0]
+        obj_mag = "{:.3f}".format(float(cat['MAG_AUTO'][segid_idx]))
+        print("Object magnitude from SExtractor:", obj_mag)
+
+        if snr < 3.0:
+            print("Skipping due to low SNR.")
+            continue
+
+        # Set noise level based on snr
+        noise_lvl = 1/snr
+
+        # Read in the dummy template passed to pyLINEAR
+        template_name = os.path.basename(sedlst['sed_path'][i])
+        template_name_list = template_name.split('.txt')[0].split('_')
+
+        # Get template properties
+        if 'salt' in template_name:
+            
+            sn_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
+            sn_z = float(template_name_list[-2].replace('p', '.').replace('z',''))
+            sn_day = int(template_name_list[-3].replace('day',''))
+
+            print('SN info:')
+            print('Redshift:', sn_z)
+            print('Phase:', sn_day)
+            print('Av:', sn_av)
+
+        else:
+
+            galaxy_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
+            galaxy_met = float(template_name_list[-2].replace('p', '.').replace('met',''))
+            galaxy_tau = float(template_name_list[-3].replace('p', '.').replace('tau',''))
+            galaxy_age = float(template_name_list[-4].replace('p', '.').replace('age',''))
+            galaxy_ms = float(template_name_list[-5].replace('p', '.').replace('ms',''))
+            galaxy_z = float(template_name_list[-6].replace('p', '.').replace('z',''))
+
+            galaxy_logtau = np.log10(galaxy_tau)
+
+            print('Galaxy info:')
+            print('Redshift:', galaxy_z)
+            print('Stellar mass:', galaxy_ms)
+            print('Age:', galaxy_age)
+            print('Tau:', galaxy_tau)
+            print('Metallicity:', galaxy_met)
+            print('Av:', galaxy_av)
+
+        # Now plot
+        fig = plt.figure(figsize=(13,6))
+        ax = fig.add_subplot(111)
+
+        ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+        ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
+            fontsize=15)
+
+        # extracted spectra
+        ax.plot(wav, flam, label='Extracted spectrum')
+
+        # models
+        if 'salt' in template_name:
+            m = model_sn(wav, sn_z, sn_day, sn_av)
+        else:
+            m = model_galaxy(wav, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
+
+        # Only consider wavelengths where sensitivity is above 25%
+        if disperser == 'grism':
+            x0 = np.where( (wav >= grism_sens_wav[grism_wav_idx][0]  ) &
+                           (wav <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+        elif disperser == 'prism':
+            x0 = np.where( (wav >= prism_sens_wav[prism_wav_idx][0]  ) &
+                           (wav <= prism_sens_wav[prism_wav_idx][-1] ) )[0]
+
+        m = m[x0]
+        w = wav[x0]
+        flam = flam[x0]
+
+        a, chi2 = get_chi2(m, flam, noise_lvl*flam)
+
+        print("Object a:", "{:.4e}".format(a))
+        print("Object base model chi2:", chi2)
+
+        # scale the model
+        # using the longer exptime alpha for now
+        m = m * a
+
+        ax.plot(w, m, label='model')
+
+        # Add some text to the plot
+        ax.text(x=0.85, y=0.45, s=r'$\mathrm{SegID:\ }$' + str(segid), color='k', 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, size=14)
+        ax.text(x=0.85, y=0.4, s=r'$m_{Y106}\, = \, $' + obj_mag, color='k', 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, size=14)
+        ax.text(x=0.85, y=0.35, s=r'$\mathrm{SNR}\, = \, $' + "{:.2f}".format(snr), 
+            color='k', 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, size=14)
+
+        ax.legend(loc=4, fontsize=14)
+
+        ax.set_xlim(7800, 17800)
+
+        plt.show()
+
+        plt.clf()
+        plt.cla()
+        plt.close()
+
+        if i > 30: break
+
+    return None
+
 def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
@@ -431,7 +565,7 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
         ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
         ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
-        	fontsize=15)
+            fontsize=15)
 
         # extracted spectra
         #ax.plot(wav1, flam1, label='900 s')
@@ -485,13 +619,17 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
             verticalalignment='top', horizontalalignment='left', 
             transform=ax.transAxes, size=14)
         ax.text(x=0.85, y=0.35, s=r'$\mathrm{SNR}_{3600}\, = \, $' + "{:.2f}".format(snr), 
-        	color='k', 
+            color='k', 
             verticalalignment='top', horizontalalignment='left', 
             transform=ax.transAxes, size=14)
 
         ax.legend(loc=4, fontsize=14)
 
         plt.show()
+
+        plt.clf()
+        plt.cla()
+        plt.close()
 
     return None
 
@@ -658,7 +796,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, label_list, truth_arr):
 
     ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
     ax3.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
-    	fontsize=15)
+        fontsize=15)
 
     model_count = 0
     ind_list = []
@@ -710,7 +848,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, label_list, truth_arr):
 if __name__ == '__main__':
     
     # --------------- Preliminary stuff
-    ext_root = "romansim_"
+    ext_root = "romansim_prism"
 
     img_basename = '5deg_'
     img_suffix = 'Y106_0_3'
@@ -733,10 +871,17 @@ if __name__ == '__main__':
     'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
     cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
-    # Set pylinear f_lambda scaling factor
-    pylinear_flam_scale_fac = 1e-17
+    # --------------- Read in the extracted spectra
+    ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + exptime1 + '_x1d.fits'
+    ext_hdu = fits.open(ext_spec_filename)
+    print("Read in extracted spectra from:", ext_spec_filename)
+
+    plot_single_exptime_extraction(sedlst, ext_hdu)
+
+    sys.exit(0)
 
     # --------------- Read in the extracted spectra
+    # For all exposure times
     ext_spec_filename1 = ext_spectra_dir + ext_root + img_suffix + exptime1 + '_x1d.fits'
     ext_hdu1 = fits.open(ext_spec_filename1)
     print("Read in extracted spectra from:", ext_spec_filename1)

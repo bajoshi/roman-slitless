@@ -164,7 +164,8 @@ def main():
             dat_file = fl.replace('.h5','.DAT')
             dat_file = dat_file.replace('results/emcee_sampler_', 'Prism_shallow_hostIa_SN0')
             
-            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = read_galaxy_data(dat_file)
+            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = \
+            read_galaxy_data(dat_file)
 
             obj_wav = gal_wav
             obj_flam = gal_flam
@@ -333,7 +334,8 @@ def main():
     ax2 = fig.add_subplot(gs[7:])
 
     ax1.set_xlabel(r'$\mathrm{SNR}$', fontsize=16)
-    ax1.set_ylabel(r'$\frac{z_\mathrm{corner} - z_\mathrm{truth}}{1 + z_\mathrm{truth}}$', fontsize=16)
+    ax1.set_ylabel(r'$\frac{z_\mathrm{corner} - z_\mathrm{truth}}{1 + z_\mathrm{truth}}$', \
+        fontsize=16)
 
     ax1.errorbar(snr_arr, z_acc, yerr=z_err, fmt='o', \
         markersize=2.0, markerfacecolor='k', markeredgecolor='k', ecolor='k', elinewidth=0.3)
@@ -341,8 +343,10 @@ def main():
 
     ax1.text(x=0.8, y=0.95, s=r'$\mathrm{N_{total}\,=\,}$' + str(num_plot), color='k', \
         verticalalignment='top', horizontalalignment='left', transform=ax1.transAxes, size=14)
-    #ax1.text(x=0.78, y=0.1, s=r'$\mathrm{\sigma_{NMAD}\,=\,}$' + '{:.4f}'.format(nmad), color='k', \
-    #    verticalalignment='top', horizontalalignment='left', transform=ax1.transAxes, size=14)
+    #ax1.text(x=0.78, y=0.1, s=r'$\mathrm{\sigma_{NMAD}\,=\,}$' + \
+    #         '{:.4f}'.format(nmad), color='k',
+    #          verticalalignment='top', horizontalalignment='left', 
+    #          transform=ax1.transAxes, size=14)
 
     # -------- Side histogram
     if runtype == 'galaxy':
@@ -366,19 +370,25 @@ def main():
         zoom_idx = np.where(np.abs(z_acc) <= 0.01)[0]
         print("Num points within 1 percent accuracy:", len(zoom_idx))
 
-        ax_inset.errorbar(snr_arr[zoom_idx], z_acc[zoom_idx], yerr=z_err[:, zoom_idx], fmt='o', \
-            markersize=2.0, markerfacecolor='k', markeredgecolor='k', ecolor='k', elinewidth=0.3)
+        ax_inset.errorbar(snr_arr[zoom_idx], z_acc[zoom_idx],
+            yerr=z_err[:, zoom_idx], fmt='o',
+            markersize=2.0, markerfacecolor='k', markeredgecolor='k',
+            ecolor='k', elinewidth=0.3)
         ax_inset.axhline(y=0.0, ls='--', color='steelblue', lw=1.5)
 
-        ax_inset.text(x=0.7, y=0.25, s=r'$\mathrm{N_{\leq1\%}\,=\,}$' + str(len(zoom_idx)), color='k', \
-            verticalalignment='top', horizontalalignment='left', transform=ax_inset.transAxes, size=11)
+        ax_inset.text(x=0.7, y=0.25, s=r'$\mathrm{N_{\leq1\%}\,=\,}$' + str(len(zoom_idx)), 
+            color='k', \
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax_inset.transAxes, size=11)
 
         ax_inset.set_ylim(-0.015, 0.015)
 
     if runtype == 'galaxy':
-        fig.savefig(fit_results_dir + 'snr_vs_z_accuracy_snanaGALsim.pdf', dpi=300, bbox_inches='tight')
+        fig.savefig(fit_results_dir + 'snr_vs_z_accuracy_snanaGALsim.pdf', 
+            dpi=300, bbox_inches='tight')
     else:
-        fig.savefig(fit_results_dir + 'snr_vs_z_accuracy_snanaSNsim.pdf', dpi=300, bbox_inches='tight')
+        fig.savefig(fit_results_dir + 'snr_vs_z_accuracy_snanaSNsim.pdf', 
+            dpi=300, bbox_inches='tight')
 
     del fig, ax1, ax2
 
@@ -392,7 +402,8 @@ def main():
     ax2 = fig1.add_subplot(gs[8:])
 
     ax1.set_ylabel(r'$z_\mathrm{corner}$', fontsize=16)
-    ax2.set_ylabel(r'$\frac{z_\mathrm{corner} - z_\mathrm{truth}}{1 + z_\mathrm{truth}}$', fontsize=16)
+    ax2.set_ylabel(r'$\frac{z_\mathrm{corner} - z_\mathrm{truth}}{1 + z_\mathrm{truth}}$', 
+        fontsize=16)
     ax2.set_xlabel(r'$z_\mathrm{truth}$', fontsize=16)
 
     ax1.errorbar(z_truth, z_corner, yerr=z_err, fmt='o', \
@@ -428,12 +439,16 @@ def main():
         rect = [0.71, 0.14, 0.2, 0.1]  # [left, bottom, width, height]
         ax_inset = fig1.add_axes(rect)
 
-        ax_inset.errorbar(z_truth[zoom_idx], z_acc[zoom_idx], yerr=z_err[:, zoom_idx], fmt='o', \
-            markersize=2.0, markerfacecolor='k', markeredgecolor='k', ecolor='k', elinewidth=0.3)
+        ax_inset.errorbar(z_truth[zoom_idx], z_acc[zoom_idx], 
+            yerr=z_err[:, zoom_idx], fmt='o', \
+            markersize=2.0, markerfacecolor='k', 
+            markeredgecolor='k', ecolor='k', elinewidth=0.3)
         ax_inset.axhline(y=0.0, ls='--', color='steelblue', lw=1.5)
 
-        ax_inset.text(x=0.48, y=0.25, s=r'$\mathrm{N_{\leq1\%}\,=\,}$' + str(len(zoom_idx)), color='k', \
-            verticalalignment='top', horizontalalignment='left', transform=ax_inset.transAxes, size=11)
+        ax_inset.text(x=0.48, y=0.25, s=r'$\mathrm{N_{\leq1\%}\,=\,}$' + str(len(zoom_idx)), 
+            color='k', \
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax_inset.transAxes, size=11)
 
         ax_inset.set_xlim(0.1, 0.8)
         ax_inset.set_ylim(-0.015, 0.015)
@@ -455,7 +470,8 @@ def main():
     print("Total catastrophic fails:", len(fail_idx))
 
     ax.set_xlabel(r'$\mathrm{SNR}$', fontsize=16)
-    catfail_str = r'$\mathrm{Catastrophic\ failure\ fraction}\ \left(\frac{\Delta z}{1+z}\,\geq\,0.1\right)$'
+    catfail_str = r'$\mathrm{Catastrophic\ failure\ fraction}$' + \
+                  r'$\left(\frac{\Delta z}{1+z}\,\geq\,0.1\right)$'
     ax.set_ylabel(catfail_str, fontsize=16)
 
     counts, bins = np.histogram(snr_arr[fail_idx], 32, range=(3, 35))
@@ -467,9 +483,11 @@ def main():
     ax.bar(x=bar_cen, height=counts/num_plot, width=1.0, color='None', edgecolor='k')
 
     if runtype == 'galaxy':
-        fig2.savefig(fit_results_dir + 'fails_hist_snr_snanaGALsim.pdf', dpi=300, bbox_inches='tight')
+        fig2.savefig(fit_results_dir + 'fails_hist_snr_snanaGALsim.pdf', 
+            dpi=300, bbox_inches='tight')
     else:
-        fig2.savefig(fit_results_dir + 'fails_hist_snr_snanaSNsim.pdf', dpi=300, bbox_inches='tight')
+        fig2.savefig(fit_results_dir + 'fails_hist_snr_snanaSNsim.pdf', 
+            dpi=300, bbox_inches='tight')
 
     # ---------------------- 
     # Phase recovery for SNe
