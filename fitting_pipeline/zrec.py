@@ -18,11 +18,14 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 home = os.getenv('HOME')
-sn_fit_results_dir = home + '/Documents/sn_sit_hackday/'
-snana_sn_spec_dir = home + '/Documents/sn_sit_hackday/20210325_BMR_PRISM/'
 
-gal_fit_results_dir = home + '/Desktop/Prism_shallow_hostIa/results/'
-snana_gal_spec_dir = home + '/Desktop/Prism_shallow_hostIa/'
+#sn_fit_results_dir = home + '/Documents/sn_sit_hackday/'
+#snana_sn_spec_dir = home + '/Documents/sn_sit_hackday/20210325_BMR_PRISM/'
+
+gal_fit_results_dir = home + '/Documents/sn_sit_hackday/' + \
+                      'hackday_testset_prism_shallow_hostIav2/results/'
+snana_gal_spec_dir = home + '/Documents/sn_sit_hackday/' + \
+                      'hackday_testset_prism_shallow_hostIav2/'
 
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
@@ -162,7 +165,8 @@ def main():
         flbasename = os.path.basename(fl)
         if runtype == 'galaxy':
             dat_file = fl.replace('.h5','.DAT')
-            dat_file = dat_file.replace('results/emcee_sampler_', 'Prism_shallow_hostIa_SN0')
+            dat_file = dat_file.replace('results/emcee_sampler_', 
+                                        'Prism_shallow_hostIav2_SN0')
             
             nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = \
             read_galaxy_data(dat_file)
@@ -211,7 +215,7 @@ def main():
         sampler = emcee.backends.HDFBackend(fl)
 
         samples = sampler.get_chain()
-        print("Working on sampler:", fl)
+        print("Working on sampler:", flbasename)
 
         # Get autocorrelation time
         # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.

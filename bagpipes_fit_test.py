@@ -10,7 +10,8 @@ def load_data(hostid):
     
     hostid = int(hostid)
     
-    ext_spec_filename = '/Users/baj/Documents/roman_slitless_sims_results/plffsn2_run_nov30/romansim1_ext_x1d.fits'
+    ext_spec_filename = '/Users/baj/Documents/roman_slitless_sims_results/' + \
+                        'romansim_prismY106_0_3_900s_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     
     pylinear_flam_scale_fac = 1e-17
@@ -24,9 +25,12 @@ def load_data(hostid):
 
     return spectrum
 
-def main():
+def main(segid_to_test):
 
-    galaxy = pipes.galaxy('755', load_data, photometry_exists=False)
+    print("Running BAGPIPES on galaxy SegID:", segid_to_test)
+    galaxy = pipes.galaxy(str(segid_to_test), load_data, photometry_exists=False)
+
+    galaxy.plot()
 
     dblplaw = {}                        
     dblplaw["tau"] = (0., 15.)            
@@ -51,19 +55,12 @@ def main():
     dust["n_prior_sigma"] = 0.3
     
     fit_instructions = {}
-    fit_instructions["redshift"] = (0.7, 1.15)
-
-    # Redshift ranges for the test galaxies
-    # also make sure to change the redshift mu prior below 
-    # (1.5, 2.5)  # for 207
-    # (0.2, 0.7)  # for 475
-    # (1.4, 1.8)  # for 548
-    # (0.7, 1.15)  # for 755
+    fit_instructions["redshift"] = (0.1, 2.5)
     
     fit_instructions["t_bc"] = 0.01
-    fit_instructions["redshift_prior"] = "Gaussian"
-    fit_instructions["redshift_prior_mu"] = 0.92
-    fit_instructions["redshift_prior_sigma"] = 0.05
+    #fit_instructions["redshift_prior"] = "Gaussian"
+    #fit_instructions["redshift_prior_mu"] = 0.5
+    #fit_instructions["redshift_prior_sigma"] = 0.2
     fit_instructions["dblplaw"] = dblplaw 
     fit_instructions["nebular"] = nebular
     fit_instructions["dust"] = dust
@@ -74,7 +71,9 @@ def main():
     calib = {}
     calib["type"] = "polynomial_bayesian"
     
-    calib["0"] = (0.5, 1.5) # Zero order is centred on 1, at which point there is no change to the spectrum.
+    calib["0"] = (0.5, 1.5)
+    # Zero order is centred on 1, 
+    # at which point there is no change to the spectrum.
     calib["0_prior"] = "Gaussian"
     calib["0_prior_mu"] = 1.0
     calib["0_prior_sigma"] = 0.25
@@ -111,6 +110,6 @@ def main():
     return None
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1])
     sys.exit(0)
 

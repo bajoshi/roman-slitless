@@ -371,6 +371,7 @@ def model_sn(x, z, day, sn_av):
 def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
+    count = 0
     for i in range(len(sedlst)):
 
         # Get spectra
@@ -442,7 +443,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
             fontsize=15)
 
         # extracted spectra
-        ax.plot(wav, flam, label='Extracted spectrum')
+        ax.plot(wav, flam, label='Extracted spectrum', lw=1.5)
 
         # models
         if 'salt' in template_name:
@@ -471,7 +472,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
         # using the longer exptime alpha for now
         m = m * a
 
-        ax.plot(w, m, label='model')
+        ax.plot(w, m, label='model', lw=2.5)
 
         # Add some text to the plot
         ax.text(x=0.85, y=0.45, s=r'$\mathrm{SegID:\ }$' + str(segid), color='k', 
@@ -495,7 +496,9 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
         plt.cla()
         plt.close()
 
-        if i > 30: break
+        count += 1
+
+        if count > 15: break
 
     return None
 

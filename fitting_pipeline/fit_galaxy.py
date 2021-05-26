@@ -181,7 +181,52 @@ def get_template(age, tau, tauv, metallicity, \
 
     return model_llam
 
-def model_galaxy(x, z, ms, age, logtau, av):
+@njit
+def add_stellar_vdisp(spec_wav, spec_flux, vdisp):
+
+    # Now compute the broadened spectrum by numerically
+    # integrating a Gaussian stellar velocity function
+    # with the stellar vdisp.
+    # Integration done numerically as a Riemann sum.
+
+    speed_of_light = 299792.458  # km per second
+    delta_v = 10.0
+
+    vdisp_spec = np.zeros(len(spec_wav))
+
+    #print(len(spec_wav))
+
+    for w in range(len(spec_wav)):
+        #print(w)
+        
+        lam = spec_wav[w]
+
+        I = 0
+        
+        # Now compute the integrand numerically
+        # between velocities that are within 
+        # +- 3-sigma using the specified velocity dispersion.
+        # Mean of all velocities should be 0,
+        # of course since the avg vel of all stars within
+        # a rotating disk or in an elliptical galaxy should be zero.
+        for v in np.arange(-3*vdisp, 3*vdisp, delta_v):
+
+            beta = 1 + (v/speed_of_light)
+            new_lam = lam / beta
+            new_lam_idx = np.argmin(np.abs(spec_wav - new_lam))
+
+            flux_at_new_lam = spec_flux[new_lam_idx]
+
+            gauss_exp_func = np.exp(-1*v*v/(2*vdisp*vdisp))
+
+            prod = flux_at_new_lam * gauss_exp_func * delta_v
+            I += prod
+
+        vdisp_spec[w] = I / (vdisp*np.sqrt(2*np.pi))
+
+    return vdisp_spec
+
+def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=True):
     """
     Expects to get the following arguments
     
@@ -234,8 +279,21 @@ def model_galaxy(x, z, ms, age, logtau, av):
 
     model_llam = np.asarray(model_llam, dtype=np.float64)
 
-    # ------ Apply dust extinction
-    model_dusty_llam = du.get_dust_atten_model(ml, model_llam, av)
+    # ------ Apply stellar velocity dispersion
+    # assumed for now as a constant 200 km/s
+    # This does not have to be done each time this function
+    # is called because we're assuming a constant vel disp
+    if stellar_vdisp:
+        sigmav = 220
+        model_vdisp = add_stellar_vdisp(ml, model_llam, sigmav)
+
+        # ------ Apply dust extinction
+        model_dusty_llam = du.get_dust_atten_model(ml, model_vdisp, av)
+
+    else:
+        # ------ Apply dust extinction
+        model_dusty_llam = du.get_dust_atten_model(ml, model_llam, av)        
+
     model_dusty_llam = np.asarray(model_dusty_llam, dtype=np.float64)
 
     # ------ Multiply luminosity by stellar mass
@@ -246,10 +304,10 @@ def model_galaxy(x, z, ms, age, logtau, av):
     #model_flam_z = Lsol * model_flam_z
 
     # ------ Apply LSF
-    model_lsfconv = gaussian_filter1d(input=model_flam_z, sigma=30.0)
+    #model_lsfconv = gaussian_filter1d(input=model_flam_z, sigma=30.0)
 
-    # ------ Downgrade to grism resolution
-    model_mod = griddata(points=model_lam_z, values=model_lsfconv, xi=x)
+    # ------ Downgrade and regrid to grism resolution
+    model_mod = griddata(points=model_lam_z, values=model_flam_z, xi=x)
 
     return model_mod
 
@@ -347,7 +405,7 @@ def read_galaxy_data(galaxy_filename):
         # First initialize arrays to save spectra
         # Also get truths
         for line in all_lines:
-            if 'SIM_REDSHIFT_CMB:' in line:
+            if 'SIM_REDSHIFT_HOST:' in line:
                 true_z = float(line.split()[1])
 
             if 'NSPECTRA:' in line:
@@ -361,14 +419,14 @@ def read_galaxy_data(galaxy_filename):
 
         assert nspectra == 1
 
-        # SEt up empty arrays
+        # Set up empty arrays
         l0 = np.empty(spec_nlam)
         l1 = np.empty(spec_nlam)
         gal_flam = np.empty(spec_nlam)
         gal_simflam = np.empty(spec_nlam)
         gal_ferr = np.empty(spec_nlam)
 
-        # NOw get spectra
+        # Now get spectra
         i = 0
 
         for line in all_lines:
@@ -692,7 +750,8 @@ def main():
                 with Pool() as pool:
 
                     sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, 
-                        args=args_galaxy, backend=backend, pool=pool, moves=emcee.moves.KDEMove())
+                        args=args_galaxy, backend=backend, pool=pool, 
+                        moves=emcee.moves.KDEMove())
                     sampler.run_mcmc(pos_gal, niter, progress=True)
 
                 print("Finished running emcee.")

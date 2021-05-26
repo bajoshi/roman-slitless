@@ -367,7 +367,8 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
 
     fig.savefig('corner_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
 
-    # ------------ Plot 100 random models from the parameter space within +-1sigma of corner estimates
+    # ------------ Plot 100 random models from the parameter 
+    # space within +-1sigma of corner estimates
     # first pull out required stuff from args
     wav = args_obj[0]
     flam = args_obj[1]
@@ -548,7 +549,8 @@ def main():
         # Set up args
         args_sn = [sn_wav, sn_flam, sn_ferr]
 
-        print("logpost at starting position for SN:", logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
+        print("logpost at starting position for SN:")
+        print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
 
         # --------------------------------------------------
         # Now run on SN
