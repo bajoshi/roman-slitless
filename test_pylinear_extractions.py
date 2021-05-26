@@ -3,10 +3,6 @@ import scipy
 from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import griddata
 
-import astropy.units as u
-from specutils.analysis import snr_derived
-from specutils import Spectrum1D
-
 import os
 import sys
 import socket
@@ -31,11 +27,13 @@ ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 
-stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
+fitting_pipeline_dir = roman_slitless_dir + "fitting_pipeline/"
+fitting_utils = fitting_pipeline_dir + "/utils/"
 
-sys.path.append(stacking_utils)
+sys.path.append(fitting_utils)
 import proper_and_lum_dist as cosmo
 import dust_utils as du
+from get_snr import get_snr
 
 start = time.time()
 print("Starting at:", dt.datetime.now())
@@ -84,7 +82,7 @@ for t in range(tau_low, tau_high, 1):
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
 
 # Also load in lookup table for luminosity distance
-dl_cat = np.genfromtxt(stacking_utils + 'dl_lookup_table.txt', dtype=None, names=True)
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', dtype=None, names=True)
 # Get arrays 
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
@@ -329,14 +327,6 @@ def get_chi2(model, flam, ferr, apply_a=True, indices=None):
         return a, chi2
     else:
         return chi2
-
-def get_snr(wav, flux):
-
-    spectrum1d_wav = wav * u.AA
-    spectrum1d_flux = flux * u.erg / (u.cm * u.cm * u.s * u.AA)
-    spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
-
-    return snr_derived(spec1d)
 
 def model_sn(x, z, day, sn_av):
 

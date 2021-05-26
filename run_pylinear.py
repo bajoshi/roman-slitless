@@ -74,25 +74,55 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     return ra_list, dec_list
 
 def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
-    simroot, ra_cen, dec_cen, disp_elem, exptime_list, nobs_list):
+    simroot, ra_cen, dec_cen, disp_elem, exptime_list, nobs_list, dithering=False):
 
     # Format the ra dec
     ra_cen_fmt = "{:.7f}".format(ra_cen)
     dec_cen_fmt = "{:.7f}".format(dec_cen)
 
-    # Generate all dither positions based on exptime
-    for e in range(len(exptime_list)):
-        nobs = nobs_list[e]
-        #print("EXPTIME and NOBS:", exptime_list[e], nobs)
-        ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
+    if dithering:
 
-        #print("RA dithered list :", ra_list)
-        #print("DEC dithered list:", dec_list)
-        #print("--------")
+        # Generate all dither positions based on exptime
+        for e in range(len(exptime_list)):
+            nobs = nobs_list[e]
+            #print("EXPTIME and NOBS:", exptime_list[e], nobs)
+            ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
+
+            #print("RA dithered list :", ra_list)
+            #print("DEC dithered list:", dec_list)
+            #print("--------")
+
+            # Write list
+            wcs_filename = 'wcs_' + img_suffix + '_' + str(exptime_list[e]) + 's.lst'
+
+            with open(lst_dir + wcs_filename, 'w') as fh:
+                fh.write("# TELESCOPE = Roman" + "\n")
+                fh.write("# INSTRUMENT = WFI" + "\n")
+                fh.write("# DETECTOR = WFI" + "\n")
+                fh.write("# GRISM = " + disp_elem + "\n")
+                fh.write("# BLOCKING = " + "\n")
+
+                for r in range(len(roll_angle_list)):
+
+                    for d in range(nobs):
+
+                        roll_angle = "{:.1f}".format(roll_angle_list[r])
+                        ra = "{:.7f}".format(ra_list[d])
+                        dec = "{:.7f}".format(dec_list[d])
+
+                        ditherstr = 'd' + str(d)
+
+                        str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
+                        '_' + ditherstr + '  ' + \
+                        ra + '  ' + dec + '  ' + roll_angle + '  ' + disp_elem
+                    
+                        fh.write(str_to_write)
+
+    else:
 
         # Write list
-        wcs_filename = 'wcs_' + img_suffix + '_' + str(exptime_list[e]) + 's.lst'
-
+        wcs_filename = 'wcs_' + img_suffix + '.lst'
+            
         with open(lst_dir + wcs_filename, 'w') as fh:
             fh.write("# TELESCOPE = Roman" + "\n")
             fh.write("# INSTRUMENT = WFI" + "\n")
@@ -102,21 +132,15 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
 
             for r in range(len(roll_angle_list)):
 
-                for d in range(nobs):
+                roll_angle = "{:.1f}".format(roll_angle_list[r])
 
-                    roll_angle = "{:.1f}".format(roll_angle_list[r])
-                    ra = "{:.7f}".format(ra_list[d])
-                    dec = "{:.7f}".format(dec_list[d])
-
-                    ditherstr = 'd' + str(d)
-
-                    str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
-                    '_' + ditherstr + '  ' + \
-                    ra + '  ' + dec + '  ' + roll_angle + '  ' + disp_elem
+                str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
+                '  ' + ra_cen_fmt + '  ' + dec_cen_fmt + \
+                '  ' + roll_angle + '  ' + disp_elem
                 
-                    fh.write(str_to_write)
+                fh.write(str_to_write)
 
-        print("Written WCS LST:", wcs_filename)
+    print("Written WCS LST:", wcs_filename)
 
     return None
 
@@ -178,37 +202,58 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
     return None
 
 def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
-    nobs_list, machine, roll_angle_list):
+    nobs_list, machine, roll_angle_list, dithering=False):
 
     # There is a unique flt lst for each exptime
     # Also unique to machine and direct image
     # Loop over all exptimes
-    for t in range(len(exptime_list)):
+    if dithering:
 
-        e = exptime_list[t]
-        nobs = nobs_list[t]
+        for t in range(len(exptime_list)):
 
-        dithertime = int(e / nobs)
+            e = exptime_list[t]
+            nobs = nobs_list[t]
 
-        # Assign name and write list
-        flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
+            dithertime = int(e / nobs)
 
-        with open(lst_dir + flt_filename, 'w') as fh:
-            fh.write("# Path to each flt image" + "\n")
-            fh.write("# This has to be a simulated or observed dispersed image" + "\n")
+            # Assign name and write list
+            flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
 
-            for r in range(len(roll_angle_list)):
+            with open(lst_dir + flt_filename, 'w') as fh:
+                fh.write("# Path to each flt image" + "\n")
+                fh.write("# This has to be a simulated or observed dispersed image" + "\n")
 
-                for d in range(nobs):
+                for r in range(len(roll_angle_list)):
 
-                    ditherstr = 'd' + str(d)
+                    for d in range(nobs):
+
+                        ditherstr = 'd' + str(d)
+
+                        str_to_write = "\n" + result_path + simroot + str(r+1) + '_' + \
+                        img_suffix + '_' + ditherstr + '_' + str(dithertime) + 's_flt.fits'
+
+                        fh.write(str_to_write)
+
+    else:
+
+        for t in range(len(exptime_list)):
+
+            e = exptime_list[t]
+            # Assign name and write list
+            flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
+
+            with open(lst_dir + flt_filename, 'w') as fh:
+                fh.write("# Path to each flt image" + "\n")
+                fh.write("# This has to be a simulated or observed dispersed image" + "\n")
+
+                for r in range(len(roll_angle_list)):
 
                     str_to_write = "\n" + result_path + simroot + str(r+1) + '_' + \
-                    img_suffix + '_' + ditherstr + '_' + str(dithertime) + 's_flt.fits'
+                    img_suffix + '_' + str(e) + 's_flt.fits'
 
                     fh.write(str_to_write)
 
-        print("Written FLT LST:", flt_filename)
+    print("Written FLT LST:", flt_filename)
 
     return None
 
@@ -382,7 +427,7 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [900, 1800, 3600]
+    exptime_list = [3600, 1800, 900]
     nobs_list = [2, 3, 4]  # no of dithers
     roll_angle_list = [70.0, 130.0, 190.0]
 
@@ -432,7 +477,8 @@ def main():
         segfile = img_sim_dir + img_basename + img_suffix + '_segmap.fits'
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
         sedlst = pylinear_lst_dir + 'sed_' + img_suffix + obsstr + '.lst'
-        
+        wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'    
+
         beam = '+1'
         maglim = 99.0
 
@@ -440,11 +486,13 @@ def main():
         assert os.path.isfile(segfile)
         assert os.path.isfile(obslst)
         assert os.path.isfile(sedlst)
+        assert os.path.isfile(wcslst)
     
         logger.info("Using the following paths to lst files and segmap: ")
         logger.info("Segmentation map: " + segfile)
         logger.info("OBS LST: " + obslst)
         logger.info("SED LST: " + sedlst)
+        logger.info("WCS LST: " + wcslst)
 
         # ---------------------- Need to also check that there is at least 
         # one SN spectrum in the sed.lst file. This check is required because
@@ -465,30 +513,26 @@ def main():
             sim_count += 1
             continue
 
+        # ---------------------- Proceed if all okay
+        # ---------------------- Get sources
+        sources = pylinear.source.SourceCollection(segfile, obslst, 
+            detindex=0, maglim=maglim)
+
+        # Set up
+        """
+        grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
+        tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
+        tabnames = tabulate.run(grisms, sources, beam)
+
+        ## ---------------------- Simulate
+        logger.info("Simulating...")
+        simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
+        fltnames = simulate.run(grisms, sources, beam)
+        logger.info("Simulation done.")
+        """
+
         # ---------------------- Now do the exptime dependent stuff    
         for e in range(len(exptime_list)):
-
-            wcslst = pylinear_lst_dir + \
-                     'wcs_' + img_suffix + '_' + str(exptime_list[e]) + 's.lst'
-            assert os.path.isfile(wcslst)
-            logger.info("WCS LST: " + wcslst)
-
-            # ---------------------- Get sources
-            sources = pylinear.source.SourceCollection(segfile, obslst, 
-                detindex=0, maglim=maglim)
-
-            """
-            # Set up
-            grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-            tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
-            tabnames = tabulate.run(grisms, sources, beam)
-
-            ## ---------------------- Simulate
-            logger.info("Simulating...")
-            simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
-            fltnames = simulate.run(grisms, sources, beam)
-            logger.info("Simulation done.")
-            """
             
             # ---------------------- Add noise
             logger.info("Adding noise... ")
@@ -502,78 +546,72 @@ def main():
             read = 10.0    # electrons
     
             exptime = exptime_list[e]  # seconds
-            nobs = nobs_list[e]
-
-            dithertime = int(exptime / nobs)
+            #nobs = nobs_list[e]
+            #dithertime = int(exptime / nobs)
             
-            """
             for i in range(len(roll_angle_list)):
 
-                for d in range(nobs):
+                #ditherstr = 'd' + str(d)
+                oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
+                logger.info("Working on... " + oldf)
+                logger.info("Putting in an exposure time of: " + \
+                            str(exptime) + " seconds.")
+    
+                # open the fits file
+                with fits.open(oldf) as hdul:
+                    sci = hdul[('SCI',1)].data    # the science image
+                    size = sci.shape              # dimensionality of the image
+    
+                    # update the science extension with sky background and dark current
+                    signal = (sci + sky + dark)
+    
+                    # Handling of pixels with negative signal
+                    neg_idx = np.where(signal < 0.0)
+                    neg_idx = np.asarray(neg_idx)
+                    if neg_idx.size:
+                        signal[neg_idx] = 0.0 
+                        logger.error("Setting negative values to zero in signal.")
+                        logger.error("This is wrong but should allow the rest of")
+                        logger.error("the program to work for now.")
 
-                    ditherstr = 'd' + str(d)
-                    oldf = simroot + str(i+1) + '_' + img_suffix + '_' + \
-                           ditherstr + '_flt.fits'
-                    logger.info("Working on... " + oldf)
-                    logger.info("Putting in an exposure time of: " + \
-                                str(dithertime) + " seconds.")
+                    # Stop if you find nans
+                    nan_idx = np.where(np.isnan(signal))
+                    nan_idx = np.asarray(nan_idx)
+                    if nan_idx.size:
+                        logger.critical("Found NaNs. Resolve this issue first. Exiting.")
+                        sys.exit(1)
+                    
+                    # Multiply the science image with the exptime
+                    # sci image originally in electrons/s
+                    signal = signal * exptime  # this is now in electrons
     
-                    # open the fits file
-                    with fits.open(oldf) as hdul:
-                        sci = hdul[('SCI',1)].data    # the science image
-                        size = sci.shape              # dimensionality of the image
+                    # Randomly vary signal about its mean. Assuming Gaussian distribution
+                    # first get the uncertainty
+                    variance = signal + read**2
+                    sigma = np.sqrt(variance)
+                    new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
     
-                        # update the science extension with sky background and dark current
-                        signal = (sci + sky + dark)
+                    # now divide by the exptime and subtract the sky again 
+                    # to get back to e/s. LINEAR expects a background subtracted image
+                    final_sig = (new_sig / exptime) - sky
     
-                        # Handling of pixels with negative signal
-                        neg_idx = np.where(signal < 0.0)
-                        neg_idx = np.asarray(neg_idx)
-                        if neg_idx.size:
-                            signal[neg_idx] = 0.0 
-                            logger.error("Setting negative values to zero in signal.")
-                            logger.error("This is wrong but should allow the rest of")
-                            logger.error("the program to work for now.")
+                    # Assign updated sci image to the first [SCI] extension
+                    hdul[('SCI',1)].data = final_sig
+    
+                    # update the uncertainty extension with the sigma
+                    err = np.sqrt(signal) / exptime
+    
+                    hdul[('ERR',1)].data = err
+    
+                    # now write to a new file name
+                    newfilename = oldf.replace('_flt', '_' + str(exptime) + 's' + '_flt')
+                    hdul.writeto(newfilename, overwrite=True)
 
-                        # Stop if you find nans
-                        nan_idx = np.where(np.isnan(signal))
-                        nan_idx = np.asarray(nan_idx)
-                        if nan_idx.size:
-                            logger.critical("Found NaNs. Resolve this issue first. Exiting.")
-                            sys.exit(1)
-                        
-                        # Multiply the science image with the exptime
-                        # sci image originally in electrons/s
-                        signal = signal * exptime  # this is now in electrons
-    
-                        # Randomly vary signal about its mean. Assuming Gaussian distribution
-                        # first get the uncertainty
-                        variance = signal + read**2
-                        sigma = np.sqrt(variance)
-                        new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
-    
-                        # now divide by the exptime and subtract the sky again 
-                        # to get back to e/s. LINEAR expects a background subtracted image
-                        final_sig = (new_sig / exptime) - sky
-    
-                        # Assign updated sci image to the first [SCI] extension
-                        hdul[('SCI',1)].data = final_sig
-    
-                        # update the uncertainty extension with the sigma
-                        err = np.sqrt(signal) / exptime
-    
-                        hdul[('ERR',1)].data = err
-    
-                        # now write to a new file name
-                        newfilename = oldf.replace('_flt', '_' + str(dithertime) + 's' + '_flt')
-                        hdul.writeto(newfilename, overwrite=True)
-
-                    logger.info("Written: " + newfilename)
+                logger.info("Written: " + newfilename)
 
             logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
-            """
 
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
@@ -598,7 +636,7 @@ def main():
             # Set extraction params
             sources.update_extraction_parameters(**extraction_parameters)
             method = 'golden'  # golden, grid, or single
-            extroot = simroot + img_suffix + '_' + str(exptime) + 's'
+            extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
             logdamp = [-7, -1, 0.1]
     
             print("Extracting...")
