@@ -321,10 +321,10 @@ def logpost(theta, x, data, err, m):
 def main():
 
     # --------------- Preliminary stuff
-    ext_root = "romansim_prism"
+    ext_root = "romansim_prism_"
 
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_3'
+    img_suffix = 'Y106_0_6'
 
     exptime = '_3600s'
 
@@ -349,8 +349,8 @@ def main():
     print("Read in extracted spectra from:", ext_spec_filename)
 
     # --------------- Get stuff needed for fitting
-    segid_to_test = 189
-    source_type = 'galaxy'
+    segid_to_test = 483
+    source_type = 'sn'
     print("\nTesting calibration fit for SegID:", segid_to_test)
 
     # Get spectrum
@@ -379,9 +379,9 @@ def main():
     # Only to show in the plot
     # I got the truths by eye from the sed.lst file.
     if source_type == 'sn':
-        sn_z = 0.485
-        sn_day = 23
-        sn_av = 3.868
+        sn_z = 0.256
+        sn_day = 24
+        sn_av = 2.942
 
         m = model_sn(wav, sn_z, sn_day, sn_av)
 
@@ -410,7 +410,7 @@ def main():
     calib_spec = flam / calib_line
     fig = plt.figure(figsize=(9,5))
     ax = fig.add_subplot(111)
-    ax.set_xlabel(r'$\mathrm{Wavelength}\, [\AA]$', fontsize=14)
+    ax.set_xlabel(r'$\mathrm{Wavelength\, [\AA]}$', fontsize=14)
     ax.set_ylabel(r'$\mathrm{f_\lambda \, [cgs]}$', fontsize=14)
 
     axt = ax.twinx()

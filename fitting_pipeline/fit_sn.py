@@ -187,6 +187,7 @@ def model_sn(x, z, day, sn_av):
     #lsf_sigma = 0.5
     #sn_flam_z = scipy.ndimage.gaussian_filter1d(input=sn_flam_z, sigma=lsf_sigma)
 
+    # ------ Regrid to Roman wavelength sampling
     sn_mod = griddata(points=sn_lam_z, values=sn_flam_z, xi=x)
 
     # ------ combine host light

@@ -414,7 +414,7 @@ def main():
         # Define identifier for machine
         obsstr = '_plffsn2'
 
-    else:  # only for testing on laptop
+    else:  # on laptop
         roman_direct_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/'
         pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
         seds_path = home + '/Documents/roman_slitless_sims_seds/'

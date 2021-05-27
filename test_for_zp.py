@@ -23,24 +23,6 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def create_regions_from_truth(truth_ra, truth_dec, truth_file):
-
-    reg_file = truth_file.replace('.fits', '.reg')
-    with open(reg_file, 'w') as fh:
-
-        fh.write("# Region file format: DS9 version 4.1" + "\n")
-        fh.write("global color=green dashlist=8 3 width=1 font=\"helvetica 10 normal roman\" ")
-        fh.write("select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1" + "\n")
-        fh.write("fk5" + "\n")
-
-        for i in range(len(truth_ra)):
-            fh.write("circle(" + "{:.7f}".format(truth_ra[i]) + "," + "{:.7f}".format(truth_dec[i])\
-            + "," + "0.0002778" + "\") # color=green width=2" + "\n")  # size is 1 arcsec written in degrees
-    
-    print("Written:", reg_file)
-
-    return None
-
 def main():
 
     home = os.getenv('HOME')
