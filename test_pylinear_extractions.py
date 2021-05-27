@@ -362,7 +362,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
     count = 0
-    for i in range(len(sedlst)):
+    for i in range(20, len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -865,7 +865,7 @@ if __name__ == '__main__':
     cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
     # --------------- Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + exptime1 + '_x1d.fits'
+    ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
     ext_hdu = fits.open(ext_spec_filename)
     print("Read in extracted spectra from:", ext_spec_filename)
 

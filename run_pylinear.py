@@ -442,6 +442,11 @@ def main():
     
         img_suffix = img_suffix_list[sim_count]
 
+        if img_suffix == 'Y106_0_3':
+            logger.info('Skipping:' + img_suffix)
+            sim_count += 1
+            continue
+
         dir_img_name = img_basename + img_suffix + '_cps.fits'
         logger.info("Working on direct image: " + dir_img_name)
 
@@ -519,7 +524,6 @@ def main():
             detindex=0, maglim=maglim)
 
         # Set up
-        """
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
         tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
         tabnames = tabulate.run(grisms, sources, beam)
@@ -529,7 +533,6 @@ def main():
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         fltnames = simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
-        """
 
         # ---------------------- Now do the exptime dependent stuff    
         for e in range(len(exptime_list)):
@@ -637,7 +640,7 @@ def main():
             sources.update_extraction_parameters(**extraction_parameters)
             method = 'golden'  # golden, grid, or single
             extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
-            logdamp = [-7, -1, 0.1]
+            logdamp = [-8, -1, 0.1]
     
             print("Extracting...")
             pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 

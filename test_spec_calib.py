@@ -326,7 +326,7 @@ def main():
     img_basename = '5deg_'
     img_suffix = 'Y106_0_3'
 
-    exptime = '_900s'
+    exptime = '_3600s'
 
     # --------------- Read in sed.lst
     sedlst_header = ['segid', 'sed_path']
@@ -349,7 +349,7 @@ def main():
     print("Read in extracted spectra from:", ext_spec_filename)
 
     # --------------- Get stuff needed for fitting
-    segid_to_test = 6
+    segid_to_test = 189
     source_type = 'galaxy'
     print("\nTesting calibration fit for SegID:", segid_to_test)
 
@@ -387,12 +387,12 @@ def main():
 
     elif source_type == 'galaxy':
 
-        galaxy_av = 3.582
+        galaxy_av = 4.26
         galaxy_met = 0.02
-        galaxy_tau = 14.9
-        galaxy_age = 2.34
-        galaxy_ms = 11.5
-        galaxy_z = 1.024
+        galaxy_tau = 14.585
+        galaxy_age = 6.96
+        galaxy_ms = 10.98
+        galaxy_z = 0.626
 
         galaxy_logtau = np.log10(galaxy_tau)
 
@@ -405,7 +405,6 @@ def main():
 
     # DO NOT DELETE CODE BLOCK
     # Useful for figuring out initial guess
-    """
     x = (wav - wav[0]) / (wav[-1] - wav[0])
     calib_line = a0 + a1 * x
     calib_spec = flam / calib_line
@@ -430,7 +429,6 @@ def main():
 
     plt.show()
     sys.exit(0)
-    """
 
     # ----------------------
     # Bayesian fit for calibration
@@ -496,7 +494,7 @@ def main():
 
     figcorner = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, \
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, \
-        verbose=True)#, smooth=1.0, smooth1d=1.0)
+        verbose=True, smooth=0.8, smooth1d=0.8)
 
     # Overplot
     inds = np.random.randint(len(flat_samples), size=200)
