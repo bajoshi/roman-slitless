@@ -362,7 +362,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
     count = 0
-    for i in range(20, len(sedlst)):
+    for i in range(200, len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -841,10 +841,10 @@ def read_pickle_make_plots(object_type, ndim, args_obj, label_list, truth_arr):
 if __name__ == '__main__':
     
     # --------------- Preliminary stuff
-    ext_root = "romansim_prism"
+    ext_root = "romansim_prism_"
 
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_3'
+    img_suffix = 'Y106_0_6'
 
     exptime1 = '_900s'
     exptime2 = '_1800s'
