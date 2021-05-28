@@ -362,7 +362,11 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
     count = 0
-    for i in range(476, len(sedlst)):
+    # start index for Y106_0_6
+    # 403 for bright star -- mag ~ 15.76
+    # 476 for SN -- mag ~ 19.64
+    # 567 for a random galaxy fainter than SN but which was extracted fine -- mag ~ 21.01
+    for i in range(121, len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -392,6 +396,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
         # Read in the dummy template passed to pyLINEAR
         template_name = os.path.basename(sedlst['sed_path'][i])
         template_name_list = template_name.split('.txt')[0].split('_')
+        print("Template file name:", template_name)
 
         # Get template properties
         if 'salt' in template_name:
@@ -487,6 +492,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
         plt.close()
 
         count += 1
+        sys.exit(0)
 
         if count > 15: break
 
