@@ -440,14 +440,9 @@ def main():
     
     for img in img_suffix_list:
     
-        img_suffix = img_suffix_list[sim_count]
+        img_suffix = 'Y106_0_6' #img_suffix_list[sim_count]
 
-        if img_suffix == 'Y106_0_3':
-            logger.info('Skipping:' + img_suffix)
-            sim_count += 1
-            continue
-
-        dir_img_name = img_basename + img_suffix + '_cps.fits'
+        dir_img_name = img_basename + img_suffix + '_SNadded.fits'
         logger.info("Working on direct image: " + dir_img_name)
 
         # Leave commented out # Do not delete
@@ -524,6 +519,7 @@ def main():
             detindex=0, maglim=maglim)
 
         # Set up
+        """
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
         tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
         tabnames = tabulate.run(grisms, sources, beam)
@@ -533,6 +529,7 @@ def main():
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         fltnames = simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
+        """
 
         # ---------------------- Now do the exptime dependent stuff    
         for e in range(len(exptime_list)):

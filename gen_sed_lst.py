@@ -412,7 +412,7 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(191)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(6, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -424,12 +424,12 @@ def gen_sed_lst():
                 sed_filename + f"{bcolors.ENDC}")
 
             # Check if the file exists 
-            if os.path.isfile(sed_filename):
-                # Now check that it isn't empty
-                sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
-                if sed_filesize > 30:  
-                    # I chose this limit after looking at file sizes by eye
-                    continue
+            #if os.path.isfile(sed_filename):
+            #    # Now check that it isn't empty
+            #    sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
+            #    if sed_filesize > 30:  
+            #        # I chose this limit after looking at file sizes by eye
+            #        continue
 
             fh = open(sed_filename, 'w')
 
@@ -439,7 +439,7 @@ def gen_sed_lst():
 
             # Read in catalog from SExtractor
             cat_filename = img_sim_dir + img_basename + img_filt + \
-                           str(pt) + '_' + str(det) + '.cat'
+                           str(pt) + '_' + str(det) + '_SNadded.cat'
             tqdm.write("Checking for catalog: " + cat_filename)
 
             if not os.path.isfile(cat_filename):
@@ -447,30 +447,16 @@ def gen_sed_lst():
 
                 # Now run SExtractor automatically
                 # Set up sextractor
-                img_filename = img_basename + img_filt + str(pt) + '_' + str(det) + '.fits'
-                checkimage = img_basename + img_filt + str(pt) + '_' + str(det) + '_segmap.fits'
+                img_filename = img_basename + img_filt + \
+                               str(pt) + '_' + str(det) + '_SNadded.fits'
+                checkimage = img_basename + img_filt + \
+                               str(pt) + '_' + str(det) + '_segmap.fits'
 
                 # Change directory to images directory
                 os.chdir(img_sim_dir)
 
-                # First check that the files have been unzipped
-                if not os.path.isfile(img_filename):
-                    tqdm.write(f"{bcolors.GREEN}" + "Unzipping file: " + \
-                        img_filename + ".gz" + f"{bcolors.ENDC}")
-                    subprocess.run(['gzip', '-fd', img_filename + '.gz'])
-
-                # Now divide by the exptime to get the image to counts per sec
-                cps_img_filename = img_basename + img_filt + str(pt) + \
-                                   '_' + str(det) + '_cps.fits'
-                img_hdu = fits.open(img_filename)
-                cps_sci_arr = img_hdu[1].data / float(img_hdu[1].header['EXPTIME'])
-                cps_hdu = fits.PrimaryHDU(data=cps_sci_arr, header=img_hdu[1].header)
-                cps_hdu.writeto(cps_img_filename, overwrite=True)
-                img_hdu.close()
-                del cps_hdu
-
                 tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + \
-                    cps_img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
+                    img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
                     " -CATALOG_NAME " + os.path.basename(cat_filename) + \
                     " -CHECKIMAGE_NAME " + checkimage + f"{bcolors.ENDC}")
 
@@ -481,7 +467,7 @@ def gen_sed_lst():
                 # It will not work if you join all of these args in a 
                 # string with spaces where they are supposed to be; 
                 # even if the command looks right when printed out.
-                sextractor = subprocess.run(['sex', cps_img_filename, \
+                sextractor = subprocess.run(['sex', img_filename, \
                     '-c', 'roman_sims_sextractor_config.txt', \
                     '-CATALOG_NAME', os.path.basename(cat_filename), \
                     '-CHECKIMAGE_NAME', checkimage], check=True)
@@ -490,6 +476,8 @@ def gen_sed_lst():
 
                 # Go back to roman-slitless directory
                 os.chdir(roman_slitless_dir)
+
+            sys.exit(0)
 
             cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
             'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
@@ -530,6 +518,11 @@ def gen_sed_lst():
             ra_gal  = truth_hdu_gal[1].data['ra']  * 180/np.pi
             dec_gal = truth_hdu_gal[1].data['dec'] * 180/np.pi
 
+            # Also assign SN spectra to our added SN
+            snadd_cat = np.load(cat_filename.replace('.cat', '.npy'))
+            xi = snadd_cat[:, 0]
+            yi = snadd_cat[:, 1]
+
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
                 # -------------- First match object -------------- #
@@ -544,6 +537,27 @@ def gen_sed_lst():
                 idx = get_match(ra_gal, dec_gal, ra_to_check, dec_to_check)
                 #tqdm.write("Matched idx: " + str(idx))
                 if idx == -99:
+                    tqdm.write("No matches found in truth file.")
+
+                    # There are some galaxies that have no matches in the truth
+                    # files. Make sure that these are skipped, since we can't do
+                    # anything about them.
+                    # The SNe added through insert_sne.py should however be given
+                    # SNe spectra.
+                    current_x = cat['X_IMAGE'][i]
+                    current_y = cat['Y_IMAGE'][i]
+                    added_match = np.where((np.abs(xi - current_x) <= 3.0) & \
+                                           (np.abs(yi - current_y) <= 3.0))[0]
+                    if len(added_match) < 1:
+                        tqdm.write('Skipping object with no match in truth')
+                        tqdm.write('and is not an object added through insert_sne.py')
+                        continue
+
+                    tqdm.write("Assigning random redshift to assumed added fake SN.")
+                    z = np.random.uniform(low=0.0, high=3.0)
+                    sn_spec_path = get_sn_spec_path(z)
+
+                    fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
                     continue
 
                 id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
@@ -595,7 +609,7 @@ def gen_sed_lst():
                         tqdm.write("SN and HOST mags respectively: " + \
                                 str(cat['MAG_AUTO'][sn_idx]) + "   " + str(cat['MAG_AUTO'][i]))
 
-                else:  # i.e., for a generic galaxy
+                else:  # i.e., for a generic galaxy and for the additional fake SNe
                     spec_path = get_gal_spec_path(z)
 
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")

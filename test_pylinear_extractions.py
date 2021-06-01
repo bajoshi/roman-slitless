@@ -362,10 +362,6 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
     count = 0
-    # start index for Y106_0_6
-    # 403 for bright star -- mag ~ 15.76
-    # 476 for SN -- mag ~ 19.64
-    # 567 for a random galaxy fainter than SN but which was extracted fine -- mag ~ 21.01
     for i in range(121, len(sedlst)):
 
         # Get spectra

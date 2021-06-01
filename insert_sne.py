@@ -4,6 +4,7 @@ from astropy.io import fits
 import os
 import sys
 import socket
+import subprocess
 
 import matplotlib.pyplot as plt
 
@@ -78,20 +79,24 @@ def main():
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
 
+    dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
+
+    # First check that the files have been unzipped
+    if not os.path.isfile(dir_img_name):
+        print("Unzipping file: " + dir_img_name + ".gz")
+        subprocess.run(['gzip', '-fd', dir_img_name + '.gz'])
+
     # Open dir image
-    dir_img_name = img_sim_dir + img_basename + img_suffix + '_cps.fits'
     dir_hdu = fits.open(dir_img_name)
 
-    # Copy dir image for adding fake SNe
-    img_arr = dir_hdu[0].data
+    # Now divide by the exptime to get the image to counts per sec
+    cps_sci_arr = dir_hdu[1].data / float(dir_hdu[1].header['EXPTIME'])
+    cps_hdr = dir_hdu[1].header
+    dir_hdu.close()
 
     # ---------------
     # Get a list of x-y coords to insert SNe at
     print("Will insert", num_to_insert, "SNe in", os.path.basename(dir_img_name))
-
-    # first get center coords of image
-    ra_cen = float(dir_hdu[0].header['CRVAL1'])
-    dec_cen = float(dir_hdu[0].header['CRVAL2'])
 
     x_ins, y_ins = get_insertion_coords(num_to_insert)
 
@@ -110,10 +115,12 @@ def main():
     print("--"*16)
     print("  x      y           mag")
     print("--"*16)
+    snmag_arr = np.zeros(num_to_insert)
     for i in range(num_to_insert):
 
         # Decide some random mag for the SN
         snmag = np.random.uniform(low=19.0, high=24.0)
+        snmag_arr[i] = snmag
 
         # Now scale reference
         ref_flux = np.sum(ref_data, axis=None)
@@ -138,12 +145,17 @@ def main():
         c = xi
 
         # Add in the new SN
-        img_arr[r-s:r+s, c-s:c+s] = img_arr[r-s:r+s, c-s:c+s] + new_cutout
+        cps_sci_arr[r-s:r+s, c-s:c+s] = cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout
 
         print(xi, yi, "    ", "{:.3f}".format(snmag))
 
+    # Save the locations and SN mag as a numpy array
+    added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
+    snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
+    np.save(snadd_fl, added_sn_data)
+
     # Save and check with ds9
-    new_hdu = fits.PrimaryHDU(header=dir_hdu[0].header, data=img_arr)
+    new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
     savefile = dir_img_name.replace('.fits', '_SNadded.fits')
     new_hdu.writeto(savefile, overwrite=True)
 
@@ -161,7 +173,7 @@ def main():
             fhreg.write("circle(" + \
                         "{:.1f}".format(x_ins[i])  + "," + \
                         "{:.1f}".format(y_ins[i]) + "," + \
-                        "9.5955367" + "# color=red" + \
+                        "9.5955367)" + " # color=red" + \
                         " width=3" + "\n")
 
     return None
