@@ -34,7 +34,8 @@ def get_dust_atten_model(model_wav_arr, model_flux_arr, av):
     """
         
     # Now loop over the dust-free SED and generate a new dust-attenuated SED
-    dust_atten_model_flux = np.empty(len(model_wav_arr), np.float32)
+    #print("Applying dust attenuation...")
+    dust_atten_model_flux = np.empty(len(model_wav_arr), np.float64)
     for i in range(len(model_wav_arr)):
 
         current_wav = model_wav_arr[i] / 1e4  # because this has to be in microns
@@ -48,6 +49,9 @@ def get_dust_atten_model(model_wav_arr, model_flux_arr, av):
             dust_atten_model_flux[i] = model_flux_arr[i] * 10**(-1 * 0.4 * alam)
         else:
             dust_atten_model_flux[i] = model_flux_arr[i]
+
+        #print(i, current_wav, alam, 10**(-1 * 0.4 * alam), \
+        #      "{:.2e}".format(model_flux_arr[i]), "{:.2e}".format(dust_atten_model_flux[i]))
 
     return dust_atten_model_flux
 

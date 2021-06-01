@@ -19,10 +19,9 @@ import matplotlib.pyplot as plt
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
-stacking_util_codes = home + "/Documents/GitHub/stacking-analysis-pears/util_codes/"
 fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
-sys.path.append(stacking_util_codes)
+sys.path.append(fitting_utils)
 import proper_and_lum_dist as cosmo
 import dust_utils as du
 

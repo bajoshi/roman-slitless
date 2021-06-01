@@ -48,8 +48,9 @@ def main():
 
     redshift = 0.05  # assuming this small redshift # neglecting k-corrections
 
-    f435w = np.genfromtxt('/Users/baj/Documents/GitHub/massive-galaxies/grismz_pipeline/f435w_filt_curve.txt', \
-        dtype=None, names=True, encoding='ascii')
+    f435w = np.genfromtxt('/Users/baj/Documents/GitHub/massive-galaxies' + \
+                          '/grismz_pipeline/f435w_filt_curve.txt', \
+                          dtype=None, names=True, encoding='ascii')
     # This is the throughput 
     # Can be checked by plotting and comparing plot with throughput on HST documentation website
     # https://stsci.edu/hst/instrumentation/acs/data-analysis/system-throughputs
@@ -76,7 +77,8 @@ def main():
     # Now apply redshift and compute magnitude through filter and then 
     # find scaling factor required to get the known abs mag through filter
     # ------ Apply redshift
-    sn_lam_z, sn_flam_z = mcfit.apply_redshift(day0_template_lam, day0_template_readflam, redshift)
+    sn_lam_z, sn_flam_z = \
+    mcfit.apply_redshift(day0_template_lam, day0_template_readflam, redshift)
 
     # Now convolve with filter
     filter_flux = filter_conv(f435w['wav'], f435w['trans'], sn_lam_z, sn_flam_z)
@@ -110,8 +112,10 @@ def main():
     # and filter computation again.
     day0_template_llam = day0_template_readflam * scalefac
 
-    sn_lam_z_correct, sn_flam_z_correct = mcfit.apply_redshift(day0_template_lam, day0_template_llam, redshift)
-    filter_flux_recomp = filter_conv(f435w['wav'], f435w['trans'], sn_lam_z_correct, sn_flam_z_correct)
+    sn_lam_z_correct, sn_flam_z_correct = \
+    mcfit.apply_redshift(day0_template_lam, day0_template_llam, redshift)
+    filter_flux_recomp = \
+    filter_conv(f435w['wav'], f435w['trans'], sn_lam_z_correct, sn_flam_z_correct)
     print("\nFilter flux recomputed after scaling factor is applied:", filter_flux_recomp)
     app_mag_recomp = -2.5 * np.log10(filter_flux_recomp)
     print("\nAPPARENT magnitude for TEMPLATE after scaling factor is applied:", app_mag_recomp)
