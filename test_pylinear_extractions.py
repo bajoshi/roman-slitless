@@ -362,7 +362,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
     count = 0
-    for i in range(121, len(sedlst)):
+    for i in range(70, len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -488,7 +488,6 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
         plt.close()
 
         count += 1
-        sys.exit(0)
 
         if count > 15: break
 
@@ -861,7 +860,7 @@ if __name__ == '__main__':
     print("Number of spectra in file:", len(sedlst))
 
     # --------------- Read in source catalog
-    cat_filename = img_sim_dir + img_basename + img_suffix + '.cat'
+    cat_filename = img_sim_dir + img_basename + img_suffix + '_SNadded.cat'
     cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
     'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
     cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')

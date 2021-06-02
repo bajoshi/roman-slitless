@@ -11,7 +11,7 @@ roman_direct_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021
 
 # ---------------------------
 # Info for sim
-segid_list = [125, 126]  # segids to test region for
+segid_list = [228, 260, 322, 487, 493]  # segids to test region for
 exptime = 3600
 obsstr = ''
 img_basename = '5deg_'

@@ -518,8 +518,8 @@ def main():
         sources = pylinear.source.SourceCollection(segfile, obslst, 
             detindex=0, maglim=maglim)
 
-        # Set up
         """
+        # Set up
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
         tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
         tabnames = tabulate.run(grisms, sources, beam)
@@ -561,18 +561,27 @@ def main():
                 with fits.open(oldf) as hdul:
                     sci = hdul[('SCI',1)].data    # the science image
                     size = sci.shape              # dimensionality of the image
+
+                    # add a small pedestal value to ensure that 
+                    # no negative values exist in the signal
+                    bkg = np.min(sci)
+                    logger.info("Background pedestal value:" + "{:.3f}".format(np.abs(bkg)))
+                    logger.info("Mean and median of entire sci img:")
+                    logger.info("{:.3f}".format(np.mean(sci, axis=None)))
+                    logger.info("{:.3f}".format(np.median(sci, axis=None)))
+                    sci = sci + np.abs(bkg)
     
                     # update the science extension with sky background and dark current
                     signal = (sci + sky + dark)
     
                     # Handling of pixels with negative signal
-                    neg_idx = np.where(signal < 0.0)
-                    neg_idx = np.asarray(neg_idx)
-                    if neg_idx.size:
-                        signal[neg_idx] = 0.0 
-                        logger.error("Setting negative values to zero in signal.")
-                        logger.error("This is wrong but should allow the rest of")
-                        logger.error("the program to work for now.")
+                    #neg_idx = np.where(signal < 0.0)
+                    #neg_idx = np.asarray(neg_idx)
+                    #if neg_idx.size:
+                    #    signal[neg_idx] = 0.0 
+                    #    logger.error("Setting negative values to zero in signal.")
+                    #    logger.error("This is wrong but should allow the rest of")
+                    #    logger.error("the program to work for now.")
 
                     # Stop if you find nans
                     nan_idx = np.where(np.isnan(signal))
@@ -657,6 +666,7 @@ def main():
         sim_count += 1
 
         print("Finished with first set of sims. Check results. Exiting.")
+        sys.exit(0)
     
     print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 

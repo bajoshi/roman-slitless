@@ -25,6 +25,10 @@ sys.path.append(fitting_utils)
 import proper_and_lum_dist as cosmo
 import dust_utils as du
 
+# Define constants
+Lsol = 3.826e33
+
+# -----------------
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
     modeldir = extdir + 'bc03_output_dir/'
@@ -264,6 +268,9 @@ def get_gal_spec_path(redshift):
     # Multiply flux by stellar mass
     bc03_dusty_llam = bc03_dusty_llam * 10**log_stellar_mass_chosen
 
+    # Convert to physical units
+    bc03_dusty_llam *= Lsol
+
     # --------------------- CHECK ----------------------
     # ---------------------- TBD -----------------------
     # 1.
@@ -476,8 +483,6 @@ def gen_sed_lst():
 
                 # Go back to roman-slitless directory
                 os.chdir(roman_slitless_dir)
-
-            sys.exit(0)
 
             cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
             'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
