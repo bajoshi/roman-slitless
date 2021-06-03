@@ -626,7 +626,7 @@ def main():
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
                      str(exptime) + 's' + obsstr + '.lst'
             assert os.path.isfile(fltlst)
-            print("FLT LST:", fltlst)
+            logger.info("FLT LST:", fltlst)
     
             grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
             tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
@@ -637,10 +637,10 @@ def main():
             # Reset dlamb to 50.0 for the prism
             # Hack for now. This should be hardcoded to 50 in the xml file.
             if disp_elem == 'P127':
-                extraction_parameters['dlamb'] = 50.0
+                extraction_parameters['dlamb'] = 20.0
     
             extpar_fmt = '\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
-            print(extpar_fmt.format(**extraction_parameters))
+            logger.info(extpar_fmt.format(**extraction_parameters))
     
             # Set extraction params
             sources.update_extraction_parameters(**extraction_parameters)
@@ -648,27 +648,27 @@ def main():
             extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
             logdamp = [-8, -1, 0.1]
     
-            print("Extracting...")
+            logger.info("Extracting...")
             pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
                 method, extroot, tablespath, 
                 inverter='lsqr', ncpu=1, group=False)
     
-            print("Simulation and extraction done.")
+            logger.info("Simulation and extraction done.")
             try:
                 te = time.time() - ts
-                print("Time taken for extraction:", "{:.2f}".format(te), "seconds.")
+                logger.info("Time taken for extraction:", "{:.2f}".format(te), "seconds.")
             except NameError:
-                print("Finished at:", dt.datetime.now())
+                logger.info("Finished at:", dt.datetime.now())
     
         # Increment simulation counter
         # This only increments after all the exptimes 
         # for a given direct image are simulated
         sim_count += 1
 
-        print("Finished with first set of sims. Check results. Exiting.")
+        logger.info("Finished with first set of sims. Check results. Exiting.")
         sys.exit(0)
     
-    print("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
+    logger.info("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 
     return None
 

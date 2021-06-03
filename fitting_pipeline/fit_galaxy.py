@@ -54,7 +54,6 @@ sn_day_arr = np.arange(-19,50,1)
 salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
-"""
 # Get the dirs correct
 if 'plffsn2' in socket.gethostname():
     home = os.getenv('HOME')
@@ -87,7 +86,6 @@ for t in range(tau_low, tau_high, 1):
 
 # load models with large tau separately
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
-"""
 
 # Read in all models and parameters
 model_lam_grid = np.load(pears_figs_dir + 'model_lam_grid_withlines_chabrier.npy')
@@ -226,7 +224,7 @@ def add_stellar_vdisp(spec_wav, spec_flux, vdisp):
 
     return vdisp_spec
 
-def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=True):
+def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
     """
     Expects to get the following arguments
     
@@ -280,9 +278,10 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=True):
     model_llam = np.asarray(model_llam, dtype=np.float64)
 
     # ------ Apply stellar velocity dispersion
-    # assumed for now as a constant 200 km/s
-    # This does not have to be done each time this function
-    # is called because we're assuming a constant vel disp
+    # assumed for now as a constant 220 km/s
+    # TODO: optimize
+    # -- This does not have to be done each time the model function
+    #    is called because we're assuming a constant vel disp
     if stellar_vdisp:
         sigmav = 220
         model_vdisp = add_stellar_vdisp(ml, model_llam, sigmav)
@@ -604,20 +603,15 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    datadir = home + '/Documents/sn_sit_hackday/hackday_testset_prism_shallow_hostIav2/'
+    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_deep_hostIav3/'
     savedir = datadir + 'results/'
 
     checkplot = False
 
     # these files don't have galaxy spectra
-    toskip_shallow = ['10847', '10417', '10172', '10367',
-                      '10015', '10996', '10605', '10611',
-                      '10378', '10230', '10034', '10552',
-                      '10247', '10907', '10043', '10254',
-                      '10485']
+    #toskip_shallow = []
     #toskip_deep = ['10043', '10037', '10038', '10015']
-
-    toskip = toskip_shallow
+    #toskip = toskip_shallow
 
     # Other preliminary stuff
     nwalkers = 1200
@@ -628,12 +622,12 @@ def main():
 
         # Check if it needs to be skipped
         continue_flag = 0
-        for u in range(len(toskip)):
-            skip_g = toskip[u]
-            if skip_g in os.path.basename(fl):
-                print("\nSkipping:", fl)
-                continue_flag = 1
-                break
+        #for u in range(len(toskip)):
+        #    skip_g = toskip[u]
+        #    if skip_g in os.path.basename(fl):
+        #        print("\nSkipping:", fl)
+        #        continue_flag = 1
+        #        break
 
         if not continue_flag:
             ncount += 1
