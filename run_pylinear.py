@@ -477,7 +477,7 @@ def main():
         segfile = img_sim_dir + img_basename + img_suffix + '_segmap.fits'
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
         sedlst = pylinear_lst_dir + 'sed_' + img_suffix + obsstr + '.lst'
-        wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'    
+        wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
 
         beam = '+1'
         maglim = 99.0
@@ -515,21 +515,20 @@ def main():
 
         # ---------------------- Proceed if all okay
         # ---------------------- Get sources
-        sources = pylinear.source.SourceCollection(segfile, obslst, 
-            detindex=0, maglim=maglim)
+        sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
-        """
         # Set up
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-        tabulate = pylinear.modules.Tabulate('pdt', ncpu=0) 
+        tabulate = pylinear.modules.Tabulate('pdt', ncpu=1)
         tabnames = tabulate.run(grisms, sources, beam)
+        print("done with tabulation.")
+        sys.exit(0)
 
         ## ---------------------- Simulate
         logger.info("Simulating...")
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         fltnames = simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
-        """
 
         # ---------------------- Now do the exptime dependent stuff    
         for e in range(len(exptime_list)):
@@ -626,7 +625,7 @@ def main():
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
                      str(exptime) + 's' + obsstr + '.lst'
             assert os.path.isfile(fltlst)
-            logger.info("FLT LST:", fltlst)
+            logger.info("FLT LST:" + fltlst)
     
             grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
             tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
@@ -639,7 +638,7 @@ def main():
             if disp_elem == 'P127':
                 extraction_parameters['dlamb'] = 20.0
     
-            extpar_fmt = '\nDefault parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
+            extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
             logger.info(extpar_fmt.format(**extraction_parameters))
     
             # Set extraction params
@@ -656,9 +655,9 @@ def main():
             logger.info("Simulation and extraction done.")
             try:
                 te = time.time() - ts
-                logger.info("Time taken for extraction:", "{:.2f}".format(te), "seconds.")
+                logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
             except NameError:
-                logger.info("Finished at:", dt.datetime.now())
+                logger.info("Finished at: " + dt.datetime.now())
     
         # Increment simulation counter
         # This only increments after all the exptimes 
