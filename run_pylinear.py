@@ -522,7 +522,7 @@ def main():
         tabulate = pylinear.modules.Tabulate('pdt', ncpu=1)
         tabnames = tabulate.run(grisms, sources, beam)
         print("done with tabulation.")
-        sys.exit(0)
+        #sys.exit(0)
 
         ## ---------------------- Simulate
         logger.info("Simulating...")
