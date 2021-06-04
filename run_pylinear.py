@@ -636,7 +636,7 @@ def main():
             # Reset dlamb to 50.0 for the prism
             # Hack for now. This should be hardcoded to 50 in the xml file.
             if disp_elem == 'P127':
-                extraction_parameters['dlamb'] = 20.0
+                extraction_parameters['dlamb'] = 50.0
     
             extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
             logger.info(extpar_fmt.format(**extraction_parameters))
@@ -650,7 +650,7 @@ def main():
             logger.info("Extracting...")
             pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
                 method, extroot, tablespath, 
-                inverter='lsqr', ncpu=1, group=False)
+                inverter='lsqr', ncpu=0, group=False)
     
             logger.info("Simulation and extraction done.")
             try:
