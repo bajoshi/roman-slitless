@@ -638,7 +638,7 @@ def main():
 
             print("\n----------------")
             print("Filename:", os.path.basename(fl))
-            nspectra, gal_wav, gal_flam, gal_ferr, 
+            nspectra, gal_wav, gal_flam, gal_ferr,\
             gal_simflam, truth_dict, return_code = read_galaxy_data(fl)
 
             if return_code == 1:
