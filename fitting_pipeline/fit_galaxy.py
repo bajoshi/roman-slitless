@@ -89,7 +89,7 @@ all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap
 
 # Read in all models and parameters
 model_lam_grid = np.load(pears_figs_dir + 'model_lam_grid_withlines_chabrier.npy')
-model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy', 
+model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy',
     mmap_mode='r')
 
 ml = np.asarray(model_lam_grid, dtype=np.float64)
@@ -196,11 +196,10 @@ def add_stellar_vdisp(spec_wav, spec_flux, vdisp):
 
     for w in range(len(spec_wav)):
         #print(w)
-        
         lam = spec_wav[w]
 
         I = 0
-        
+
         # Now compute the integrand numerically
         # between velocities that are within 
         # +- 3-sigma using the specified velocity dispersion.
@@ -227,9 +226,7 @@ def add_stellar_vdisp(spec_wav, spec_flux, vdisp):
 def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
     """
     Expects to get the following arguments
-    
     x: observed wavelength grid
-    
     z: redshift to apply to template
     ms: log of the stellar mass
     age: age of SED in Gyr
@@ -256,7 +253,7 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
         models_arr = all_m62_models[models_taurange_idx]
 
     elif tau >= 20.0:
-        
+
         logtau_arr = np.arange(1.30, 2.01, 0.01)
         logtau_idx = np.argmin(abs(logtau_arr - logtau))
 
@@ -291,7 +288,7 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
 
     else:
         # ------ Apply dust extinction
-        model_dusty_llam = du.get_dust_atten_model(ml, model_llam, av)        
+        model_dusty_llam = du.get_dust_atten_model(ml, model_llam, av)
 
     model_dusty_llam = np.asarray(model_dusty_llam, dtype=np.float64)
 
@@ -311,7 +308,7 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
     return model_mod
 
 def loglike_galaxy(theta, x, data, err, x0):
-    
+
     z, ms, age, logtau, av = theta
 
     y = model_galaxy(x, z, ms, age, logtau, av)
@@ -367,7 +364,7 @@ def logprior_galaxy(theta, zprior, zprior_sigma):
     #print("\nParameter vector given:", theta)
 
     if (0.0001 <= z <= 6.0):
-    
+
         # Make sure model is not older than the Universe
         # Allowing at least 100 Myr for the first galaxies to form after Big Bang
         age_at_z = get_age_at_z(z)
@@ -379,18 +376,18 @@ def logprior_galaxy(theta, zprior, zprior_sigma):
             (0.0 <= av <= 5.0)):
 
             return 0.0
-    
+
     return -np.inf
 
 def logpost_galaxy(theta, x, data, err, zprior, zprior_sigma, x0):
 
     lp = logprior_galaxy(theta, zprior, zprior_sigma)
-    
+
     if not np.isfinite(lp):
         return -np.inf
-    
+
     lnL = loglike_galaxy(theta, x, data, err, x0)
-    
+
     return lp + lnL
 
 def read_galaxy_data(galaxy_filename):
@@ -432,7 +429,7 @@ def read_galaxy_data(galaxy_filename):
         i = 0
 
         for line in all_lines:
-        
+
             if line[:5] == 'SPEC:':
                 lsp = line.split()
 
@@ -544,7 +541,7 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 
         # make sure sample has correct shape
         sample = flat_samples[ind]
-        
+
         model_okay = 0
         sample = sample.reshape(5)
 
@@ -590,7 +587,7 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 
     ymin = np.min(flam[yidx]) * 0.8
     ymax = np.max(flam[yidx]) * 1.2
-    
+
     ax3.set_xlim(prism_wmin, prism_wmax)
     ax3.set_ylim(ymin, ymax)
 
@@ -659,13 +656,13 @@ def main():
                 # Code block to check figure
                 fig = plt.figure(figsize=(10,5))
                 ax = fig.add_subplot(111)
-            
+
                 ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-                ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
+                ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$',
                 fontsize=15)
-            
+
                 ax.plot(gal_wav, gal_flam, lw=2.0, color='k')
-                ax.fill_between(gal_wav, gal_flam - gal_ferr, gal_flam + gal_ferr, 
+                ax.fill_between(gal_wav, gal_flam - gal_ferr, gal_flam + gal_ferr,
                 color='gray', alpha=0.5)
 
                 ax.plot(gal_wav, gal_simflam, lw=2.0, color='firebrick')
@@ -676,7 +673,7 @@ def main():
 
                 ymin = np.min(gal_flam[yidx]) * 0.7
                 ymax = np.max(gal_flam[yidx]) * 1.4
-            
+
                 ax.set_xlim(xmin, xmax)
                 ax.set_ylim(ymin, ymax)
 
@@ -694,9 +691,9 @@ def main():
 
             # Setup for emcee
             # Labels for corner and trace plots
-            label_list_galaxy = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$', 
+            label_list_galaxy = [r'$z$', r'$\mathrm{log(M_s/M_\odot)}$',
             r'$\mathrm{Age\, [Gyr]}$', \
-            r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$'] 
+            r'$\mathrm{\log(\tau\, [Gyr])}$', r'$A_V [mag]$']
 
             # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
             jump_size_z = 0.5
@@ -752,15 +749,15 @@ def main():
 
                 with Pool() as pool:
 
-                    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy, 
-                        args=args_galaxy, backend=backend, pool=pool, 
+                    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy,
+                        args=args_galaxy, backend=backend, pool=pool,
                         moves=emcee.moves.KDEMove())
                     sampler.run_mcmc(pos_gal, niter, progress=True)
 
                 print("Finished running emcee.")
                 print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
 
-                read_pickle_make_plots(savedir, str(galid), ndim_gal, 
+                read_pickle_make_plots(savedir, str(galid), ndim_gal,
                     args_galaxy, label_list_galaxy)
 
     # Print list of skipped files
@@ -772,4 +769,3 @@ def main():
 if __name__ == '__main__':
     main()
     sys.exit(0)
-
