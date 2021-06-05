@@ -522,7 +522,7 @@ def main():
 
         # Set up
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
-        tabulate = pylinear.modules.Tabulate('pdt', ncpu=1)
+        tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
         tabnames = tabulate.run(grisms, sources, beam)
         print("done with tabulation.")
         #sys.exit(0)
