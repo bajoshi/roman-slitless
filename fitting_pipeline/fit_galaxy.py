@@ -418,7 +418,7 @@ def read_galaxy_data(galaxy_filename):
 
         try:
             assert nspectra == 1
-        except AssertionError:
+        except NameError:
             return None, None, None, None, None, None, 1
 
         # Set up empty arrays
