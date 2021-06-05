@@ -1,6 +1,6 @@
 # Path to each flt image
 # This has to be a simulated or observed dispersed image
 
-/Users/baj/Documents/roman_slitless_sims_results/romansim_prism1_Y106_0_6_900s_flt.fits
-/Users/baj/Documents/roman_slitless_sims_results/romansim_prism2_Y106_0_6_900s_flt.fits
-/Users/baj/Documents/roman_slitless_sims_results/romansim_prism3_Y106_0_6_900s_flt.fits
+/Users/baj/Documents/roman_slitless_sims_results/romansim_grism1_Y106_0_6_900s_flt.fits
+/Users/baj/Documents/roman_slitless_sims_results/romansim_grism2_Y106_0_6_900s_flt.fits
+/Users/baj/Documents/roman_slitless_sims_results/romansim_grism3_Y106_0_6_900s_flt.fits

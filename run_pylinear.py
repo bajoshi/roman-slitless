@@ -432,8 +432,11 @@ def main():
     roll_angle_list = [70.0, 130.0, 190.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
-    simroot = 'romansim_prism'
-    disp_elem = 'P127'
+    disp_elem = 'G150'
+    if disp_elem == 'G150':
+        simroot = 'romansim_grism'
+    elif disp_elem == 'P127':
+        simroot = 'romansim_prism'
     
     # ---------------------- Now set simulation counter and loop
     sim_count = 0

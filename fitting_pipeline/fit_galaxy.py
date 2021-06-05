@@ -416,7 +416,10 @@ def read_galaxy_data(galaxy_filename):
         # Set up truth dict
         truth_dict['z'] = true_z
 
-        assert nspectra == 1
+        try:
+            assert nspectra == 1
+        except AssertionError:
+            return None, None, None, None, None, None, 1
 
         # Set up empty arrays
         l0 = np.empty(spec_nlam)
@@ -448,7 +451,7 @@ def read_galaxy_data(galaxy_filename):
     # get the midpoints of the wav ranges
     gal_wav = (l0 + l1) / 2
 
-    return nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict
+    return nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict, 0
 
 def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 
@@ -612,6 +615,7 @@ def main():
     #toskip_shallow = []
     #toskip_deep = ['10043', '10037', '10038', '10015']
     #toskip = toskip_shallow
+    skipped_list = []
 
     # Other preliminary stuff
     nwalkers = 1200
@@ -634,8 +638,13 @@ def main():
 
             print("\n----------------")
             print("Filename:", os.path.basename(fl))
-            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = \
-            read_galaxy_data(fl)
+            nspectra, gal_wav, gal_flam, gal_ferr, 
+            gal_simflam, truth_dict, return_code = read_galaxy_data(fl)
+
+            if return_code == 1:
+                print("File contains no spectra. Skipping.")
+                skipped_list.append(os.path.basename(fl))
+                continue
 
             # Basic plot to check data quality
             snr = get_snr(gal_wav, gal_flam)
@@ -753,6 +762,10 @@ def main():
 
                 read_pickle_make_plots(savedir, str(galid), ndim_gal, 
                     args_galaxy, label_list_galaxy)
+
+    # Print list of skipped files
+    print('Skipped files:')
+    print(skipped_list)
 
     return None
 

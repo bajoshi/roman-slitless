@@ -362,7 +362,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
     count = 0
-    for i in range(70, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -433,8 +433,8 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
         ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', 
             fontsize=15)
 
-        # extracted spectra
-        ax.plot(wav, flam, label='Extracted spectrum', lw=1.5)
+        # extracted spectrum
+        ax.plot(wav, flam, color='k', label='Extracted spectrum', lw=1.5)
 
         # models
         if 'salt' in template_name:
@@ -463,7 +463,17 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
         # using the longer exptime alpha for now
         m = m * a
 
-        ax.plot(w, m, label='model', lw=2.5)
+        ax.plot(w, m, color='violet', label='Downgraded model', lw=1.0, zorder=2)
+
+        # also get the simulated spectrum
+        #simsed = np.genfromtxt(ext_spectra_dir + 'simulated_SEDs/' + str(segid) + '.sed',
+        #    dtype=None, names=['w','fl'], encoding='ascii', skip_header=3)
+
+        #simsed_grid = griddata(points=simsed['w'], values=simsed['fl'], xi=w)
+        #asim, chi2sim = get_chi2(simsed_grid, flam, noise_lvl*flam)
+        
+        #ax.plot(simsed['w'], simsed['fl']*asim, color='crimson', lw=1.5, 
+        #    label='Simulated SED', zorder=1)
 
         # Add some text to the plot
         ax.text(x=0.85, y=0.45, s=r'$\mathrm{SegID:\ }$' + str(segid), color='k', 
@@ -842,7 +852,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, label_list, truth_arr):
 if __name__ == '__main__':
     
     # --------------- Preliminary stuff
-    ext_root = "romansim_prism_"
+    ext_root = "romansim_grism_"
 
     img_basename = '5deg_'
     img_suffix = 'Y106_0_6'
