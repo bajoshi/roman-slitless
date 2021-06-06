@@ -594,16 +594,24 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
     fig3.savefig(savedir + 'emcee_overplot_' + object_type + '.pdf', 
         dpi=200, bbox_inches='tight')
 
-    plt.clf()
-    plt.cla()
-    plt.close()
+
+    # Close all figures
+    fig1.clear()
+    fig.clear()
+    fig3.clear()
+
+    #plt.clf()
+    #plt.cla()
+    plt.close(fig1)
+    plt.close(fig)
+    plt.close(fig3)
 
     return None
 
 def main():
 
     # data dir
-    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_deep_hostIav3/'
+    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_shallow_hostIav3/'
     savedir = datadir + 'results/'
 
     checkplot = False
@@ -635,6 +643,7 @@ def main():
 
             print("\n----------------")
             print("Filename:", os.path.basename(fl))
+
             nspectra, gal_wav, gal_flam, gal_ferr,\
             gal_simflam, truth_dict, return_code = read_galaxy_data(fl)
 
