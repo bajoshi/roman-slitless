@@ -644,6 +644,13 @@ def main():
             print("\n----------------")
             print("Filename:", os.path.basename(fl))
 
+            #fl_deep = fl.replace('shallow','deep')
+            #fl_deep_sampler = fl_deep.replace('Prism_deep_hostIav3_SN0', 'results/emcee_sampler_')
+            #fl_deep_sampler = fl_deep_sampler.replace('.DAT','.h5')
+            #if not os.path.isfile(fl_deep_sampler):
+            #    print('Corresponding deep sampler does not exist. Skipping.')
+            #    continue
+
             nspectra, gal_wav, gal_flam, gal_ferr,\
             gal_simflam, truth_dict, return_code = read_galaxy_data(fl)
 
