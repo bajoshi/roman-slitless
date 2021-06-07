@@ -614,7 +614,7 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_shallow_hostIav3/'
+    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_deep_hostIav3/'
     savedir = datadir + 'results/'
 
     checkplot = False
@@ -762,7 +762,7 @@ def main():
             print("\nRunning emcee...")
 
             ## ----------- Set up the HDF5 file to incrementally save progress to
-            emcee_savefile = savedir + 'emcee_sampler_' + str(galid) + '.h5'
+            emcee_savefile = savedir + 'emcee_sampler_photzprior_' + str(galid) + '.h5'
             if not os.path.isfile(emcee_savefile):
 
                 backend = emcee.backends.HDFBackend(emcee_savefile)
