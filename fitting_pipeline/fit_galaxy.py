@@ -375,7 +375,10 @@ def logprior_galaxy(theta, zprior, zprior_sigma):
             (-3.0 <= logtau <= 2.0) and \
             (0.0 <= av <= 5.0)):
 
-            return 0.0
+            # Gaussian prior on redshift
+            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+
+            return ln_pz
 
     return -np.inf
 
@@ -718,8 +721,10 @@ def main():
             jump_size_logtau = 0.2  # tau in gyr
             jump_size_av = 0.5  # magnitudes
 
-            zprior = 0.5
-            zprior_sigma = 0.02
+            zp = truth_dict['z']
+            zprior_sigma = 0.1
+
+            zprior = np.random.normal(loc=zp, scale=zprior_sigma)
 
             args_galaxy = [gal_wav, gal_flam, gal_ferr, zprior, zprior_sigma, x0]
 
