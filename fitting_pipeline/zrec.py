@@ -54,6 +54,24 @@ dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
 
 del dl_cat
+# ---------------------
+def save_to_ascii(objid_arr, z_truth, z_corner, zerr_low, zerr_up, snr_arr, fname):
+
+    with open(fname, 'w') as fh:
+
+        fh.write('# ObjID  z_truth  z_corner  zerr_low  zerr_up  snr' + '\n')
+
+        for i in range(len(objid_arr)):
+
+            fh.write(str(objid_arr[i]) + '  ')
+            fh.write("{:.4f}".format(z_truth[i])  + '  ')
+            fh.write("{:.4f}".format(z_corner[i]) + '  ')
+            fh.write("{:.4f}".format(zerr_low[i]) + '  ')
+            fh.write("{:.4f}".format(zerr_up[i])  + '  ')
+            fh.write("{:.2f}".format(snr_arr[i])  + '  ')
+            fh.write('\n')
+
+    return None
 
 def apply_redshift(restframe_wav, restframe_lum, redshift):
 
@@ -125,6 +143,7 @@ def get_lnLike(y, data, err):
 def main():
 
     runtype = 'galaxy'
+    sample_type = 'deep'
     # -------------
 
     # Set up empty lists
@@ -143,6 +162,8 @@ def main():
     phase_truth = []
 
     fail_id_list = []
+
+    objid_arr = []
 
     # Set up paths correctly 
     if runtype == 'galaxy':
@@ -166,9 +187,9 @@ def main():
         if runtype == 'galaxy':
             dat_file = fl.replace('.h5','.DAT')
             dat_file = dat_file.replace('results/emcee_sampler_', 
-                                        'Prism_shallow_hostIav2_SN0')
+                                        'Prism_' + sample_type + '_hostIav2_SN0')
             
-            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict = \
+            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict, return_code = \
             read_galaxy_data(dat_file)
 
             obj_wav = gal_wav
@@ -210,6 +231,7 @@ def main():
         snr = get_snr(obj_wav, obj_flam)
 
         snr_arr.append(snr)
+        objid_arr.append(objid)
 
         # Now get the redshift recovery stats
         sampler = emcee.backends.HDFBackend(fl)
@@ -311,6 +333,11 @@ def main():
     z_truth = np.array(z_truth)
 
     snr_arr = np.array(snr_arr)
+
+    objid_arr = np.array(objid_arr)
+
+    save_to_ascii(objid_arr, z_truth, z_corner, zerr_low, zerr_up, snr_arr, 
+        fit_results_dir + 'zrecovery_results_' + sample_type + '.txt')
     
     if runtype == 'sn':
         phase_acc = np.array(phase_acc)
