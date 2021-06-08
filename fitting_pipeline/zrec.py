@@ -23,7 +23,7 @@ home = os.getenv('HOME')
 #snana_sn_spec_dir = home + '/Documents/sn_sit_hackday/20210325_BMR_PRISM/'
 
 gal_fit_results_dir = home + '/Documents/sn_sit_hackday/' + \
-                      'testv3/Prism_deep_hostIav3/results/'
+                      'testv3/Prism_deep_hostIav3/results/photzprior/'
 snana_gal_spec_dir = home + '/Documents/sn_sit_hackday/' + \
                       'hackday_testset_prism_shallow_hostIav2/'
 
@@ -34,7 +34,7 @@ roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 sys.path.append(stacking_utils)
 import dust_utils as du
 from fit_galaxy import read_galaxy_data
-from fit_sn import read_sn_data
+#from fit_sn import read_sn_data
 
 # Define any required constants/arrays
 Lsol = 3.826e33
@@ -172,7 +172,7 @@ def main():
         fit_results_dir = sn_fit_results_dir
 
     # Loop over all results
-    for fl in glob.glob(fit_results_dir + '*.h5'):
+    for fl in glob.glob(fit_results_dir + '*photzprior*.h5'):
 
         # Because the fitting program is running
         # Dont accept incomplete sampler.h5 files
@@ -186,8 +186,8 @@ def main():
         flbasename = os.path.basename(fl)
         if runtype == 'galaxy':
             dat_file = fl.replace('.h5','.DAT')
-            dat_file = dat_file.replace('results/emcee_sampler_',
-                                        'Prism_' + sample_type + '_hostIav2_SN0')
+            dat_file = dat_file.replace('results/photzprior/emcee_sampler_photzprior_',
+                                        'Prism_' + sample_type + '_hostIav3_SN0')
             nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict, return_code = \
             read_galaxy_data(dat_file)
 
