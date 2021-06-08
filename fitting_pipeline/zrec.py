@@ -23,7 +23,7 @@ home = os.getenv('HOME')
 #snana_sn_spec_dir = home + '/Documents/sn_sit_hackday/20210325_BMR_PRISM/'
 
 gal_fit_results_dir = home + '/Documents/sn_sit_hackday/' + \
-                      'hackday_testset_prism_shallow_hostIav2/results/'
+                      'testv3/Prism_deep_hostIav3/results/'
 snana_gal_spec_dir = home + '/Documents/sn_sit_hackday/' + \
                       'hackday_testset_prism_shallow_hostIav2/'
 
@@ -78,7 +78,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
     adiff = np.abs(dl_z_arr - redshift)
     z_idx = np.argmin(adiff)
     dl = dl_cm_arr[z_idx]
-    
+
     #dl = luminosity_distance(redshift)  # returns dl in Mpc
     #dl = dl * 3.086e24  # convert to cm
 
@@ -186,9 +186,8 @@ def main():
         flbasename = os.path.basename(fl)
         if runtype == 'galaxy':
             dat_file = fl.replace('.h5','.DAT')
-            dat_file = dat_file.replace('results/emcee_sampler_', 
+            dat_file = dat_file.replace('results/emcee_sampler_',
                                         'Prism_' + sample_type + '_hostIav2_SN0')
-            
             nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict, return_code = \
             read_galaxy_data(dat_file)
 
@@ -336,9 +335,10 @@ def main():
 
     objid_arr = np.array(objid_arr)
 
-    save_to_ascii(objid_arr, z_truth, z_corner, zerr_low, zerr_up, snr_arr, 
+    save_to_ascii(objid_arr, z_truth, z_corner, zerr_low, zerr_up, snr_arr,
         fit_results_dir + 'zrecovery_results_' + sample_type + '.txt')
-    
+    sys.exit(0)
+
     if runtype == 'sn':
         phase_acc = np.array(phase_acc)
         phase_err = np.array(phase_err)
