@@ -614,7 +614,7 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_deep_hostIav3/'
+    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_shallow_hostIav3/'
     savedir = datadir + 'results/'
 
     checkplot = False
