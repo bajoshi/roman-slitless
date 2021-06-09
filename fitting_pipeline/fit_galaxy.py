@@ -642,7 +642,7 @@ def main():
     niter = 500
 
     ncount = 0
-    for fl in glob.glob(gal_fit_dir + '*002.DAT'):
+    for fl in glob.glob(gal_fit_dir + '*.DAT'):
 
         # Check if it needs to be skipped
         continue_flag = 0
@@ -797,8 +797,6 @@ def main():
 
                 read_pickle_make_plots(savedir, str(galid), ndim_gal,
                     args_galaxy, label_list_galaxy)
-
-            sys.exit(0)
 
     # Print list of skipped files
     print('Skipped files:')
