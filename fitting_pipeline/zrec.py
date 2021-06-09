@@ -23,7 +23,7 @@ home = os.getenv('HOME')
 #snana_sn_spec_dir = home + '/Documents/sn_sit_hackday/20210325_BMR_PRISM/'
 
 gal_fit_results_dir = home + '/Documents/sn_sit_hackday/' + \
-                      'testv3/Prism_deep_hostIav3/results/photzprior/'
+                      'testv3/Prism_shallow_hostIav3/results/photzprior/'
 snana_gal_spec_dir = home + '/Documents/sn_sit_hackday/' + \
                       'hackday_testset_prism_shallow_hostIav2/'
 
@@ -143,7 +143,7 @@ def get_lnLike(y, data, err):
 def main():
 
     runtype = 'galaxy'
-    sample_type = 'deep'
+    sample_type = 'shallow'
     # -------------
 
     # Set up empty lists
