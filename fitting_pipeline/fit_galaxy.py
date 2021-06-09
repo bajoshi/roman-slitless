@@ -300,10 +300,10 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
     #model_flam_z = Lsol * model_flam_z
 
     # ------ Apply LSF
-    #model_lsfconv = gaussian_filter1d(input=model_flam_z, sigma=30.0)
+    model_lsfconv = gaussian_filter1d(input=model_flam_z, sigma=10.0)
 
     # ------ Downgrade and regrid to grism resolution
-    model_mod = griddata(points=model_lam_z, values=model_flam_z, xi=x)
+    model_mod = griddata(points=model_lam_z, values=model_lsfconv, xi=x)
 
     return model_mod
 
@@ -376,9 +376,9 @@ def logprior_galaxy(theta, zprior, zprior_sigma):
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
-            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
 
-            return ln_pz
+            return 0.0
 
     return -np.inf
 
@@ -614,8 +614,10 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    datadir = home + '/Documents/sn_sit_hackday/testv3/Prism_shallow_hostIav3/'
-    savedir = datadir + 'results/'
+    extdir = '/Volumes/Joshi_external_HDD/Roman/'
+    gal_fit_dir = extdir + 'sn_sit_hackday/testv3/Prism_deep_hostIav3/'
+    
+    savedir = gal_fit_dir + 'results/'
 
     checkplot = False
 
@@ -626,11 +628,11 @@ def main():
     skipped_list = []
 
     # Other preliminary stuff
-    nwalkers = 1200
+    nwalkers = 1500
     niter = 500
 
     ncount = 0
-    for fl in glob.glob(datadir + '*.DAT'):
+    for fl in glob.glob(gal_fit_dir + '*242.DAT'):
 
         # Check if it needs to be skipped
         continue_flag = 0
@@ -724,12 +726,12 @@ def main():
             zp = truth_dict['z']
             zprior_sigma = 0.1
 
-            zprior = np.random.normal(loc=zp, scale=zprior_sigma)
+            zprior = 1.5 #np.random.normal(loc=zp, scale=zprior_sigma)
 
             args_galaxy = [gal_wav, gal_flam, gal_ferr, zprior, zprior_sigma, x0]
 
             # Initial guess
-            rgal_init = np.array([zprior, 10.0, 6.0, 1.0, 0.2])
+            rgal_init = np.array([zprior, 10.0, 1.0, 1.0, 0.2])
 
             # Setup dims and walkers
             ndim_gal = 5
@@ -762,13 +764,14 @@ def main():
             print("\nRunning emcee...")
 
             ## ----------- Set up the HDF5 file to incrementally save progress to
-            emcee_savefile = savedir + 'emcee_sampler_photzprior_' + str(galid) + '.h5'
+            emcee_savefile = savedir + 'emcee_sampler_' + str(galid) + '.h5'
+            print('Checking for file:', emcee_savefile)
             if not os.path.isfile(emcee_savefile):
 
                 backend = emcee.backends.HDFBackend(emcee_savefile)
                 backend.reset(nwalkers, ndim_gal)
 
-                with Pool() as pool:
+                with Pool(6) as pool:
 
                     sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy,
                         args=args_galaxy, backend=backend, pool=pool,
@@ -778,8 +781,10 @@ def main():
                 print("Finished running emcee.")
                 print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
 
-                read_pickle_make_plots(savedir, str(galid), ndim_gal,
-                    args_galaxy, label_list_galaxy)
+            read_pickle_make_plots(savedir, str(galid), ndim_gal,
+                args_galaxy, label_list_galaxy)
+
+            sys.exit(0)
 
     # Print list of skipped files
     print('Skipped files:')

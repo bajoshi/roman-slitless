@@ -22,10 +22,8 @@ home = os.getenv('HOME')
 #sn_fit_results_dir = home + '/Documents/sn_sit_hackday/'
 #snana_sn_spec_dir = home + '/Documents/sn_sit_hackday/20210325_BMR_PRISM/'
 
-gal_fit_results_dir = home + '/Documents/sn_sit_hackday/' + \
-                      'testv3/Prism_shallow_hostIav3/results/photzprior/'
-snana_gal_spec_dir = home + '/Documents/sn_sit_hackday/' + \
-                      'hackday_testset_prism_shallow_hostIav2/'
+extdir = '/Volumes/Joshi_external_HDD/Roman/'
+gal_fit_results_dir = extdir + 'sn_sit_hackday/testv3/Prism_shallow_hostIav3/results/photzprior/'
 
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
@@ -144,26 +142,6 @@ def main():
 
     runtype = 'galaxy'
     sample_type = 'shallow'
-    # -------------
-
-    # Set up empty lists
-    zerr_low_list = []
-    zerr_up_list = []
-    z_corner = []
-    z_truth = []
-
-    snr_arr = []
-    z_acc = []
-    z_err = []
-
-    phase_acc = []
-    phase_err = []
-    phase_corner = []
-    phase_truth = []
-
-    fail_id_list = []
-
-    objid_arr = []
 
     # Set up paths correctly 
     if runtype == 'galaxy':
@@ -171,190 +149,218 @@ def main():
     else:
         fit_results_dir = sn_fit_results_dir
 
-    # Loop over all results
-    for fl in glob.glob(fit_results_dir + '*photzprior*.h5'):
+    results_fname = fit_results_dir + 'zrecovery_results_' + sample_type + '.txt'
 
-        # Because the fitting program is running
-        # Dont accept incomplete sampler.h5 files
-        flsize = os.stat(fl).st_size / 1e6  # MB
-        if flsize < 30:  # full sampler size is 33.6 MB for SNe and 32.9 for Galaxies
-            print("Incomplete sampler:", fl)
-            print("Skipping for now.")
-            continue
+    if not os.path.isfile(results_fname):
 
-        # Get data and truths
-        flbasename = os.path.basename(fl)
-        if runtype == 'galaxy':
-            dat_file = fl.replace('.h5','.DAT')
-            dat_file = dat_file.replace('results/photzprior/emcee_sampler_photzprior_',
-                                        'Prism_' + sample_type + '_hostIav3_SN0')
-            nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict, return_code = \
-            read_galaxy_data(dat_file)
+        # -------------
+        # Set up empty lists
+        zerr_low_list = []
+        zerr_up_list = []
+        z_corner = []
+        z_truth = []
 
-            obj_wav = gal_wav
-            obj_flam = gal_flam
-            obj_ferr = gal_ferr
-            obj_simflam = gal_simflam
+        snr_arr = []
+        z_acc = []
+        z_err = []
 
-            dat_name_base = os.path.basename(dat_file).split('.DAT')[0]
-            galid = int(dat_name_base.split('_')[-1].lstrip('SN'))
+        phase_acc = []
+        phase_err = []
+        phase_corner = []
+        phase_truth = []
 
-            objid = galid
+        fail_id_list = []
 
-        else:
-            snnum = int(flbasename.split('.')[0].split('_')[-1].split('sn')[1])
-            nspectra_sn, sn_wav_arr, sn_flam_arr, sn_ferr_arr, sn_simflam_arr, truth_dict = \
-            read_sn_data(snana_sn_spec_dir + 'BMR_PRISM_2_TEST_SN0' + str(snnum) + '.DAT')
+        objid_arr = []
 
-            # confirm with Ben but it seems like index 1 is always the SN spectrum
-            sn_wav = sn_wav_arr[1]
-            sn_flam = sn_flam_arr[1]
-            sn_ferr = sn_ferr_arr[1]
-            sn_simflam = sn_simflam_arr[1]
+        # Loop over all results
+        for fl in glob.glob(fit_results_dir + '*photzprior*.h5'):
 
-            obj_wav = sn_wav
-            obj_flam = sn_flam
-            obj_ferr = sn_ferr
-            obj_simflam = sn_simflam
+            # Because the fitting program is running
+            # Dont accept incomplete sampler.h5 files
+            flsize = os.stat(fl).st_size / 1e6  # MB
+            if flsize < 30:  # full sampler size is 33.6 MB for SNe and 32.9 for Galaxies
+                print("Incomplete sampler:", fl)
+                print("Skipping for now.")
+                continue
 
-            objid = snnum
+            # Get data and truths
+            flbasename = os.path.basename(fl)
+            if runtype == 'galaxy':
+                dat_file = fl.replace('.h5','.DAT')
+                dat_file = dat_file.replace('results/photzprior/emcee_sampler_photzprior_',
+                                            'Prism_' + sample_type + '_hostIav3_SN0')
+                nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict, return_code = \
+                read_galaxy_data(dat_file)
 
-        # Clip data at the ends
-        wav_idx = np.where((obj_wav > 7600) & (obj_wav < 17800))[0]
+                obj_wav = gal_wav
+                obj_flam = gal_flam
+                obj_ferr = gal_ferr
+                obj_simflam = gal_simflam
 
-        obj_wav = obj_wav[wav_idx]
-        obj_flam = obj_flam[wav_idx]
-        obj_ferr = obj_ferr[wav_idx]
-        obj_simflam = obj_simflam[wav_idx]
+                dat_name_base = os.path.basename(dat_file).split('.DAT')[0]
+                galid = int(dat_name_base.split('_')[-1].lstrip('SN'))
 
-        snr = get_snr(obj_wav, obj_flam)
+                objid = galid
 
-        snr_arr.append(snr)
-        objid_arr.append(objid)
+            else:
+                snnum = int(flbasename.split('.')[0].split('_')[-1].split('sn')[1])
+                nspectra_sn, sn_wav_arr, sn_flam_arr, sn_ferr_arr, sn_simflam_arr, truth_dict = \
+                read_sn_data(snana_sn_spec_dir + 'BMR_PRISM_2_TEST_SN0' + str(snnum) + '.DAT')
 
-        # Now get the redshift recovery stats
-        sampler = emcee.backends.HDFBackend(fl)
+                # confirm with Ben but it seems like index 1 is always the SN spectrum
+                sn_wav = sn_wav_arr[1]
+                sn_flam = sn_flam_arr[1]
+                sn_ferr = sn_ferr_arr[1]
+                sn_simflam = sn_simflam_arr[1]
 
-        samples = sampler.get_chain()
-        print("Working on sampler:", flbasename)
+                obj_wav = sn_wav
+                obj_flam = sn_flam
+                obj_ferr = sn_ferr
+                obj_simflam = sn_simflam
 
-        # Get autocorrelation time
-        # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-        tau = sampler.get_autocorr_time(tol=0)
-        if not np.any(np.isnan(tau)):
-            burn_in = int(2 * np.max(tau))
-            thinning_steps = int(0.5 * np.min(tau))
-        else:
-            burn_in = 50
-            thinning_steps = 5
+                objid = snnum
 
-        # Create flat samples
-        flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
+            # Clip data at the ends
+            wav_idx = np.where((obj_wav > 7600) & (obj_wav < 17800))[0]
 
-        # plot corner plot
-        cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
+            obj_wav = obj_wav[wav_idx]
+            obj_flam = obj_flam[wav_idx]
+            obj_ferr = obj_ferr[wav_idx]
+            obj_simflam = obj_simflam[wav_idx]
 
-        if runtype == 'galaxy':
-            cq_mass = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
-        else:
-            cq_day = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
-            cq_av = corner.quantile(x=flat_samples[:, 2], q=[0.16, 0.5, 0.84])
+            snr = get_snr(obj_wav, obj_flam)
 
-        # Now get redshift and accuracy
-        zacc = (cq_z[1] - truth_dict['z']) / (1 + truth_dict['z'])
-        z_acc.append(zacc)
+            snr_arr.append(snr)
+            objid_arr.append(objid)
 
-        zerr_up = cq_z[2] - cq_z[1]
-        zerr_low = cq_z[1] - cq_z[0]
+            # Now get the redshift recovery stats
+            sampler = emcee.backends.HDFBackend(fl)
 
-        z_err.append([zerr_low, zerr_up])
+            samples = sampler.get_chain()
+            print("Working on sampler:", flbasename)
 
-        zerr_low_list.append(zerr_low)
-        zerr_up_list.append(zerr_up)
-        z_corner.append(cq_z[1])
-        z_truth.append(truth_dict['z'])
+            # Get autocorrelation time
+            # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
+            tau = sampler.get_autocorr_time(tol=0)
+            if not np.any(np.isnan(tau)):
+                burn_in = int(2 * np.max(tau))
+                thinning_steps = int(0.5 * np.min(tau))
+            else:
+                burn_in = 50
+                thinning_steps = 5
 
-        # phase stuff
+            # Create flat samples
+            flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
+
+            # plot corner plot
+            cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
+
+            if runtype == 'galaxy':
+                cq_mass = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
+            else:
+                cq_day = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
+                cq_av = corner.quantile(x=flat_samples[:, 2], q=[0.16, 0.5, 0.84])
+
+            # Now get redshift and accuracy
+            zacc = (cq_z[1] - truth_dict['z']) / (1 + truth_dict['z'])
+            z_acc.append(zacc)
+
+            zerr_up = cq_z[2] - cq_z[1]
+            zerr_low = cq_z[1] - cq_z[0]
+
+            z_err.append([zerr_low, zerr_up])
+
+            zerr_low_list.append(zerr_low)
+            zerr_up_list.append(zerr_up)
+            z_corner.append(cq_z[1])
+            z_truth.append(truth_dict['z'])
+
+            # phase stuff
+            if runtype == 'sn':
+                phase_acc.append(cq_day[1] - truth_dict['phase'])
+
+                phase_err_up = cq_day[2] - cq_day[1]
+                phase_err_low = cq_day[1] - cq_day[0]
+
+                phase_err.append([phase_err_low, phase_err_up])
+
+                phase_corner.append(cq_day[1])
+                phase_truth.append(truth_dict['phase'])
+
+            # if catastrophic failure then identify
+            if np.abs(zacc) >= 0.1:
+                fail_id_list.append(objid)
+
+            # # 
+            """
+            fig = plt.figure(figsize=(10,5))
+            ax = fig.add_subplot(111)
+            ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
+            ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
+            ax.plot(sn_wav, sn_flam, lw=2.0, color='k')
+            ax.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, color='gray', alpha=0.5)
+            ax.plot(sn_wav, sn_simflam, lw=2.0, color='firebrick')
+
+            # now get truth model
+            t = model_sn(sn_wav, truth_dict['z'], truth_dict['phase'], 0.0)
+            t = get_y_alpha(t, sn_flam, sn_ferr)
+            ax.plot(sn_wav, t, lw=2.5, color='forestgreen')
+
+            # also check what corner thinks the truth is
+            t1 = model_sn(sn_wav, cq_z[1], cq_day[1], cq_av[1])
+            t1 = get_y_alpha(t1, sn_flam, sn_ferr)
+            ax.plot(sn_wav, t1, lw=2.5, color='dodgerblue')
+
+
+            print("lnLike for truth [in my template]:", get_lnLike(t, sn_flam, sn_ferr))
+            print("lnLike for bestfit model from corner:", get_lnLike(t1, sn_flam, sn_ferr))
+
+            plt.show()
+
+            sys.exit(0)
+            """
+
+        fails = np.array(fail_id_list)
+        print("\nCatastrophic failures:", np.sort(fails))
+        print("Total catastrophic fails:", len(fails))
+
         if runtype == 'sn':
-            phase_acc.append(cq_day[1] - truth_dict['phase'])
+            phase_acc = np.array(phase_acc)
+            phase_err = np.array(phase_err)
+            phase_corner = np.array(phase_corner)
+            phase_truth = np.array(phase_truth)
 
-            phase_err_up = cq_day[2] - cq_day[1]
-            phase_err_low = cq_day[1] - cq_day[0]
+            phase_err = phase_err.reshape(2, len(phase_truth))
 
-            phase_err.append([phase_err_low, phase_err_up])
+        # Convert to numpy arrays
+        zerr_low = np.array(zerr_low_list)
+        zerr_up  = np.array(zerr_up_list)
+        z_corner = np.array(z_corner)
+        z_acc = np.array(z_acc)
+        z_err = np.array(z_err)
+        z_truth = np.array(z_truth)
 
-            phase_corner.append(cq_day[1])
-            phase_truth.append(truth_dict['phase'])
+        snr_arr = np.array(snr_arr)
 
-        # if catastrophic failure then identify
-        if np.abs(zacc) >= 0.1:
-            fail_id_list.append(objid)
+        objid_arr = np.array(objid_arr)
 
-        # # 
-        """
-        fig = plt.figure(figsize=(10,5))
-        ax = fig.add_subplot(111)
-        ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-        ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
-        ax.plot(sn_wav, sn_flam, lw=2.0, color='k')
-        ax.fill_between(sn_wav, sn_flam - sn_ferr, sn_flam + sn_ferr, color='gray', alpha=0.5)
-        ax.plot(sn_wav, sn_simflam, lw=2.0, color='firebrick')
-
-        # now get truth model
-        t = model_sn(sn_wav, truth_dict['z'], truth_dict['phase'], 0.0)
-        t = get_y_alpha(t, sn_flam, sn_ferr)
-        ax.plot(sn_wav, t, lw=2.5, color='forestgreen')
-
-        # also check what corner thinks the truth is
-        t1 = model_sn(sn_wav, cq_z[1], cq_day[1], cq_av[1])
-        t1 = get_y_alpha(t1, sn_flam, sn_ferr)
-        ax.plot(sn_wav, t1, lw=2.5, color='dodgerblue')
-
-
-        print("lnLike for truth [in my template]:", get_lnLike(t, sn_flam, sn_ferr))
-        print("lnLike for bestfit model from corner:", get_lnLike(t1, sn_flam, sn_ferr))
-
-        plt.show()
-
+        save_to_ascii(objid_arr, z_truth, z_corner, zerr_low, zerr_up, snr_arr, results_fname)
+        print('Results saved to txt file.')
         sys.exit(0)
-        """
 
-    fails = np.array(fail_id_list)
-    print("\nCatastrophic failures:", np.sort(fails))
-    print("Total catastrophic fails:", len(fails))
+    else:
 
-    # Convert to numpy arrays
-    zerr_low = np.array(zerr_low_list)
-    zerr_up  = np.array(zerr_up_list)
-    z_corner = np.array(z_corner)
-    z_acc = np.array(z_acc)
-    z_err = np.array(z_err)
-    z_truth = np.array(z_truth)
+        zcat = np.genfromtxt(results_fname, dtype=None, names=True, encoding='ascii')
 
-    snr_arr = np.array(snr_arr)
+        # Reshape errorbars to correct shape
+        z_err = z_err.reshape(2, len(z_truth))
 
-    objid_arr = np.array(objid_arr)
+        num_plot = len(z_acc)
+        print("Number of points on plot:", num_plot)
 
-    save_to_ascii(objid_arr, z_truth, z_corner, zerr_low, zerr_up, snr_arr,
-        fit_results_dir + 'zrecovery_results_' + sample_type + '.txt')
-    sys.exit(0)
-
-    if runtype == 'sn':
-        phase_acc = np.array(phase_acc)
-        phase_err = np.array(phase_err)
-        phase_corner = np.array(phase_corner)
-        phase_truth = np.array(phase_truth)
-
-        phase_err = phase_err.reshape(2, len(phase_truth))
-
-    # Reshape errorbars to correct shape
-    z_err = z_err.reshape(2, len(z_truth))
-
-    num_plot = len(z_acc)
-    print("Number of points on plot:", num_plot)
-
-    nmad = mad_std(z_acc)
-    print("NMAD:", "{:.5f}".format(nmad))
+        nmad = mad_std(z_acc)
+        print("NMAD:", "{:.5f}".format(nmad))
 
     # ------- plot
     fig = plt.figure(figsize=(10,5))
