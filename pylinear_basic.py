@@ -29,6 +29,8 @@ for i in range(1,1006):  # check this range by eye in the catalog
 hnew = fits.PrimaryHDU(header=segmap[0].header, data=new_segmap)
 hnew.writeto('5deg_Y106_0_1_cps_segmap_small.fits')
 
+# Make sure to move it to the small num sources test folder
+
 # Also make sure that only the chosen segids remain in sed.lst
 sedlst = np.genfromtxt('sed.lst', dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
 
