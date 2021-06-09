@@ -48,6 +48,11 @@ gs = fig.add_gridspec(nrows=11, ncols=1, left=0.05, right=0.95, wspace=0.1)
 ax1 = fig.add_subplot(gs[:8])
 ax2 = fig.add_subplot(gs[8:])
 
+ax2.set_ylabel(r'$(z_\mathrm{inferred} - z_\mathrm{true} ) / (1 + z_\mathrm{true})$', fontsize=20)
+ax2.set_xlabel(r'$z_\mathrm{true}$', fontsize=20)
+
+ax1.set_ylabel(r'$z_\mathrm{inferred}$', fontsize=20)
+
 x_arr = np.arange(0.0, 3.0, 0.01)
 ax1.plot(x_arr, x_arr, '--', color='gray', lw=2.0)
 

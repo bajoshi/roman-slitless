@@ -376,9 +376,9 @@ def logprior_galaxy(theta, zprior, zprior_sigma):
             (0.0 <= av <= 5.0)):
 
             # Gaussian prior on redshift
-            #ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
+            ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zprior_sigma) ) - 0.5*(z - zprior)**2/zprior_sigma**2
 
-            return 0.0
+            return ln_pz
 
     return -np.inf
 
@@ -517,8 +517,6 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
         label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14}, \
         verbose=True, smooth=1.0, smooth1d=1.0)
 
-
-
     fig.savefig(savedir + 'corner_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
 
     # ------------ Plot 100 random models from the parameter space 
@@ -614,8 +612,12 @@ def read_pickle_make_plots(savedir, object_type, ndim, args_obj, label_list):
 def main():
 
     # data dir
-    extdir = '/Volumes/Joshi_external_HDD/Roman/'
-    gal_fit_dir = extdir + 'sn_sit_hackday/testv3/Prism_deep_hostIav3/'
+    if 'plffsn2' in socket.gethostname():
+        datadir = '/home/bajoshi/Documents/'
+    else: 
+        datadir = '/Volumes/Joshi_external_HDD/Roman/'
+
+    gal_fit_dir = datadir + 'sn_sit_hackday/testv3/Prism_deep_hostIav3/'
     
     savedir = gal_fit_dir + 'results/'
 
@@ -632,7 +634,7 @@ def main():
     niter = 500
 
     ncount = 0
-    for fl in glob.glob(gal_fit_dir + '*242.DAT'):
+    for fl in glob.glob(gal_fit_dir + '*002.DAT'):
 
         # Check if it needs to be skipped
         continue_flag = 0
@@ -708,7 +710,7 @@ def main():
             #x0 = np.where( (gal_wav >= prism_sens_wav[prism_wav_idx][0]  ) &
             #               (gal_wav <= prism_sens_wav[prism_wav_idx][-1] ) )[0]
 
-            x0 = np.where( (gal_wav >= 7700  ) & (gal_wav <= 18000 ) )[0]
+            x0 = np.where( (gal_wav >= 7600  ) & (gal_wav <= 18000 ) )[0]
 
             # Setup for emcee
             # Labels for corner and trace plots
@@ -726,12 +728,16 @@ def main():
             zp = truth_dict['z']
             zprior_sigma = 0.1
 
-            zprior = 1.5 #np.random.normal(loc=zp, scale=zprior_sigma)
+            zprior = np.random.normal(loc=zp, scale=zprior_sigma)
+
+            # Get an init age that is consistent with zprior
+            age_lim = get_age_at_z(zprior)  # in Gyr
+            age_init = np.random.uniform(low=0.1, high=age_lim-0.1)
 
             args_galaxy = [gal_wav, gal_flam, gal_ferr, zprior, zprior_sigma, x0]
 
             # Initial guess
-            rgal_init = np.array([zprior, 10.0, 1.0, 1.0, 0.2])
+            rgal_init = np.array([zprior, 10.5, age_init, 1.0, 0.5])
 
             # Setup dims and walkers
             ndim_gal = 5
@@ -771,7 +777,7 @@ def main():
                 backend = emcee.backends.HDFBackend(emcee_savefile)
                 backend.reset(nwalkers, ndim_gal)
 
-                with Pool(6) as pool:
+                with Pool() as pool:
 
                     sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy,
                         args=args_galaxy, backend=backend, pool=pool,
@@ -781,8 +787,8 @@ def main():
                 print("Finished running emcee.")
                 print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
 
-            read_pickle_make_plots(savedir, str(galid), ndim_gal,
-                args_galaxy, label_list_galaxy)
+                read_pickle_make_plots(savedir, str(galid), ndim_gal,
+                    args_galaxy, label_list_galaxy)
 
             sys.exit(0)
 
