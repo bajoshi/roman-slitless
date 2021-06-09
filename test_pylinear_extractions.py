@@ -279,9 +279,7 @@ def model_galaxy(x, z, ms, age, logtau, av):
       E.g., after using numba an SN run of 2000 steps finishes in 
       <~2 min whereas it used to take ~25 min (on my laptop). On 
       PLFFSN2 the same run used to take ~9 min, it now finishes in
-        seconds!
-      For a galaxy a run of 2000 steps 
-      
+      2 minutes! For a galaxy a run of 2000 steps takes ~5 min.
     """
 
     # ------ Apply dust extinction
@@ -397,7 +395,7 @@ def get_template_inputs(template_name):
         print('Metallicity:', galaxy_met)
         print('Av:', galaxy_av)
 
-        return [galaxy_z, galaxy_ms, galaxy_age, galaxy_tau, galaxy_met, galaxy_av]
+        return [galaxy_z, galaxy_ms, galaxy_age, galaxy_tau, galaxy_av]
 
 def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 

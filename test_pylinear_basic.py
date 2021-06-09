@@ -29,7 +29,7 @@ sedlst = np.genfromtxt(basic_testdir + 'small_num_sources_test/sed_small.lst',
 for i in range(len(sedlst)):
 
     segid = sedlst['segid'][i]
-    print('Plotting SegID:', segid)
+    print('\nPlotting SegID:', segid)
 
     wav = ext_hdu[('SOURCE', segid)].data['wavelength']
     flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
