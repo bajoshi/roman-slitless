@@ -363,7 +363,15 @@ def logprior_galaxy(theta, zprior, zprior_sigma):
     z, ms, age, logtau, av = theta
     #print("\nParameter vector given:", theta)
 
-    if (0.0001 <= z <= 6.0):
+    zsearch_low = zprior - 5*zprior_sigma
+    zsearch_high = zprior + 5*zprior_sigma
+
+    if zsearch_low < 0.0:
+        zsearch_low = 0.0
+    if zsearch_high > 6.0:
+        zsearch_high = 6.0
+
+    if (zsearch_low <= z <= zsearch_high):
 
         # Make sure model is not older than the Universe
         # Allowing at least 100 Myr for the first galaxies to form after Big Bang
