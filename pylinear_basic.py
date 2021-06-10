@@ -2,45 +2,24 @@ print("A copy of this code exists in the roman-slitless repo.")
 print("However, it is to be run from the pylinear_basic_test folder.")
 print("Make sure both copies are the same.\n")
 
+import numpy as np
+from astropy.io import fits
+import pylinear
+
+import os
+import sys
+
+home = os.getenv('HOME')
+basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/small_num_sources_test/'
+
 """
 To do this entire test for a small number of sources
 just make sure to change the names accordingly in here
-and in the lst files. Use the following script to include
+and in the lst files. Use the following function to include
 as many sources as needed.
 
-cd to pylinear_basic_test folder
->>> ipython
-import numpy as np
-import os, sys
-from astropy.io import fits 
-
-num_sources = 10
-chosen_segids = np.random.randint(low=1, high=1005, size=num_sources)
-
-segmap = fits.open('5deg_Y106_0_1_cps_segmap.fits')
-new_segmap = np.zeros(segmap[0].data.shape)
-
-for i in range(1,1006):  # check this range by eye in the catalog
-    if i in chosen_segids:
-        print('Adding SegID:', i)
-        idx = np.where(segmap[0].data == i)
-        new_segmap[idx] += segmap[0].data[idx]
-
-hnew = fits.PrimaryHDU(header=segmap[0].header, data=new_segmap)
-hnew.writeto('5deg_Y106_0_1_cps_segmap_small.fits')
-
-# Make sure to move it to the small num sources test folder
-
-# Also make sure that only the chosen segids remain in sed.lst
-sedlst = np.genfromtxt('sed.lst', dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
-
-with open('sed_small.lst','w') as fh:
-    all_segids = sedlst['segid']
-    for i in all_segids:
-        if i in chosen_segids:
-            idx = int(np.where(all_segids == i)[0])
-            fh.write(str(i) + '  ' + sedlst['path'][idx] + '\n')
-            print(str(i) + '  ' + sedlst['path'][idx])
+cd to pylinear_basic_test folder and run the 
+create_reqs_for_smalltest function
 
 # Move segmap and all lst files to the small_num_sources_test folder.
 
@@ -54,17 +33,41 @@ with open('sed_small.lst','w') as fh:
 # Also make sure that the contents of the lst files are consistent
 
 """
+def create_reqs_for_smalltest(num_sources=100):
 
+    chosen_segids = np.random.randint(low=1, high=1005, size=num_sources)
+    # check this range by eye in the catalog
+    chosen_segids = np.append(chosen_segids, [147, 176, 277, 342, 424, 669, 825])  # SNe in the chosen image
 
-import numpy as np
-from astropy.io import fits
-import pylinear
+    segmap = fits.open('5deg_Y106_0_1_cps_segmap.fits')
+    new_segmap = np.zeros(segmap[0].data.shape)
 
-import os
-import sys
+    for i in range(1,1006):  # check this range by eye in the catalog
+        if i in chosen_segids:
+            print('Adding SegID:', i)
+            idx = np.where(segmap[0].data == i)
+            new_segmap[idx] += segmap[0].data[idx]
 
-home = os.getenv('HOME')
-basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/small_num_sources_test/'
+    hnew = fits.PrimaryHDU(header=segmap[0].header, data=new_segmap)
+    hnew.writeto('5deg_Y106_0_1_cps_segmap_small.fits', overwrite=True)
+
+    # Make sure to move it to the small num sources test folder
+
+    # Also make sure that only the chosen segids remain in sed.lst
+    sedlst = np.genfromtxt('sed.lst', dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
+
+    with open('sed_small.lst','w') as fh:
+        all_segids = sedlst['segid']
+        for i in all_segids:
+            if i in chosen_segids:
+                idx = int(np.where(all_segids == i)[0])
+                fh.write(str(i) + '  ' + sedlst['path'][idx] + '\n')
+                print(str(i) + '  ' + sedlst['path'][idx])
+
+    return None
+
+#create_reqs_for_smalltest()
+#sys.exit(0)
 
 # Make sure to use the counts-per-second image
 """
