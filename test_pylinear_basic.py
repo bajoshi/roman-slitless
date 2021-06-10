@@ -19,6 +19,8 @@ ext_spec_filename = basic_testdir + 'romansim_grism_basic_test_x1d.fits'
 
 pylinear_flam_scale_fac = 1e-17
 
+create_reg = False
+
 def create_2d_ext_regions(segid_list, grisms, sources):
 
     # ---------------------------
@@ -41,7 +43,14 @@ def create_2d_ext_regions(segid_list, grisms, sources):
                     odt = h5.load_from_file(sources[segid], '+1', 'odt')
                     ddt = odt.decimate(device.naxis1, device.naxis2)
                 
-                    region_text = ddt.region()
+                    try:
+                        region_text = ddt.region()
+                    except ValueError:
+                        print('ValueError raised for SegID:', segid)
+                        print('Not sure why but I suspect this spectrum')
+                        print('is not on the detector for this PA.')
+                        continue
+
                     region_text = region_text.replace('helvetica 12 bold', 'helvetica 10 bold')
             
                     fh.write(region_text + '\n')
@@ -52,26 +61,29 @@ def create_2d_ext_regions(segid_list, grisms, sources):
 
 # -------------------------
 # First create 2d extraction regions for selected sources
-"""
-import pylinear
+if create_reg:
+    import pylinear
 
-segids_for_2dreg = [464, 466, 525, 710, 771, 822, 993]  # some of these might have the x1d spectrum steeper than the model
+    segids_for_2dreg = [53, 78, 209, 356, 464, 466, 525, 710, 771, 822, 993]
+    # some of these might have the x1d spectrum steeper than the model
 
-segfile = basic_testdir + 'small_num_sources_test/5deg_Y106_0_1_cps_segmap_small.fits'
-obslst = basic_testdir + 'small_num_sources_test/obs.lst'
-fltlst = basic_testdir + 'small_num_sources_test/flt.lst'
+    segfile = basic_testdir + 'small_num_sources_test/5deg_Y106_0_1_cps_segmap_small.fits'
+    obslst = basic_testdir + 'small_num_sources_test/obs.lst'
+    fltlst = basic_testdir + 'small_num_sources_test/flt.lst'
 
-maglim = 99.0
+    maglim = 99.0
 
-# Load in sources
-sources = pylinear.source.SourceCollection(segfile, obslst, 
-            detindex=0, maglim=maglim)
+    # Load in sources
+    sources = pylinear.source.SourceCollection(segfile, obslst, 
+                detindex=0, maglim=maglim)
 
-# Load in grisms for the sim to test
-grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+    # Load in grisms for the sim to test
+    grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 
-create_2d_ext_regions(segids_for_2dreg, grisms, sources)
-"""
+    create_2d_ext_regions(segids_for_2dreg, grisms, sources)
+
+    print('Regions created. Turn flag off and rerun.')
+    sys.exit(0)
 
 # -------------------------
 # Read in extracted spectra
