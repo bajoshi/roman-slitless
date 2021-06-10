@@ -61,10 +61,10 @@ def create_2d_ext_regions(segid_list, grisms, sources):
 
 # -------------------------
 # First create 2d extraction regions for selected sources
+segids_for_2dreg = [277, 196, 359, 525]
 if create_reg:
     import pylinear
 
-    segids_for_2dreg = [53, 78, 209, 356, 464, 466, 525, 710, 771, 822, 993]
     # some of these might have the x1d spectrum steeper than the model
 
     segfile = basic_testdir + 'small_num_sources_test/5deg_Y106_0_1_cps_segmap_small.fits'
@@ -94,9 +94,12 @@ sedlst = np.genfromtxt(basic_testdir + 'small_num_sources_test/sed_small.lst',
     dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
 
 # loop over all sources to plot
-for i in range(len(sedlst)):
+for i in range(24, len(sedlst)):
 
     segid = sedlst['segid'][i]
+    if segid not in segids_for_2dreg:
+        continue
+
     print('\nPlotting SegID:', segid)
 
     wav = ext_hdu[('SOURCE', segid)].data['wavelength']
@@ -129,16 +132,21 @@ for i in range(len(sedlst)):
     else:
         m = model_galaxy(wav, template_inputs[0], template_inputs[1], template_inputs[2], 
                          template_inputs[3], template_inputs[4])
-
     
     a, chi2 = get_chi2(m, flam, noise_lvl*flam)
+    print(a, chi2)
 
     ax.plot(wav, m*a, color='teal', label='Downgraded model, scaled')
+
+    # Also manually get model
+    
 
     ax.set_xlim(9800, 19500)
     ax.legend(frameon=False)
 
     plt.show()
+
+    sys.exit(0)
 
     plt.clf()
     plt.cla()

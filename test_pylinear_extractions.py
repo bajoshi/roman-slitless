@@ -40,13 +40,14 @@ print("Starting at:", dt.datetime.now())
 
 # Define constants
 Lsol = 3.826e33
-sn_day_arr = np.arange(-19,50,1)
+sn_scalefac = 2.0842526537870818e+48  # see sn_scaling.py 
+sn_day_arr = np.arange(-20,51,1)
 
 # Load in all models
 # ------ THIS HAS TO BE GLOBAL!
 
 # Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
+salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 # Get the dirs correct
@@ -332,7 +333,7 @@ def model_sn(x, z, day, sn_av):
     day_idx_ = np.argmin(abs(sn_day_arr - day))
     day_idx = np.where(salt2_spec['day'] == sn_day_arr[day_idx_])[0]
 
-    sn_spec_llam = salt2_spec['flam'][day_idx]
+    sn_spec_llam = salt2_spec['flam'][day_idx] * sn_scalefac
     sn_spec_lam = salt2_spec['lam'][day_idx]
 
     # ------ Apply dust extinction

@@ -38,7 +38,7 @@ import dust_utils as du
 
 # Define any required constants/arrays
 Lsol = 3.826e33
-sn_day_arr = np.arange(-19,50,1)
+sn_day_arr = np.arange(-20,51,1)
 
 # Load in all models
 # ------ THIS HAS TO BE GLOBAL!
