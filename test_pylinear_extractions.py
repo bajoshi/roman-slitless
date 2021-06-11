@@ -396,7 +396,7 @@ def get_template_inputs(template_name):
         print('Metallicity:', galaxy_met)
         print('Av:', galaxy_av)
 
-        return [galaxy_z, galaxy_ms, galaxy_age, galaxy_tau, galaxy_av]
+        return [galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av]
 
 def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 

@@ -23,7 +23,7 @@ home = os.getenv('HOME')
 #snana_sn_spec_dir = home + '/Documents/sn_sit_hackday/20210325_BMR_PRISM/'
 
 extdir = '/Volumes/Joshi_external_HDD/Roman/'
-gal_fit_results_dir = extdir + 'sn_sit_hackday/testv3/Prism_shallow_hostIav3/results/photzprior/'
+gal_fit_results_dir = extdir + 'sn_sit_hackday/testv3/Prism_deep_hostIav3/results/'
 
 roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
 stacking_utils = home + '/Documents/GitHub/stacking-analysis-pears/util_codes/'
@@ -36,7 +36,8 @@ from fit_galaxy import read_galaxy_data
 
 # Define any required constants/arrays
 Lsol = 3.826e33
-sn_day_arr = np.arange(-19,50,1)
+sn_scalefac = 2.0842526537870818e+48  # see sn_scaling.py 
+sn_day_arr = np.arange(-20,51,1)
 
 # Load in all models
 # ------ THIS HAS TO BE GLOBAL!
@@ -99,7 +100,7 @@ def model_sn(x, z, day, sn_av):
     day_idx_ = np.argmin(abs(sn_day_arr - day))
     day_idx = np.where(salt2_spec['day'] == sn_day_arr[day_idx_])[0]
 
-    sn_spec_llam = salt2_spec['flam'][day_idx]
+    sn_spec_llam = salt2_spec['flam'][day_idx] * sn_scalefac
     sn_spec_lam = salt2_spec['lam'][day_idx]
 
     # ------ Apply dust extinction
@@ -141,7 +142,7 @@ def get_lnLike(y, data, err):
 def main():
 
     runtype = 'galaxy'
-    sample_type = 'shallow'
+    sample_type = 'deep'
 
     # Set up paths correctly 
     if runtype == 'galaxy':
@@ -174,7 +175,7 @@ def main():
         objid_arr = []
 
         # Loop over all results
-        for fl in glob.glob(fit_results_dir + '*photzprior*.h5'):
+        for fl in glob.glob(fit_results_dir + '*.h5'):
 
             # Because the fitting program is running
             # Dont accept incomplete sampler.h5 files
@@ -188,7 +189,7 @@ def main():
             flbasename = os.path.basename(fl)
             if runtype == 'galaxy':
                 dat_file = fl.replace('.h5','.DAT')
-                dat_file = dat_file.replace('results/photzprior/emcee_sampler_photzprior_',
+                dat_file = dat_file.replace('results/emcee_sampler_',
                                             'Prism_' + sample_type + '_hostIav3_SN0')
                 nspectra, gal_wav, gal_flam, gal_ferr, gal_simflam, truth_dict, return_code = \
                 read_galaxy_data(dat_file)

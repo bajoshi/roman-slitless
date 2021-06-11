@@ -40,6 +40,11 @@ roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_direct_dir)
 
+
+# Read in SALT2 SN IA file  from Lou
+salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
+    dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
+
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
 model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
 
@@ -95,7 +100,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     return redshifted_wav, redshifted_flux
 
-def get_sn_spec_path(redshift):
+def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     """
     This function will assign a random spectrum from the basic SALT2 spectrum form Lou.
     Equal probability is given to any day relative to maximum. This will change for the
@@ -109,16 +114,13 @@ def get_sn_spec_path(redshift):
     # Create array for days relative to max
     days_arr = np.arange(-5, 30, 1)
 
-    # Read in SALT2 SN IA file  from Lou
-    salt2_spec = np.genfromtxt(roman_sims_seds + "salt2_template_0.txt", \
-        dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
-
     # Define scaling factor
     # Check sn_scaling.py in same folder as this code
     sn_scalefac = 2.0842526537870818e+48
 
     # choose a random day relative to max
-    day_chosen = np.random.choice(days_arr)
+    if not day_chosen:
+        day_chosen = np.random.choice(days_arr)
 
     # pull out spectrum for the chosen day
     day_idx = np.where(salt2_spec['day'] == day_chosen)[0]
@@ -128,8 +130,9 @@ def get_sn_spec_path(redshift):
 
     # Apply dust extinction
     # Apply Calzetti dust extinction depending on av value chosen
-    av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
-    chosen_av = np.random.choice(av_arr)
+    if not chosen_av:
+        av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
+        chosen_av = np.random.choice(av_arr)
 
     sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
 
@@ -153,6 +156,7 @@ def get_sn_spec_path(redshift):
             fh_sn.write("\n")
 
         fh_sn.close()
+    #print("Saved:", sn_spec_path)
 
     return sn_spec_path
 
