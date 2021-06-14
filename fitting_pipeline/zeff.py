@@ -1,11 +1,7 @@
 import numpy as np
 
-import emcee
-import corner
-
 import os
 import sys
-import glob
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -13,8 +9,6 @@ import matplotlib.gridspec as gridspec
 extdir = '/Volumes/Joshi_external_HDD/Roman/'
 gal_fit_dir = extdir + 'sn_sit_hackday/testv3/'
 results_dir = gal_fit_dir + 'Prism_deep_hostIav3/results/'
-
-from fit_galaxy import read_galaxy_data, get_snr
 
 def old_main():
 
@@ -81,8 +75,12 @@ def main():
     cat = np.genfromtxt(results_dir + 'zrecovery_results_deep.txt', 
                         dtype=None, names=True, encoding='ascii')
 
-    zinfer_list = cat['z_corner']
-    ztrue_list = cat['z_truth']
+    zinfer = cat['z_corner']
+    ztrue = cat['z_truth']
+
+    # Empty arrays for plotting
+    ztrue_list = []
+    zinfer_list = []
 
     # Make plots 
     # ----------- z efficiency
@@ -92,7 +90,30 @@ def main():
     ax.set_xlabel(r'$z$', fontsize=16)
     ax.set_ylabel(r'$z_\mathrm{eff}$', fontsize=16)
 
-    bins = np.arange(0.0, 3.1, 0.1)
+    bins = np.arange(0.1, 3.1, 0.25)
+
+    bin_cen = np.zeros(len(bins)-1)
+    for i in range(len(bin_cen)):
+        bin_cen[i] = (bins[i] + bins[i+1] ) / 2
+
+    print(bins)
+    print(bin_cen)
+
+    for i in range(len(cat)):
+
+        current_ztrue = ztrue[i]
+        current_zinfer = zinfer[i]
+
+        #print('\n', current_ztrue, current_zinfer)
+
+        bin_idx = np.argmin(abs(bin_cen - current_ztrue))
+
+        #print(bin_idx, bins[bin_idx], bins[bin_idx+1])
+
+        ztrue_list.append(current_ztrue)
+
+        if bins[bin_idx] <= current_zinfer < bins[bin_idx+1]:
+            zinfer_list.append(current_zinfer)
 
     inferred_counts, bin_edges = np.histogram(zinfer_list, bins=bins)
     true_counts, bin_edges = np.histogram(ztrue_list, bins=bins)
@@ -102,16 +123,19 @@ def main():
     print("\nz inferred counts:", inferred_counts)
     print("z true counts:    ", true_counts)
 
-    bin_cen = np.zeros(len(zeff))
-    for i in range(len(bin_cen)):
-        bin_cen[i] = (bin_edges[i] + bin_edges[i+1] ) / 2
-
     print("Bin centers:      ", bin_cen)
     print("z efficiency:     ", zeff)
 
-    ax.scatter(bin_cen, zeff, color='k')
+    ax.plot(bin_cen, zeff, 'o--', markersize=3.5, color='k', ls='--')
 
     fig.savefig(results_dir + 'zefficiency_snanaGALsim.pdf', dpi=200, bbox_inches='tight')
+
+    # Save to ascii file
+    with open(results_dir + 'zeff_vs_z.txt', 'w') as fh:
+        fh.write('#  z  zeff' + '\n')
+        for j in range(len(zeff)):
+            fh.write('{:.3f}'.format(bin_cen[j]) + '  ')
+            fh.write('{:.3f}'.format(zeff[j]) + '\n')
 
     # ----------- True vs recovered z distribution
     fig = plt.figure()

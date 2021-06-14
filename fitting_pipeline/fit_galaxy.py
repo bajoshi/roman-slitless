@@ -122,7 +122,7 @@ prism_wav_idx = np.where(prism_sens > 0.3)
 # Not using the sens limit above but
 # Hardcoded for now
 prism_wmin, prism_wmax = 7600, 18000
-print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
+print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.\n")
 
 # Done with global stuff.
 # ----------------------------------
