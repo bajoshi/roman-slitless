@@ -9,6 +9,7 @@ import pylinear
 import os
 import sys
 import glob
+import shutil
 
 home = os.getenv('HOME')
 #basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/small_num_sources_test/'
@@ -160,18 +161,15 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
         sci = hdul[('SCI',1)].data    # the science image
         size = sci.shape              # dimensionality of the image
 
-        # check for nan
-        nan_idx = np.where(np.isnan(sci))
-        nan_idx = np.asarray(nan_idx)
-        if nan_idx.size:
-            print("Found NaNs in SCI. Resolve this issue first. Exiting.")
-            sys.exit(1)
-
-        neg_idx = np.where(sci < 0.0)
-        neg_idx = np.asarray(neg_idx)
-        if neg_idx.size:
-            sci[neg_idx] = 0.0
-            print('Setting some negative values to zero.')
+        # Commenting this out -------
+        # I don't think neg values are a problem for the extraction
+        # Even when I don't add noise there are neg vals in the sim
+        # and those extractions work perfectly fine.
+        #neg_idx = np.where(sci < 0.0)
+        #neg_idx = np.asarray(neg_idx)
+        #if neg_idx.size:
+        #    sci[neg_idx] = 0.0
+        #    print('Setting some negative values to zero.')
 
         # update signal with sky and dark
         signal = (sci + sky + dark)
@@ -206,9 +204,13 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
             sys.exit(1)
 
         # If all is good
-        # now write to a new file name
+        # first save a copy
+        shutil.copy(fl, fl.replace('.fits', '_copy.fits'))
+        # now write
         hdul.writeto(fl, overwrite=True)
         print('Noised sim saved for:', os.path.basename(fl))
+
+sys.exit(0)
 
 # -------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)    
@@ -221,11 +223,11 @@ print(extpar_fmt.format(**extraction_parameters))
 sources.update_extraction_parameters(**extraction_parameters)
 method = 'golden'  # golden, grid, or single
 extroot = simroot + '_basic_test'
-logdamp = [-4, -1, 0.1]
+logdamp = [-5, -1, 0.1]
 
 pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
     method, extroot, path='tables/',
-    inverter='lsqr', ncpu=0, group=False)
+    inverter='lsqr', ncpu=1, group=False)
 
 
 
