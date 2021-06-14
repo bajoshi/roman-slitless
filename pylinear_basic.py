@@ -11,6 +11,8 @@ import sys
 import glob
 import shutil
 
+import matplotlib.pyplot as plt
+
 home = os.getenv('HOME')
 #basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/small_num_sources_test/'
 basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/'
@@ -134,16 +136,23 @@ exptime = 3600 # s
 
 sky  = 1.1     # e/s
 npix = 4096 * 4096
-sky /= npix    # e/s/pix
+#sky /= npix    # e/s/pix
     
 dark = 0.015   # e/s/pix
 read = 10.0    # electrons
+
+readtime = 600 # s
+nreads = int(exptime / readtime)
+print('NREADS:', nreads)
+readeff = read * nreads  # effective read noise i.e., total electrons from read noise
+readeff /= npix
 
 simroot = 'romansim_prism'
 
 # -------- Generate dispersed images
 sources = pylinear.source.SourceCollection(segfile,obslst,detindex=0,maglim=maglim)
 
+"""
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
 tabnames = tabulate.run(grisms, sources, beam)
@@ -160,6 +169,12 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
         # get basic sci image
         sci = hdul[('SCI',1)].data    # the science image
         size = sci.shape              # dimensionality of the image
+
+        nan_idx = np.where(np.isnan(sci))
+        nan_idx = np.asarray(nan_idx)
+        if nan_idx.size:
+            print("* * * * * Found NaNs in SCI. Resolve this issue first. Exiting.")
+            sys.exit(1)
 
         # Commenting this out -------
         # I don't think neg values are a problem for the extraction
@@ -180,7 +195,8 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
 
         # Randomly vary signal about its mean. Assuming Gaussian distribution
         # first get the uncertainty
-        variance = signal + read**2
+        variance = signal + readeff**2
+
         sigma = np.sqrt(variance)
         new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
 
@@ -188,6 +204,13 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
         # to get back to e/s. LINEAR expects a background subtracted image
         final_sig = (new_sig / exptime) - sky
     
+        #fig = plt.figure(figsize=(8,8))
+        #ax = fig.add_subplot(111)
+        #print(np.min(final_sig), np.max(final_sig))
+        #ax.imshow(final_sig, origin='lower', vmin=0.0, vmax=0.5)
+        #plt.show()
+        #sys.exit(0)
+
         # Assign updated sci image to the first [SCI] extension
         hdul[('SCI',1)].data = final_sig
     
@@ -200,20 +223,22 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
         nan_idx = np.where(np.isnan(final_sig))
         nan_idx = np.asarray(nan_idx)
         if nan_idx.size:
-            print("Found NaNs in FINAL SCI. Resolve this issue first. Exiting.")
+            print("* * * * * Found NaNs in FINAL SCI. Resolve this issue first. Exiting.")
             sys.exit(1)
 
         # If all is good
         # first save a copy
-        shutil.copy(fl, fl.replace('.fits', '_copy.fits'))
+        #shutil.copy(fl, fl.replace('.fits', '_copy.fits'))
         # now write
         hdul.writeto(fl, overwrite=True)
         print('Noised sim saved for:', os.path.basename(fl))
-
-sys.exit(0)
+"""
 
 # -------- Extraction
-grisms = pylinear.grism.GrismCollection(fltlst, observed=True)    
+grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+#tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
+#tabnames = tabulate.run(grisms, sources, beam)
+
 extraction_parameters = grisms.get_default_extraction()
     
 extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
