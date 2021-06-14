@@ -138,6 +138,8 @@ ax2.axhline(y=0.0, ls='--', color='gray', lw=2.0)
 fail_idx = np.where(np.abs(zacc_deep) >= 0.1)[0]
 print('Fail IDs:', cat['ObjID'][fail_idx])
 
+print('Catastrophic failure fraction:', len(fail_idx) / len(cat))
+
 # remove outliers
 zacc_deep[fail_idx] = np.nan
 
@@ -152,7 +154,7 @@ ax1.set_xlim(0.0, 3.0)
 ax1.set_ylim(0.0, 3.0)
 
 ax2.set_xlim(0.0, 3.0)
-ax2.set_ylim(-0.4, 0.4)
+ax2.set_ylim(-0.01, 0.01)
 
 fig.savefig(results_dir + 'zrecovery_testv3.pdf', 
     dpi=200, bbox_inches='tight')

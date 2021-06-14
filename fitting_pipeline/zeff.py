@@ -10,14 +10,13 @@ import glob
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-home = os.getenv('HOME')
-# data dir
-datadir = home + '/Desktop/Prism_shallow_hostIa/'
-savedir = datadir + 'results/'
+extdir = '/Volumes/Joshi_external_HDD/Roman/'
+gal_fit_dir = extdir + 'sn_sit_hackday/testv3/'
+results_dir = gal_fit_dir + 'Prism_deep_hostIav3/results/'
 
 from fit_galaxy import read_galaxy_data, get_snr
 
-def main():
+def old_main():
 
     # Empty arrays for plotting
     ztrue_list = []
@@ -75,6 +74,16 @@ def main():
         ztrue_list.append(truth_dict['z'])
         zinfer_list.append(cq_z[1])
 
+    return None
+
+def main():
+
+    cat = np.genfromtxt(results_dir + 'zrecovery_results_deep.txt', 
+                        dtype=None, names=True, encoding='ascii')
+
+    zinfer_list = cat['z_corner']
+    ztrue_list = cat['z_truth']
+
     # Make plots 
     # ----------- z efficiency
     fig = plt.figure()
@@ -83,7 +92,7 @@ def main():
     ax.set_xlabel(r'$z$', fontsize=16)
     ax.set_ylabel(r'$z_\mathrm{eff}$', fontsize=16)
 
-    bins = np.arange(0.0, 1.1, 0.1)
+    bins = np.arange(0.0, 3.1, 0.1)
 
     inferred_counts, bin_edges = np.histogram(zinfer_list, bins=bins)
     true_counts, bin_edges = np.histogram(ztrue_list, bins=bins)
@@ -92,7 +101,6 @@ def main():
 
     print("\nz inferred counts:", inferred_counts)
     print("z true counts:    ", true_counts)
-    
 
     bin_cen = np.zeros(len(zeff))
     for i in range(len(bin_cen)):
@@ -103,7 +111,7 @@ def main():
 
     ax.scatter(bin_cen, zeff, color='k')
 
-    fig.savefig(savedir + 'zefficiency_snanaGALsim.pdf', dpi=300, bbox_inches='tight')
+    fig.savefig(results_dir + 'zefficiency_snanaGALsim.pdf', dpi=200, bbox_inches='tight')
 
     # ----------- True vs recovered z distribution
     fig = plt.figure()
@@ -112,17 +120,18 @@ def main():
     ax.set_xlabel(r'$z$', fontsize=16)
     ax.set_ylabel(r'$\# \mathrm{objects}$', fontsize=16)
 
-    ax.hist(zinfer_list, 10, range=(0.0, 1.0), histtype='step', 
+    ax.hist(zinfer_list, 30, range=(0.0, 3.0), histtype='step', 
         lw=2.0, color='k', label='Inferred distribution')
-    ax.hist(ztrue_list, 10, range=(0.0, 1.0), histtype='step', 
+    ax.hist(ztrue_list, 30, range=(0.0, 3.0), histtype='step', 
         lw=2.0, color='tab:red', label='True distribution')
 
     ax.legend(fontsize=11, frameon=False)
 
-    fig.savefig(savedir + 'zdist_recovery_snanaGALsim.pdf', dpi=300, bbox_inches='tight')
+    fig.savefig(results_dir + 'zdist_recovery_snanaGALsim.pdf', dpi=200, bbox_inches='tight')
 
     return None
 
 if __name__ == '__main__':
     main()
     sys.exit(0)
+

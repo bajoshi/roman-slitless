@@ -626,7 +626,7 @@ def main():
     else: 
         datadir = '/Volumes/Joshi_external_HDD/Roman/'
 
-    gal_fit_dir = datadir + 'sn_sit_hackday/testv3/Prism_deep_hostIav3/'
+    gal_fit_dir = datadir + 'sn_sit_hackday/testv3/Prism_shallow_hostIav3/'
     
     savedir = gal_fit_dir + 'results/'
 
