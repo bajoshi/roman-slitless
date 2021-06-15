@@ -240,7 +240,9 @@ grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
 #tabnames = tabulate.run(grisms, sources, beam)
 
 extraction_parameters = grisms.get_default_extraction()
-    
+
+extraction_parameters['dlamb'] = 30.0
+
 extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
 print(extpar_fmt.format(**extraction_parameters))
     
@@ -248,7 +250,7 @@ print(extpar_fmt.format(**extraction_parameters))
 sources.update_extraction_parameters(**extraction_parameters)
 method = 'golden'  # golden, grid, or single
 extroot = simroot + '_basic_test'
-logdamp = [-5, -1, 0.1]
+logdamp = [-6, -1, 0.1]
 
 pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
     method, extroot, path='tables/',

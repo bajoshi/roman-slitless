@@ -1,6 +1,7 @@
 import numpy as np
 from astropy.io import fits
 from scipy.interpolate import griddata
+from scipy.ndimage import gaussian_filter1d
 
 import os
 import sys
@@ -107,7 +108,7 @@ sedlst = np.genfromtxt(basic_testdir + 'sed.lst',
     dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
 
 # loop over all sources to plot
-for i in range(len(sedlst)):
+for i in range(110,len(sedlst)):
 
     segid = sedlst['segid'][i]
     #if segid not in segids_for_2dreg:
@@ -130,11 +131,13 @@ for i in range(len(sedlst)):
 
     # plot x1d spec
     ax.plot(wav, flam, color='k', label='Extracted spectrum', zorder=2)
+    sf = gaussian_filter1d(flam, sigma=2.5)
+    ax.plot(wav, sf, color='gray', lw=2.5, zorder=5)
 
     # plot input spectrum
     input_sed = np.genfromtxt(sedlst['path'][i], dtype=None, names=True, encoding='ascii')
     sedflux_grid = griddata(points=input_sed['lam'], values=input_sed['flux'], xi=wav)
-    sed_a, sed_chi2 = get_chi2(sedflux_grid, flam, noise_lvl*flam)
+    sed_a, sed_chi2 = get_chi2(sedflux_grid, sf, noise_lvl*sf)
     print(sed_a, sed_chi2)
     ax.plot(input_sed['lam'], input_sed['flux']*sed_a, 
         color='crimson', label='Input SED, scaled', zorder=1)
@@ -153,7 +156,7 @@ for i in range(len(sedlst)):
         m = model_galaxy(wav, template_inputs[0], template_inputs[1], template_inputs[2], 
                          template_inputs[3], template_inputs[4])
     
-    a, chi2 = get_chi2(m, flam, noise_lvl*flam)
+    a, chi2 = get_chi2(m, sf, noise_lvl*sf)
     print(a, chi2)
 
     ax.plot(wav, m*a, color='teal', label='Downgraded model, scaled')
@@ -195,6 +198,7 @@ for i in range(len(sedlst)):
     plt.cla()
     plt.close()
 
+    #if i > 10: sys.exit()
 
 
 
