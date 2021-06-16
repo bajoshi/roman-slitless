@@ -21,7 +21,6 @@ import numpy as np
 import emcee
 import corner
 from multiprocessing import Pool
-#from lmfit import Parameters, fit_report, Minimizer
 
 from numba import njit
 
@@ -276,6 +275,7 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
     model_llam = np.asarray(model_llam, dtype=np.float64)
 
     # ------ Apply stellar velocity dispersion
+    # ------ and dust attenuation
     # assumed for now as a constant 220 km/s
     # TODO: optimize
     # -- This does not have to be done each time the model function
@@ -302,7 +302,7 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
 
     # ------ Apply LSF
     model_lsfconv = gaussian_filter1d(input=model_flam_z, sigma=10.0)
-
+    
     # ------ Downgrade and regrid to grism resolution
     model_mod = griddata(points=model_lam_z, values=model_lsfconv, xi=x)
 
@@ -639,11 +639,11 @@ def main():
     skipped_list = []
 
     # Other preliminary stuff
-    nwalkers = 1500
-    niter = 500
+    nwalkers = 100
+    niter = 100
 
     ncount = 0
-    for fl in glob.glob(gal_fit_dir + '*.DAT'):
+    for fl in glob.glob(gal_fit_dir + '*002.DAT'):
 
         # Check if it needs to be skipped
         continue_flag = 0
@@ -777,27 +777,33 @@ def main():
 
             # Running emcee
             print("\nRunning emcee...")
+            print("Time taken until now:", "{:.3f}".format(time.time()-start), "seconds.\n")
 
             ## ----------- Set up the HDF5 file to incrementally save progress to
             emcee_savefile = savedir + 'emcee_sampler_' + str(galid) + '.h5'
             print('Checking for file:', emcee_savefile)
-            if not os.path.isfile(emcee_savefile):
+            #if not os.path.isfile(emcee_savefile):
 
-                backend = emcee.backends.HDFBackend(emcee_savefile)
-                backend.reset(nwalkers, ndim_gal)
+            backend = emcee.backends.HDFBackend(emcee_savefile)
+            backend.reset(nwalkers, ndim_gal)
 
-                with Pool() as pool:
+            with Pool(6) as pool:
 
-                    sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy,
-                        args=args_galaxy, backend=backend, pool=pool,
-                        moves=emcee.moves.KDEMove())
-                    sampler.run_mcmc(pos_gal, niter, progress=True)
+                sampler = emcee.EnsembleSampler(nwalkers, ndim_gal, logpost_galaxy,
+                    args=args_galaxy, backend=backend, pool=pool,
+                    moves=emcee.moves.KDEMove())
+                sampler.run_mcmc(pos_gal, niter, progress=True)
 
-                print("Finished running emcee.")
-                print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+            print("Finished running emcee.")
+            print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+            print("Time taken until now:", "{:.3f}".format(time.time()-start), "seconds.\n")
 
-                read_pickle_make_plots(savedir, str(galid), ndim_gal,
-                    args_galaxy, label_list_galaxy)
+            # --- Plotting results
+            read_pickle_make_plots(savedir, str(galid), ndim_gal, args_galaxy, label_list_galaxy)
+
+            print("Finshed. Time taken until now:", "{:.3f}".format(time.time()-start), "seconds.\n")
+
+            sys.exit(0)
 
     # Print list of skipped files
     print('Skipped files:')
