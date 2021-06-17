@@ -36,21 +36,24 @@ def get_dust_atten_model(model_wav_arr, model_flux_arr, av):
     # Now loop over the dust-free SED and generate a new dust-attenuated SED
     #print("Applying dust attenuation...")
     dust_atten_model_flux = np.empty(len(model_wav_arr), np.float64)
+
+    current_wav = model_wav_arr / 1e4  # because this has to be in microns
+
     for i in range(len(model_wav_arr)):
 
-        current_wav = model_wav_arr[i] / 1e4  # because this has to be in microns
+        cw = current_wav[i]
 
         # The calzetti law is only valid up to 2.2 micron so beyond 
         # 2.2 micron this function just replaces the old values
-        if current_wav <= 2.2:
-            klam = get_klambda(current_wav)
+        if cw <= 2.2:
+            klam = get_klambda(cw)
             alam = klam * av / 4.05
 
             dust_atten_model_flux[i] = model_flux_arr[i] * 10**(-1 * 0.4 * alam)
         else:
             dust_atten_model_flux[i] = model_flux_arr[i]
 
-        #print(i, current_wav, alam, 10**(-1 * 0.4 * alam), \
+        #print(i, cw, alam, 10**(-1 * 0.4 * alam), \
         #      "{:.2e}".format(model_flux_arr[i]), "{:.2e}".format(dust_atten_model_flux[i]))
 
     return dust_atten_model_flux

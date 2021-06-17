@@ -417,8 +417,8 @@ def main():
     else:  # on laptop
         roman_direct_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/'
         pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
-        seds_path = home + '/Documents/roman_slitless_sims_seds/'
-        result_path = home + '/Documents/roman_slitless_sims_results/'
+        seds_path = '/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/'
+        result_path = '/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/'
         obsstr = ''
         tablespath = result_path + 'tables/'
     
@@ -432,7 +432,7 @@ def main():
     roll_angle_list = [70.0, 130.0, 190.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
-    disp_elem = 'G150'
+    disp_elem = 'P127'
     if disp_elem == 'G150':
         simroot = 'romansim_grism'
     elif disp_elem == 'P127':
@@ -524,7 +524,7 @@ def main():
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
         tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
         tabnames = tabulate.run(grisms, sources, beam)
-        print("done with tabulation.")
+        logger.info("Done with tabulation.")
         #sys.exit(0)
 
         ## ---------------------- Simulate
@@ -533,7 +533,7 @@ def main():
         fltnames = simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
 
-        # ---------------------- Now do the exptime dependent stuff    
+        # ---------------------- Now do the exptime dependent stuff
         for e in range(len(exptime_list)):
             
             # ---------------------- Add noise
@@ -542,10 +542,11 @@ def main():
             # also check WFIRST tech report TR1901
             sky  = 1.1     # e/s
             npix = 4096 * 4096
-            sky /= npix    # e/s/pix
+            #sky /= npix    # e/s/pix
     
             dark = 0.015   # e/s/pix
             read = 10.0    # electrons
+            read /= npix
     
             exptime = exptime_list[e]  # seconds
             #nobs = nobs_list[e]
@@ -566,12 +567,12 @@ def main():
 
                     # add a small pedestal value to ensure that 
                     # no negative values exist in the signal
-                    bkg = np.min(sci)
-                    logger.info("Background pedestal value:" + "{:.3f}".format(np.abs(bkg)))
-                    logger.info("Mean and median of entire sci img:")
-                    logger.info("{:.3f}".format(np.mean(sci, axis=None)))
-                    logger.info("{:.3f}".format(np.median(sci, axis=None)))
-                    sci = sci + np.abs(bkg)
+                    #bkg = np.min(sci)
+                    #logger.info("Background pedestal value:" + "{:.3f}".format(np.abs(bkg)))
+                    #logger.info("Mean and median of entire sci img:")
+                    #logger.info("{:.3f}".format(np.mean(sci, axis=None)))
+                    #logger.info("{:.3f}".format(np.median(sci, axis=None)))
+                    #sci = sci + np.abs(bkg)
     
                     # update the science extension with sky background and dark current
                     signal = (sci + sky + dark)
@@ -584,13 +585,6 @@ def main():
                     #    logger.error("Setting negative values to zero in signal.")
                     #    logger.error("This is wrong but should allow the rest of")
                     #    logger.error("the program to work for now.")
-
-                    # Stop if you find nans
-                    nan_idx = np.where(np.isnan(signal))
-                    nan_idx = np.asarray(nan_idx)
-                    if nan_idx.size:
-                        logger.critical("Found NaNs. Resolve this issue first. Exiting.")
-                        sys.exit(1)
                     
                     # Multiply the science image with the exptime
                     # sci image originally in electrons/s
@@ -606,6 +600,13 @@ def main():
                     # to get back to e/s. LINEAR expects a background subtracted image
                     final_sig = (new_sig / exptime) - sky
     
+                    # Stop if you find nans
+                    nan_idx = np.where(np.isnan(final_sig))
+                    nan_idx = np.asarray(nan_idx)
+                    if nan_idx.size:
+                        logger.critical("Found NaNs. Resolve this issue first. Exiting.")
+                        sys.exit(1)
+
                     # Assign updated sci image to the first [SCI] extension
                     hdul[('SCI',1)].data = final_sig
     
@@ -639,7 +640,7 @@ def main():
             # Reset dlamb to 50.0 for the prism
             # Hack for now. This should be hardcoded to 50 in the xml file.
             if disp_elem == 'P127':
-                extraction_parameters['dlamb'] = 50.0
+                extraction_parameters['dlamb'] = 30.0
     
             extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
             logger.info(extpar_fmt.format(**extraction_parameters))
@@ -648,12 +649,12 @@ def main():
             sources.update_extraction_parameters(**extraction_parameters)
             method = 'golden'  # golden, grid, or single
             extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
-            logdamp = [-8, -1, 0.1]
+            logdamp = [-6, -1, 0.1]
     
             logger.info("Extracting...")
             pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
                 method, extroot, tablespath, 
-                inverter='lsqr', ncpu=0, group=False)
+                inverter='lsqr', ncpu=1, group=False)
     
             logger.info("Simulation and extraction done.")
             try:

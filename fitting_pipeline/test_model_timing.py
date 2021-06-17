@@ -8,7 +8,8 @@ import sys
 import socket
 
 from functools import reduce
-from numba import njit
+import numba
+from numba import jit
 
 print("Make sure that the model_galaxy function here is the same")
 print("as that in the fitting pipeline.")
@@ -64,12 +65,18 @@ model_lam_grid = np.load(pears_figs_dir + 'model_lam_grid_withlines_chabrier.npy
 model_grid = np.load(pears_figs_dir + 'model_comp_spec_llam_withlines_chabrier.npy',
     mmap_mode='r')
 
+mg = np.asarray(model_grid, dtype=np.float64)
 ml = np.asarray(model_lam_grid, dtype=np.float64)
 
 log_age_arr = np.load(pears_figs_dir + 'log_age_arr_chab.npy')
 metal_arr = np.load(pears_figs_dir + 'metal_arr_chab.npy')
 tau_gyr_arr = np.load(pears_figs_dir + 'tau_gyr_arr_chab.npy')
 tauv_arr = np.load(pears_figs_dir + 'tauv_arr_chab.npy')
+
+#print('log age range:', np.min(log_age_arr), np.max(log_age_arr))
+#print('metals range:', np.min(metal_arr), np.max(metal_arr))
+#print('tau gyr range:', np.min(tau_gyr_arr[tau_gyr_arr>0.0]), np.max(tau_gyr_arr))
+#print('tau-v range:', np.min(tauv_arr[tauv_arr>0.0]), np.max(tauv_arr))
 
 # Also load in lookup table for luminosity distance
 dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', dtype=None, names=True)
@@ -87,7 +94,13 @@ t4 = []
 t5 = []
 t6 = []
 
-@njit(parallel=True)
+get_dl_at_z_locals_dict = {
+    'z': numba.float64,
+    'z_idx': numba.int64,
+    'dl': numba.float64
+}
+
+@jit(nopython=True, parallel=True)#, locals=get_dl_at_z_locals_dict)
 def get_dl_at_z(z):
 
     adiff = np.abs(dl_z_arr - z)
@@ -96,20 +109,42 @@ def get_dl_at_z(z):
 
     return dl
 
-@njit(parallel=True)
+#get_dl_at_z(1.0)
+#print(get_dl_at_z.inspect_types(pretty=True))
+#sys.exit(0)
+
+pi = 3.14159265359
+
+@jit(nopython=True, parallel=True)
 def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     dl = get_dl_at_z(redshift)
 
-    redshifted_wav = restframe_wav * (1 + redshift)
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
+    oneplusz = 1 + redshift
+
+    redshifted_wav = restframe_wav * oneplusz
+    redshifted_flux = restframe_lum / (4 * pi * dl * dl * oneplusz)
 
     return redshifted_wav, redshifted_flux
 
-@njit
-def get_template(age, tau, tauv, metallicity, \
-    log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, \
-    model_comp_spec_withlines_mmap):
+#apply_redshift(np.arange(1000.0, 2000.0), np.linspace(1e-14, 5e-14, 1000), 1.0)
+#print(apply_redshift.inspect_types(pretty=True))
+#sys.exit(0)
+
+@jit(nopython=True)
+def manual_intersect1d(a1, a2, a3, a4):
+
+    # typically age idx is the shortest so 
+    # match with that
+    for a in a1:
+        if (a in a2) and (a in a3) and (a in a4):
+            unique_common_idx = a
+            break
+
+    return unique_common_idx
+
+@jit(nopython=True, parallel=True)
+def get_template(age, tau, tauv, metallicity):
 
     # First find closest values and then indices corresponding to them
     # It has to be done this way because you typically wont find an exact match
@@ -118,30 +153,22 @@ def get_template(age, tau, tauv, metallicity, \
     closest_tauv_idx = np.argmin(np.abs(tauv_arr - tauv))
 
     # Now get indices
-    age_idx = np.where(log_age_arr == log_age_arr[closest_age_idx])[0]
-    tau_idx = np.where(tau_gyr_arr == tau_gyr_arr[closest_tau_idx])[0]
-    tauv_idx = np.where(tauv_arr   ==    tauv_arr[closest_tauv_idx])[0]
-    metal_idx = np.where(metal_arr == metallicity)[0]
+    age_idx = np.flatnonzero(log_age_arr == log_age_arr[closest_age_idx])
+    tau_idx = np.flatnonzero(tau_gyr_arr == tau_gyr_arr[closest_tau_idx])
+    tauv_idx = np.flatnonzero(tauv_arr   ==    tauv_arr[closest_tauv_idx])
+    metal_idx = np.flatnonzero(metal_arr == metallicity)
 
-    #model_idx_reduce = int(reduce(np.intersect1d, (age_idx, tau_idx, tauv_idx, metal_idx)))
+    model_idx = manual_intersect1d(age_idx, tau_idx, tauv_idx, metal_idx)
 
-    age_tau_intersect = np.intersect1d(age_idx, tau_idx)
-    age_tau_tauv_intersect = np.intersect1d(age_tau_intersect, tauv_idx)
-    model_idx = np.intersect1d(metal_idx, age_tau_tauv_intersect)
-    model_idx = model_idx[0]
-
-    #assert model_idx == model_idx_reduce
-
-    model_llam = model_comp_spec_withlines_mmap[model_idx]
-
-    chosen_age = 10**log_age_arr[model_idx] / 1e9
-    chosen_tau = tau_gyr_arr[model_idx]
-    chosen_av = 1.086 * tauv_arr[model_idx]
-    chosen_metallicity = metal_arr[model_idx]
+    model_llam = mg[model_idx]
 
     return model_llam
 
-def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
+#l = get_template(np.log10(6.0 * 1e9), 10.0, 0.5, 0.02)
+#print(get_template.inspect_types(pretty=True))
+#sys.exit(0)
+
+def model_galaxy(x, z, ms, age, logtau, av):
     """
     Expects to get the following arguments
     x: observed wavelength grid
@@ -189,8 +216,7 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
     # Smaller model set with emission lines
     tau = 10**logtau  # logtau is log of tau in gyr
     tauv = av / 1.086
-    model_llam = get_template(np.log10(age * 1e9), tau, tauv, 0.02, \
-        log_age_arr, metal_arr, tau_gyr_arr, tauv_arr, model_grid)
+    model_llam = get_template(np.log10(age * 1e9), tau, tauv, 0.02)
 
     model_llam = np.asarray(model_llam, dtype=np.float64)
 
@@ -202,16 +228,16 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
     # TODO: optimize
     # -- This does not have to be done each time the model function
     #    is called because we're assuming a constant vel disp
-    if stellar_vdisp:
-        sigmav = 220
-        model_vdisp = add_stellar_vdisp(ml, model_llam, sigmav)
+    #if stellar_vdisp:
+    #    sigmav = 220
+    #    model_vdisp = add_stellar_vdisp(ml, model_llam, sigmav)
 
-        # ------ Apply dust extinction
-        model_dusty_llam = du.get_dust_atten_model(ml, model_vdisp, av)
+    #    # ------ Apply dust extinction
+    #    model_dusty_llam = du.get_dust_atten_model(ml, model_vdisp, av)
 
-    else:
-        # ------ Apply dust extinction
-        model_dusty_llam = du.get_dust_atten_model(ml, model_llam, av)
+    #else:
+    # ------ Apply dust extinction
+    model_dusty_llam = du.get_dust_atten_model(ml, model_llam, av)
 
     model_dusty_llam = np.asarray(model_dusty_llam, dtype=np.float64)
 
@@ -238,13 +264,14 @@ def model_galaxy(x, z, ms, age, logtau, av, stellar_vdisp=False):
 
     return model_mod
 
+# ----- Testing preliminaries
 z = np.arange(0.0, 3.0, 0.001)
 ms = np.arange(8.0, 11.0, 0.01)
 age = np.logspace(-1, 1, 1000)
 logtau = np.linspace(-2, 2.0, 1000)
 av = np.arange(0.0, 5.0, 0.01)
 
-testiter = 10000
+testiter = 100000
 x = np.arange(7500, 18000, 30.0)
 
 t1 = []
@@ -254,9 +281,10 @@ t4 = []
 t5 = []
 t6 = []
 
+# Now call in loop
 for i in range(testiter):
 
-    print('Working on iter:', i, end='\r')
+    print('Working on iteration:', i, end='\r')
 
     i_z = np.random.choice(z)
     i_ms = np.random.choice(ms)
@@ -286,7 +314,7 @@ print('Mean (t4-t3), i.e., time to apply Ms and z [seconds]:', "{:.5f}".format(n
 print('Mean (t5-t4), i.e., time to apply LSF      [seconds]:', "{:.5f}".format(np.mean(t5 - t4)))
 print('Mean (t6-t5), i.e., time to grid data      [seconds]:', "{:.5f}".format(np.mean(t6 - t5)))
 print('------------------------')
-print('Mean total time for model                  [seconds]:', "{:.5f}".format(np.mean(t6 - t1)))
+print('Mean total time for model galaxy           [seconds]:', "{:.5f}".format(np.mean(t6 - t1)))
 
 
 
