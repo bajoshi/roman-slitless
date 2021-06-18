@@ -16,7 +16,8 @@ import numpy as np
 import emcee
 import corner
 from multiprocessing import Pool
-from lmfit import Parameters, fit_report, Minimizer
+#from lmfit import Parameters, fit_report, Minimizer
+from astropy.convolution import convolve, Box1DKernel
 
 from numba import njit
 
@@ -515,7 +516,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
-    for i in range(len(sedlst)):
+    for i in range(200, len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -581,33 +582,46 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
             fontsize=15)
 
         # extracted spectra
-        #ax.plot(wav1, flam1, label='900 s')
-        #ax.plot(wav2, flam2, label='1800 s')
-        ax.plot(wav3, flam3, label='3600 s')
+        ax.plot(wav1, flam1, color='teal', lw=1.0, alpha=0.5, label='900 s')
+        ax.plot(wav2, flam2, color='seagreen', lw=1.0, alpha=0.5, label='1800 s')
+        ax.plot(wav3, flam3, color='darkmagenta', lw=1.0, alpha=0.5, label='3600 s')
+
+        # Boxcar smooth all spectra and also plot those
+        smoothing_width_pix = 5
+        sf1 = convolve(flam1, Box1DKernel(smoothing_width_pix))
+        sf2 = convolve(flam2, Box1DKernel(smoothing_width_pix))
+        sf3 = convolve(flam3, Box1DKernel(smoothing_width_pix))
+        ax.plot(wav1, sf1, color='turquoise', lw=2.0, zorder=5, label='900 s smoothed')
+        ax.plot(wav2, sf2, color='lime', lw=2.0, zorder=5, label='1800 s smoothed')
+        ax.plot(wav3, sf3, color='deeppink', lw=2.0, zorder=5, label='3600 s smoothed')
 
         # models
         if 'salt' in template_name:
-            m = model_sn(wav1, sn_z, sn_day, sn_av)
+            m = model_sn(wav3, sn_z, sn_day, sn_av)
         else:
-            m = model_galaxy(wav1, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
+            m = model_galaxy(wav3, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
 
         # Only consider wavelengths where sensitivity is above 25%
         if disperser == 'grism':
-            x0 = np.where( (wav1 >= grism_sens_wav[grism_wav_idx][0]  ) &
-                           (wav1 <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
+            x0 = np.where( (wav3 >= grism_sens_wav[grism_wav_idx][0]  ) &
+                           (wav3 <= grism_sens_wav[grism_wav_idx][-1] ) )[0]
         elif disperser == 'prism':
-            x0 = np.where( (wav1 >= prism_sens_wav[prism_wav_idx][0]  ) &
-                           (wav1 <= prism_sens_wav[prism_wav_idx][-1] ) )[0]
+            x0 = np.where( (wav3 >= prism_sens_wav[prism_wav_idx][0]  ) &
+                           (wav3 <= prism_sens_wav[prism_wav_idx][-1] ) )[0]
 
         m = m[x0]
-        w = wav1[x0]
+        w = wav3[x0]
         flam1 = flam1[x0]
         flam2 = flam2[x0]
         flam3 = flam3[x0]
 
-        a1, chi2_1 = get_chi2(m, flam1, noise_lvl*flam1)
-        a2, chi2_2 = get_chi2(m, flam2, noise_lvl*flam2)
-        a3, chi2_3 = get_chi2(m, flam3, noise_lvl*flam3)
+        sf1 = sf1[x0]
+        sf2 = sf2[x0]
+        sf3 = sf3[x0]
+
+        a1, chi2_1 = get_chi2(m, sf1, noise_lvl*sf1)
+        a2, chi2_2 = get_chi2(m, sf2, noise_lvl*sf2)
+        a3, chi2_3 = get_chi2(m, sf3, noise_lvl*sf3)
 
         print("Object a for 900 s exptime:", "{:.4e}".format(a1))
         print("Object base model chi2 for 900 s exptime:", chi2_1)
@@ -622,7 +636,7 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
         # using the longer exptime alpha for now
         m = m * a3
 
-        ax.plot(w, m, label='model')
+        ax.plot(w, m, color='crimson', lw=3.0, zorder=10, label='model')
 
         # Add some text to the plot
         ax.text(x=0.85, y=0.45, s=r'$\mathrm{SegID:\ }$' + str(segid), color='k', 
@@ -636,7 +650,7 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
             verticalalignment='top', horizontalalignment='left', 
             transform=ax.transAxes, size=14)
 
-        ax.legend(loc=4, fontsize=14)
+        ax.legend(loc=8, fontsize=14, frameon=False)
 
         plt.show()
 
@@ -864,7 +878,7 @@ if __name__ == '__main__':
     ext_root = "romansim_prism_"
 
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_6'
+    img_suffix = 'Y106_0_1'
 
     exptime1 = '_900s'
     exptime2 = '_1800s'
@@ -884,14 +898,13 @@ if __name__ == '__main__':
     'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
     cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
+    # ------ To plot a single exptime use the code block below
     # --------------- Read in the extracted spectra
-    ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
-    ext_hdu = fits.open(ext_spec_filename)
-    print("Read in extracted spectra from:", ext_spec_filename)
-
-    plot_single_exptime_extraction(sedlst, ext_hdu)
-
-    sys.exit(0)
+    #ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
+    #ext_hdu = fits.open(ext_spec_filename)
+    #print("Read in extracted spectra from:", ext_spec_filename)
+    #plot_single_exptime_extraction(sedlst, ext_hdu)
+    #sys.exit(0)
 
     # --------------- Read in the extracted spectra
     # For all exposure times
@@ -906,7 +919,6 @@ if __name__ == '__main__':
     ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
     ext_hdu3 = fits.open(ext_spec_filename3)
     print("Read in extracted spectra from:", ext_spec_filename3)
-
 
     # ------------------------
     plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3)

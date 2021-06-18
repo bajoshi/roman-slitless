@@ -422,7 +422,7 @@ def gen_sed_lst():
     truth_match = fits.open(roman_direct_dir + '5deg_truth_gal.fits')
 
     # Arrays to loop over
-    pointings = np.arange(191)
+    pointings = np.arange(1, 191)
     detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
@@ -666,7 +666,6 @@ def gen_sed_lst():
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
             fh.close()
-            sys.exit(0)
 
     return None
 

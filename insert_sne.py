@@ -5,6 +5,7 @@ import os
 import sys
 import socket
 import subprocess
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 
@@ -69,36 +70,12 @@ def gen_reference_cutout():
 
 def main():
 
-    num_to_insert = np.random.randint(low=10, high=20)
-
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_2'
     ref_mag = 15.76
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
-
-    dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
-
-    # First check that the files have been unzipped
-    if not os.path.isfile(dir_img_name):
-        print("Unzipping file: " + dir_img_name + ".gz")
-        subprocess.run(['gzip', '-fd', dir_img_name + '.gz'])
-
-    # Open dir image
-    dir_hdu = fits.open(dir_img_name)
-
-    # Now divide by the exptime to get the image to counts per sec
-    cps_sci_arr = dir_hdu[1].data / float(dir_hdu[1].header['EXPTIME'])
-    cps_hdr = dir_hdu[1].header
-    dir_hdu.close()
-
-    # ---------------
-    # Get a list of x-y coords to insert SNe at
-    print("Will insert", num_to_insert, "SNe in", os.path.basename(dir_img_name))
-
-    x_ins, y_ins = get_insertion_coords(num_to_insert)
 
     # ---------------
     # Read in the reference image of the star from 
@@ -111,70 +88,104 @@ def main():
     ref_data = ref_cutout[0].data
 
     # ---------------
-    # Now insert as many SNe as required
-    print("--"*16)
-    print("  x      y           mag")
-    print("--"*16)
-    snmag_arr = np.zeros(num_to_insert)
-    for i in range(num_to_insert):
+    # Arrays to loop over
+    pointings = np.arange(1, 191)
+    detectors = np.arange(1, 19, 1)
 
-        # Decide some random mag for the SN
-        snmag = np.random.uniform(low=19.0, high=24.0)
-        snmag_arr[i] = snmag
+    for pt in tqdm(pointings, desc="Pointing"):
+        for det in tqdm(detectors, desc="Detector", leave=False):
 
-        # Now scale reference
-        ref_flux = np.sum(ref_data, axis=None)
-        delta_m = ref_mag - snmag
-        snflux = ref_flux * (1/np.power(10, -1*0.4*delta_m))
-        
-        scale_fac = snflux / ref_flux
-        new_cutout = ref_data * scale_fac
+            num_to_insert = np.random.randint(low=10, high=20)
 
-        if verbose:
-            print('Inserted SN mag:', snmag)
-            print('delta_m:', delta_m)
-            print('Added SN flux:', snflux)
-            print('Scale factor:', scale_fac)
-            print('New flux:', np.sum(new_cutout, axis=None))
+            img_suffix = 'Y106_' + str(pt) + '_' + str(det)
 
-        # Now get coords
-        xi = x_ins[i]
-        yi = y_ins[i]
+            dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
 
-        r = yi
-        c = xi
+            # First check that the files have been unzipped
+            if not os.path.isfile(dir_img_name):
+                tqdm.write("Unzipping file: " + dir_img_name + ".gz")
+                subprocess.run(['gzip', '-fd', dir_img_name + '.gz'])
 
-        # Add in the new SN
-        cps_sci_arr[r-s:r+s, c-s:c+s] = cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout
+            # Open dir image
+            dir_hdu = fits.open(dir_img_name)
 
-        print(xi, yi, "    ", "{:.3f}".format(snmag))
+            # Now divide by the exptime to get the image to counts per sec
+            cps_sci_arr = dir_hdu[1].data / float(dir_hdu[1].header['EXPTIME'])
+            cps_hdr = dir_hdu[1].header
+            dir_hdu.close()
 
-    # Save the locations and SN mag as a numpy array
-    added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
-    snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
-    np.save(snadd_fl, added_sn_data)
+            # ---------------
+            # Get a list of x-y coords to insert SNe at
+            tqdm.write("Will insert " + str(num_to_insert) + " SNe in " + os.path.basename(dir_img_name))
 
-    # Save and check with ds9
-    new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
-    savefile = dir_img_name.replace('.fits', '_SNadded.fits')
-    new_hdu.writeto(savefile, overwrite=True)
+            x_ins, y_ins = get_insertion_coords(num_to_insert)
 
-    # Also add a regions file for the added SNe
-    with open(dir_img_name.replace('.fits', '_SNadded.reg'), 'w') as fhreg:
+            # ---------------
+            # Now insert as many SNe as required
+            tqdm.write("--"*16)
+            tqdm.write("  x      y           mag")
+            tqdm.write("--"*16)
+            snmag_arr = np.zeros(num_to_insert)
 
-        fhreg.write("# Region file format: DS9 version 4.1" + "\n")
-        fhreg.write("global color=red dashlist=8 3 width=3 font=\"helvetica 10 normal roman\" ")
-        fhreg.write("select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 ")
-        fhreg.write("delete=1 include=1 source=1" + "\n")
-        fhreg.write("image" + "\n")
+            for i in range(num_to_insert):
 
-        for i in range(num_to_insert):
+                # Decide some random mag for the SN
+                snmag = np.random.uniform(low=19.0, high=24.0)
+                snmag_arr[i] = snmag
 
-            fhreg.write("circle(" + \
-                        "{:.1f}".format(x_ins[i])  + "," + \
-                        "{:.1f}".format(y_ins[i]) + "," + \
-                        "9.5955367)" + " # color=red" + \
-                        " width=3" + "\n")
+                # Now scale reference
+                ref_flux = np.sum(ref_data, axis=None)
+                delta_m = ref_mag - snmag
+                snflux = ref_flux * (1/np.power(10, -1*0.4*delta_m))
+                
+                scale_fac = snflux / ref_flux
+                new_cutout = ref_data * scale_fac
+
+                if verbose:
+                    tqdm.write('Inserted SN mag: ' + "{:.3f}".format(snmag))
+                    tqdm.write('delta_m: ' + "{:.3f}".format(delta_m))
+                    tqdm.write('Added SN flux: ' + "{:.3f}".format(snflux))
+                    tqdm.write('Scale factor: ' + "{:.3f}".format(scale_fac))
+                    tqdm.write('New flux: ' + "{:.3f}".format(np.sum(new_cutout, axis=None)))
+
+                # Now get coords
+                xi = x_ins[i]
+                yi = y_ins[i]
+
+                r = yi
+                c = xi
+
+                # Add in the new SN
+                cps_sci_arr[r-s:r+s, c-s:c+s] = cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout
+
+                tqdm.write(str(xi) + "  " + str(yi) + "    " + "{:.3f}".format(snmag))
+
+            # Save the locations and SN mag as a numpy array
+            added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
+            snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
+            np.save(snadd_fl, added_sn_data)
+
+            # Save and check with ds9
+            new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
+            savefile = dir_img_name.replace('.fits', '_SNadded.fits')
+            new_hdu.writeto(savefile, overwrite=True)
+
+            # Also add a regions file for the added SNe
+            with open(dir_img_name.replace('.fits', '_SNadded.reg'), 'w') as fhreg:
+
+                fhreg.write("# Region file format: DS9 version 4.1" + "\n")
+                fhreg.write("global color=red dashlist=8 3 width=3 font=\"helvetica 10 normal roman\" ")
+                fhreg.write("select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 ")
+                fhreg.write("delete=1 include=1 source=1" + "\n")
+                fhreg.write("image" + "\n")
+
+                for i in range(num_to_insert):
+
+                    fhreg.write("circle(" + \
+                                "{:.1f}".format(x_ins[i])  + "," + \
+                                "{:.1f}".format(y_ins[i]) + "," + \
+                                "9.5955367)" + " # color=red" + \
+                                " width=3" + "\n")
 
     return None
 
