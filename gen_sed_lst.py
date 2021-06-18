@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
+roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
 fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
 sys.path.append(fitting_utils)
@@ -423,7 +423,7 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(191)
-    detectors = np.arange(6, 19, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -491,6 +491,7 @@ def gen_sed_lst():
             cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
             'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
             cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+            tqdm.write(f"{bcolors.GREEN}" + str(len(cat)) + " objects in catalog." + f"{bcolors.ENDC}")
 
             # Loop over all objects and assign spectra
             # Read in the truth files first
@@ -532,6 +533,36 @@ def gen_sed_lst():
             xi = snadd_cat[:, 0]
             yi = snadd_cat[:, 1]
 
+            """
+            # -----------
+            ***** Short explaination of the code flow below. *****
+            # -----------
+
+            GOAL: Every object in the SExtractor catalog must be assigned a spectrum.
+
+            Steps:
+              1. Check for match with truth galaxy catalog.
+
+              2. IF MATCH IS NOT FOUND:
+
+                2A: Pick a random z
+
+                2B: Is it one of the fake SNe that we added?
+                    Yes --> Assign SN spectrum
+                    No  --> Assign GALAXY spectrum
+
+              3. IF MATCH IS FOUND:
+
+                3A: Get truth-z
+
+                3B: Is it a host galaxy?
+                    Yes --> Find corresponding SN and assign SN and host galaxy
+                            spectrum to the same redshift.
+                        --> Ensure that when the SN ID is encountered in the loop
+                            it is skipped.
+                    No  --> Assign galaxy spectrum
+            """
+
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
                 # -------------- First match object -------------- #
@@ -545,12 +576,20 @@ def gen_sed_lst():
                 # Now match and get corresponding entry in the larger truth file
                 idx = get_match(ra_gal, dec_gal, ra_to_check, dec_to_check)
                 #tqdm.write("Matched idx: " + str(idx))
+
                 if idx == -99:
+                    tqdm.write("\nObjID:" + current_sextractor_id)
                     tqdm.write("No matches found in truth file.")
 
+                    z_nomatch = np.random.uniform(low=0.0, high=3.0)
+
                     # There are some galaxies that have no matches in the truth
-                    # files. Make sure that these are skipped, since we can't do
-                    # anything about them.
+                    # files. I'm assigning a random redshift and spectrum to them.
+                    # They need to be given a spectrum otherwise the extraction
+                    # is likely to be messed up since we'd then have objects that
+                    # should have had dispersed light on the detector but didn't.
+                    # Not sure what that would do to the extraction.
+                    # ie. can't skip them like before.
                     # The SNe added through insert_sne.py should however be given
                     # SNe spectra.
                     current_x = cat['X_IMAGE'][i]
@@ -558,16 +597,17 @@ def gen_sed_lst():
                     added_match = np.where((np.abs(xi - current_x) <= 3.0) & \
                                            (np.abs(yi - current_y) <= 3.0))[0]
                     if len(added_match) < 1:
-                        tqdm.write('Skipping object with no match in truth')
+                        tqdm.write('Assigning galaxy spectrum to object with no match in truth')
                         tqdm.write('and is not an object added through insert_sne.py')
+                        spec_path = get_gal_spec_path(z_nomatch)
+                        fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
                         continue
 
-                    tqdm.write("Assigning random redshift to assumed added fake SN.")
-                    z = np.random.uniform(low=0.0, high=3.0)
-                    sn_spec_path = get_sn_spec_path(z)
-
-                    fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
-                    continue
+                    else:
+                        tqdm.write("Assigning random redshift to assumed added fake SN.")
+                        sn_spec_path = get_sn_spec_path(z_nomatch)
+                        fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
+                        continue
 
                 id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
                 #tqdm.write("ID to fetch from truth file: " + str(id_fetch))
@@ -593,7 +633,10 @@ def gen_sed_lst():
                     if sn_idx == -99:
                         tqdm.write(f"{bcolors.FAIL}")
                         tqdm.write("Match not found for SN with hostid " + str(id_fetch))
+                        tqdm.write("Assigning GALAXY spectrum.")
                         tqdm.write(f"{bcolors.ENDC}")
+                        spec_path = get_gal_spec_path(z)
+                        fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
                         continue
 
                     snid = cat['NUMBER'][sn_idx]
@@ -618,12 +661,12 @@ def gen_sed_lst():
                         tqdm.write("SN and HOST mags respectively: " + \
                                 str(cat['MAG_AUTO'][sn_idx]) + "   " + str(cat['MAG_AUTO'][i]))
 
-                else:  # i.e., for a generic galaxy and for the additional fake SNe
+                else:  # i.e., for a generic galaxy
                     spec_path = get_gal_spec_path(z)
-
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
             fh.close()
+            sys.exit(0)
 
     return None
 

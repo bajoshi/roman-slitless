@@ -69,12 +69,12 @@ def gen_reference_cutout():
 
 def main():
 
-    num_to_insert = np.random.randint(low=8, high=20)
+    num_to_insert = np.random.randint(low=10, high=20)
 
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_6'
+    img_suffix = 'Y106_0_2'
     ref_mag = 15.76
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False

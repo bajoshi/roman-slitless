@@ -443,7 +443,7 @@ def main():
     
     for img in img_suffix_list:
     
-        img_suffix = 'Y106_0_6' #img_suffix_list[sim_count]
+        img_suffix = 'Y106_0_1' #img_suffix_list[sim_count]
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
         logger.info("Working on direct image: " + dir_img_name)
@@ -461,11 +461,11 @@ def main():
         # efficiency I'm going to skip the images that do not have 
         # SNe in them.
         num_truth_sn = get_truth_sn(roman_direct_dir, img_suffix)
-        logger.info("Number of SN in image: " + str(num_truth_sn))
-        if num_truth_sn < 1:
-            logger.info("Skipping image due to no SNe.")
-            sim_count += 1
-            continue
+        logger.info("Number of SN (from orig truth) in image: " + str(num_truth_sn))
+        #if num_truth_sn < 1:
+        #    logger.info("Skipping image due to no SNe.")
+        #    sim_count += 1
+        #    continue
 
         create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
             img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \

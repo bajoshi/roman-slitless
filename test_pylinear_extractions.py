@@ -23,10 +23,10 @@ from numba import njit
 import matplotlib.pyplot as plt
 
 home = os.getenv('HOME')
-ext_spectra_dir = home + "/Documents/roman_slitless_sims_results/"
-roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-roman_sims_seds = home + "/Documents/roman_slitless_sims_seds/"
+ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
+roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
 
+roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
 fitting_pipeline_dir = roman_slitless_dir + "fitting_pipeline/"
 fitting_utils = fitting_pipeline_dir + "/utils/"
 
@@ -861,7 +861,7 @@ def read_pickle_make_plots(object_type, ndim, args_obj, label_list, truth_arr):
 if __name__ == '__main__':
     
     # --------------- Preliminary stuff
-    ext_root = "romansim_grism_"
+    ext_root = "romansim_prism_"
 
     img_basename = '5deg_'
     img_suffix = 'Y106_0_6'
