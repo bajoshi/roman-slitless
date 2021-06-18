@@ -234,6 +234,8 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
                         fh.write(str_to_write)
 
+            print("Written FLT LST:", flt_filename)
+
     else:
 
         for t in range(len(exptime_list)):
@@ -253,7 +255,7 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
                     fh.write(str_to_write)
 
-    print("Written FLT LST:", flt_filename)
+            print("Written FLT LST:", flt_filename)
 
     return None
 
@@ -443,7 +445,7 @@ def main():
     
     for img in img_suffix_list:
     
-        img_suffix = 'Y106_0_1' #img_suffix_list[sim_count]
+        img_suffix = img_suffix_list[sim_count]
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
         logger.info("Working on direct image: " + dir_img_name)

@@ -578,7 +578,7 @@ def gen_sed_lst():
                 #tqdm.write("Matched idx: " + str(idx))
 
                 if idx == -99:
-                    tqdm.write("\nObjID:" + current_sextractor_id)
+                    tqdm.write("\nObjID:" + str(current_sextractor_id))
                     tqdm.write("No matches found in truth file.")
 
                     z_nomatch = np.random.uniform(low=0.0, high=3.0)
@@ -604,7 +604,7 @@ def gen_sed_lst():
                         continue
 
                     else:
-                        tqdm.write("Assigning random redshift to assumed added fake SN.")
+                        tqdm.write("Assigning random redshift to added fake SN.")
                         sn_spec_path = get_sn_spec_path(z_nomatch)
                         fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
                         continue
