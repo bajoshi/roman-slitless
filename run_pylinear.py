@@ -316,7 +316,7 @@ def gen_img_suffixes():
 
     # Arrays to loop over
     pointings = np.arange(191)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(15, 19, 1)
 
     img_filt = 'Y106_'
 
@@ -446,10 +446,6 @@ def main():
     for img in img_suffix_list:
     
         img_suffix = img_suffix_list[sim_count]
-        if img_suffix == 'Y106_0_1':
-            print('Skipping:', img_suffix)
-            sim_count += 1
-            continue
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
         logger.info("Working on direct image: " + dir_img_name)

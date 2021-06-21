@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import datetime as dt
+from multiprocessing import Pool
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
@@ -133,6 +134,7 @@ def logpost_sn(theta, x, data, err):
 
 #@jit(nopython=True)
 # griddata is an issue for jit
+# maybe a manually written 'griddate' would be okay
 def model_sn(x, z, day, sn_av):
 
     # pull out spectrum for the chosen day
@@ -180,6 +182,8 @@ def main():
     exptime1 = '_900s'
     exptime2 = '_1800s'
     exptime3 = '_3600s'
+
+    all_exptimes = [exptime1, exptime2, exptime3]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -250,6 +254,7 @@ def main():
             all_hdus = [ext_hdu1, ext_hdu2, ext_hdu3]
 
             # --------------- Loop over all extracted files and SN in each file
+            expcount = 0
             for ext_hdu in all_hdus:
 
                 for i in range(len(sedlst)):
@@ -295,40 +300,42 @@ def main():
                     print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
 
                     # Now run on SN
+                    snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
                     emcee_savefile = results_dir + \
-                                     'emcee_sampler_sn' + str(segid) + '_' + img_suffix + '.h5'
+                                     'emcee_sampler_sn' + snstr + '.h5'
                     if not os.path.isfile(emcee_savefile):
                         backend = emcee.backends.HDFBackend(emcee_savefile)
                         backend.reset(nwalkers, ndim_sn)
-                            
-                        sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
-                            args=args_sn, backend=backend,
-                            moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),])
-                        sampler.run_mcmc(pos_sn, 2000, progress=True)
+                        
+                        with Pool(2) as pool:
+                            sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
+                                args=args_sn, pool=pool, backend=backend,
+                                moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),])
+                            sampler.run_mcmc(pos_sn, 2000, progress=True)
 
                         print(f"{bcolors.GREEN}")
                         print("Finished running emcee.")
                         print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
                         print(f"{bcolors.ENDC}")
 
-                    # ---------- Stuff needed for plotting
-                    template_inputs = get_template_inputs(template_name)
-                    truth_dict = {}
-                    truth_dict['z']     = template_inputs[0]
-                    truth_dict['phase'] = template_inputs[1]
-                    truth_dict['Av']    = template_inputs[2]
+                        # ---------- Stuff needed for plotting
+                        template_inputs = get_template_inputs(template_name)
+                        truth_dict = {}
+                        truth_dict['z']     = template_inputs[0]
+                        truth_dict['phase'] = template_inputs[1]
+                        truth_dict['Av']    = template_inputs[2]
 
-                    read_pickle_make_plots_sn('sn' + str(segid) + '_' + img_suffix, 
-                        ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+                        read_pickle_make_plots_sn('sn' + snstr, 
+                            ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
 
-                    print("Finished plotting results.")
+                        print("Finished plotting results.")
+
+                expcount += 1
 
             # --------------- close all open fits files
             ext_hdu1.close()
             ext_hdu2.close()
             ext_hdu3.close()
-
-            sys.exit(0)
 
     return None
 
