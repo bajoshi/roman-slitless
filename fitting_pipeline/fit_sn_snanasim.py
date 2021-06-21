@@ -8,8 +8,6 @@ from scipy.interpolate import griddata
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
-from specutils.analysis import snr_derived
-from specutils import Spectrum1D
 
 import os
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -35,6 +33,8 @@ fitting_utils = cwd + '/utils/'
 
 sys.path.append(fitting_utils)
 import dust_utils as du
+from get_snr import get_snr
+from snfit_plots import read_pickle_make_plots_sn
 
 # Define any required constants/arrays
 Lsol = 3.826e33
@@ -84,14 +84,6 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
     redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
 
     return redshifted_wav, redshifted_flux
-
-def get_snr(wav, flux):
-
-    spectrum1d_wav = wav * u.AA
-    spectrum1d_flux = flux * u.erg / (u.cm * u.cm * u.s * u.AA)
-    spec1d = Spectrum1D(spectral_axis=spectrum1d_wav, flux=spectrum1d_flux)
-
-    return snr_derived(spec1d)
 
 def loglike_sn(theta, x, data, err):
     
@@ -282,166 +274,6 @@ def read_sn_data(sn_filename):
     sn_wav = (l0 + l1) / 2
 
     return nspectra, sn_wav, sn_flam, sn_ferr, sn_simflam, truth_dict
-
-def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dict):
-
-    h5_path = 'emcee_sampler_' + object_type + '.h5'
-    sampler = emcee.backends.HDFBackend(h5_path)
-
-    samples = sampler.get_chain()
-    print(f"{bcolors.CYAN}\nRead in sampler:", h5_path, f"{bcolors.ENDC}")
-    print("Samples shape:", samples.shape)
-
-    #reader = emcee.backends.HDFBackend(pkl_path.replace('.pkl', '.h5'))
-    #samples = reader.get_chain()
-    #tau = reader.get_autocorr_time(tol=0)
-
-    # Get autocorrelation time
-    # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
-    tau = sampler.get_autocorr_time(tol=0)
-    if not np.any(np.isnan(tau)):
-        burn_in = int(2 * np.max(tau))
-        thinning_steps = int(0.5 * np.min(tau))
-    else:
-        burn_in = 200
-        thinning_steps = 30
-
-    print(f"{bcolors.CYAN}")
-    print("Average Tau:", np.mean(tau))
-    print("Burn-in:", burn_in)
-    print("Thinning steps:", thinning_steps)
-    print(f"{bcolors.ENDC}")
-
-    # construct truth arr and plot
-    truth_arr = np.array([truth_dict['z'], truth_dict['phase'], 0.0])
-
-    # plot trace
-    fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
-
-    for i in range(ndim):
-        ax1 = axes1[i]
-        ax1.plot(samples[:, :, i], "k", alpha=0.05)
-        ax1.axhline(y=truth_arr[i], color='tab:red', lw=2.0)
-        ax1.set_xlim(0, len(samples))
-        ax1.set_ylabel(label_list[i], fontsize=15)
-        ax1.yaxis.set_label_coords(-0.1, 0.5)
-
-    axes1[-1].set_xlabel("Step number")
-
-    fig1.savefig('emcee_trace_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
-
-    # Create flat samples
-    flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
-    print("\nFlat samples shape:", flat_samples.shape)
-
-    # plot corner plot
-    cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
-    cq_day = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
-    cq_av = corner.quantile(x=flat_samples[:, 2], q=[0.16, 0.5, 0.84])
-
-    # print parameter estimates
-    print(f"{bcolors.CYAN}")
-    print("Parameter estimates:")
-    print("Redshift: ", cq_z)
-    print("Supernova phase [day]:", cq_day)
-    print("Visual extinction [mag]:", cq_av)
-    print(f"{bcolors.ENDC}")
-
-    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, 
-        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14},
-        truth_color='tab:red', truths=truth_arr, verbose=True, smooth=0.5, smooth1d=0.5)
-
-    # Extract the axes
-    axes = np.array(fig.axes).reshape((ndim, ndim))
-
-    # Get the redshift axis
-    # and edit how the errors are displayed
-    ax_z = axes[0, 0]
-
-    z_err_high = cq_z[2] - cq_z[1]
-    z_err_low = cq_z[1] - cq_z[0]
-
-    ax_z.set_title(r"$z \, =\,$" + r"${:.3f}$".format(cq_z[1]) + \
-        r"$\substack{+$" + r"${:.3f}$".format(z_err_high) + r"$\\ -$" + \
-        r"${:.3f}$".format(z_err_low) + r"$}$", 
-        fontsize=11)
-
-    fig.savefig('corner_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
-
-    # ------------ Plot 100 random models from the parameter 
-    # space within +-1sigma of corner estimates
-    # first pull out required stuff from args
-    wav = args_obj[0]
-    flam = args_obj[1]
-    ferr = args_obj[2]
-
-    fig3 = plt.figure(figsize=(9,4))
-    ax3 = fig3.add_subplot(111)
-
-    ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
-
-    model_count = 0
-    ind_list = []
-
-    while model_count <= 100:
-
-        ind = int(np.random.randint(len(flat_samples), size=1))
-        ind_list.append(ind)
-
-        # make sure sample has correct shape
-        sample = flat_samples[ind]
-        
-        model_okay = 0
-
-        sample = sample.reshape(3)
-
-        # Get the parameters of the sample
-        model_z = sample[0]
-        model_day = sample[1]
-        model_av = sample[2]
-
-        # Check that the model is within +-1 sigma
-        # of value inferred by corner contours
-        if (model_z >= cq_z[0]) and (model_z <= cq_z[2]) and \
-           (model_day >= cq_day[0]) and (model_day <= cq_day[2]) and \
-           (model_av >= cq_av[0]) and (model_av <= cq_av[2]):
-
-           model_okay = 1
-
-        # Now plot if the model is okay
-        if model_okay:
-
-            m = model_sn(wav, sample[0], sample[1], sample[2])
-
-            a = np.nansum(flam * m / ferr**2) / np.nansum(m**2 / ferr**2)
-            m = m * a
-
-            ax3.plot(wav, m, color='royalblue', lw=0.5, alpha=0.05, zorder=2)
-
-            model_count += 1
-
-    print("\nList of randomly chosen indices:", ind_list)
-
-    ax3.plot(wav, flam, color='k', lw=1.0, zorder=1)
-    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
-
-    # ADD LEGEND
-    ax3.text(x=0.65, y=0.92, s='--- Simulated data', 
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax3.transAxes, color='k', size=12)
-    ax3.text(x=0.65, y=0.85, s='--- 100 randomly chosen samples', 
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax3.transAxes, color='royalblue', size=12)
-
-    fig3.savefig('emcee_overplot_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
-
-    # close figs
-    plt.clf()
-    plt.cla()
-    plt.close()
-
-    return None
 
 def main():
 
