@@ -10,6 +10,7 @@ fitting_utils = cwd + '/utils/'
 
 sys.path.append(fitting_utils)
 import dust_utils as du
+import proper_and_lum_dist as cosmo
 
 # Define any required constants/arrays
 sn_day_arr = np.arange(-20,51,1)
@@ -31,10 +32,10 @@ def model_sn(x, z, day, sn_av):
     sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, sn_av)
 
     # ------ Apply redshift
-    sn_lam_z, sn_flam_z = apply_redshift(sn_spec_lam, sn_dusty_llam, z)
+    sn_lam_z, sn_flam_z = cosmo.apply_redshift(sn_spec_lam, sn_dusty_llam, z)
 
     # ------ Calibration polynomial
-    
+
 
     # ------ Regrid to Roman wavelength sampling
     sn_mod = griddata(points=sn_lam_z, values=sn_flam_z, xi=x)

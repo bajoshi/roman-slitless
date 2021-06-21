@@ -4,13 +4,28 @@ import corner
 
 import matplotlib.pyplot as plt
 
-def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dict):
+from model_sn import model_sn
 
-    h5_path = 'emcee_sampler_' + object_type + '.h5'
+# This class came from stackoverflow
+# SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
+class bcolors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dict, savedir):
+
+    h5_path = savedir + 'emcee_sampler_' + object_type + '.h5'
     sampler = emcee.backends.HDFBackend(h5_path)
 
     samples = sampler.get_chain()
-    print(f"{bcolors.CYAN}\nRead in sampler:", h5_path, f"{bcolors.ENDC}")
+    print("\nRead in sampler:", h5_path)
     print("Samples shape:", samples.shape)
 
     #reader = emcee.backends.HDFBackend(pkl_path.replace('.pkl', '.h5'))
@@ -27,14 +42,12 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
         burn_in = 200
         thinning_steps = 30
 
-    print(f"{bcolors.CYAN}")
     print("Average Tau:", np.mean(tau))
     print("Burn-in:", burn_in)
     print("Thinning steps:", thinning_steps)
-    print(f"{bcolors.ENDC}")
 
     # construct truth arr and plot
-    truth_arr = np.array([truth_dict['z'], truth_dict['phase'], 0.0])
+    truth_arr = np.array([truth_dict['z'], truth_dict['phase'], truth_dict['Av']])
 
     # plot trace
     fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
@@ -49,7 +62,8 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
 
     axes1[-1].set_xlabel("Step number")
 
-    fig1.savefig('emcee_trace_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
+    fig1.savefig(savedir + 'emcee_trace_' + object_type + '.pdf', 
+        dpi=200, bbox_inches='tight')
 
     # Create flat samples
     flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
@@ -87,7 +101,8 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
         r"${:.3f}$".format(z_err_low) + r"$}$", 
         fontsize=11)
 
-    fig.savefig('corner_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
+    fig.savefig(savedir + 'corner_' + object_type + '.pdf', 
+        dpi=200, bbox_inches='tight')
 
     # ------------ Plot 100 random models from the parameter 
     # space within +-1sigma of corner estimates
@@ -142,8 +157,6 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
 
             model_count += 1
 
-    print("\nList of randomly chosen indices:", ind_list)
-
     ax3.plot(wav, flam, color='k', lw=1.0, zorder=1)
     ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
 
@@ -155,7 +168,8 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
         verticalalignment='top', horizontalalignment='left', 
         transform=ax3.transAxes, color='royalblue', size=12)
 
-    fig3.savefig('emcee_overplot_' + object_type + '.pdf', dpi=200, bbox_inches='tight')
+    fig3.savefig(savedir + 'emcee_overplot_' + object_type + '.pdf', 
+        dpi=200, bbox_inches='tight')
 
     # close figs
     plt.clf()

@@ -35,6 +35,7 @@ sys.path.append(fitting_utils)
 import proper_and_lum_dist as cosmo
 import dust_utils as du
 from get_snr import get_snr
+from get_template_inputs import get_template_inputs
 
 start = time.time()
 print("Starting at:", dt.datetime.now())
@@ -357,47 +358,6 @@ def model_sn(x, z, day, sn_av):
     #sn_flam_hostcomb = sn_mod  +  host_frac * host_flam
 
     return sn_mod
-
-def get_template_inputs(template_name):
-
-    # Read in the dummy template passed to pyLINEAR
-    template_name_list = template_name.split('.txt')[0].split('_')
-    print("Template file name:", template_name)
-
-    # Get template properties
-    if 'salt' in template_name:
-        
-        sn_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
-        sn_z = float(template_name_list[-2].replace('p', '.').replace('z',''))
-        sn_day = int(template_name_list[-3].replace('day',''))
-
-        print('SN info:')
-        print('Redshift:', sn_z)
-        print('Phase:', sn_day)
-        print('Av:', sn_av)
-
-        return [sn_z, sn_day, sn_av]
-
-    else:
-
-        galaxy_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
-        galaxy_met = float(template_name_list[-2].replace('p', '.').replace('met',''))
-        galaxy_tau = float(template_name_list[-3].replace('p', '.').replace('tau',''))
-        galaxy_age = float(template_name_list[-4].replace('p', '.').replace('age',''))
-        galaxy_ms = float(template_name_list[-5].replace('p', '.').replace('ms',''))
-        galaxy_z = float(template_name_list[-6].replace('p', '.').replace('z',''))
-
-        galaxy_logtau = np.log10(galaxy_tau)
-
-        print('Galaxy info:')
-        print('Redshift:', galaxy_z)
-        print('Stellar mass:', galaxy_ms)
-        print('Age:', galaxy_age)
-        print('Tau:', galaxy_tau)
-        print('Metallicity:', galaxy_met)
-        print('Av:', galaxy_av)
-
-        return [galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av]
 
 def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 

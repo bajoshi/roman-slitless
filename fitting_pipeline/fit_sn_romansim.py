@@ -2,7 +2,7 @@ import numpy as np
 from astropy.io import fits
 from scipy.interpolate import griddata
 from numba import jit
-
+import emcee
 
 import os
 import sys
@@ -19,12 +19,14 @@ fitting_utils = cwd + '/utils/'
 
 roman_slitless_dir = os.path.dirname(cwd)
 ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
+results_dir = ext_spectra_dir + 'fitting_results/'
 
 sys.path.append(roman_slitless_dir)
 sys.path.append(fitting_utils)
 from get_snr import get_snr
-from test_pylinear_extractions import get_template_inputs
+from get_template_inputs import get_template_inputs
 import dust_utils as du
+from snfit_plots import read_pickle_make_plots_sn
 
 #### ------ DONE WITH IMPORTS ------ ####
 start = time.time()
@@ -129,6 +131,8 @@ def logpost_sn(theta, x, data, err):
     
     return lp + lnL
 
+#@jit(nopython=True)
+# griddata is an issue for jit
 def model_sn(x, z, day, sn_av):
 
     # pull out spectrum for the chosen day
@@ -167,7 +171,7 @@ def get_lnLike(y, data, err):
 
 def main():
 
-    # --------------- Preliminary stuff
+    # ----------------------- Preliminary stuff ----------------------- #
     ext_root = "romansim_prism_"
 
     img_basename = '5deg_'
@@ -178,6 +182,9 @@ def main():
     exptime3 = '_3600s'
 
     # ----------------------- Using emcee ----------------------- #
+    # Labels for corner and trace plots
+    label_list_sn = [r'$z$', r'$Day$', r'$A_V [mag]$']
+
     # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
     jump_size_z = 0.01
     jump_size_av = 0.1  # magnitudes
@@ -207,7 +214,7 @@ def main():
 
         pos_sn[i] = rsn
 
-    # --------------- Loop over all simulated and extracted SN spectra
+    # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 191)
     detectors = np.arange(1, 19, 1)
@@ -242,6 +249,7 @@ def main():
 
             all_hdus = [ext_hdu1, ext_hdu2, ext_hdu3]
 
+            # --------------- Loop over all extracted files and SN in each file
             for ext_hdu in all_hdus:
 
                 for i in range(len(sedlst)):
@@ -249,8 +257,6 @@ def main():
                     template_name = os.path.basename(sedlst['sed_path'][i])
                     if 'salt' not in template_name:
                         continue
-
-                    #template_inputs = get_template_inputs(template_name)
 
                     # Get spectrum
                     segid = sedlst['segid'][i]
@@ -288,8 +294,6 @@ def main():
                     print("logpost at starting position for SN:")
                     print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
 
-                    sys.exit(0)
-
                     # Now run on SN
                     emcee_savefile = results_dir + \
                                      'emcee_sampler_sn' + str(segid) + '_' + img_suffix + '.h5'
@@ -307,8 +311,17 @@ def main():
                         print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
                         print(f"{bcolors.ENDC}")
 
+                    # ---------- Stuff needed for plotting
+                    template_inputs = get_template_inputs(template_name)
+                    truth_dict = {}
+                    truth_dict['z']     = template_inputs[0]
+                    truth_dict['phase'] = template_inputs[1]
+                    truth_dict['Av']    = template_inputs[2]
+
                     read_pickle_make_plots_sn('sn' + str(segid) + '_' + img_suffix, 
-                        ndim_sn, args_sn, label_list_sn, truth_dict)
+                        ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+
+                    print("Finished plotting results.")
 
             # --------------- close all open fits files
             ext_hdu1.close()
