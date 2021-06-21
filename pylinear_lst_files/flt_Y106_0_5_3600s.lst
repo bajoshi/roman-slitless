@@ -1,0 +1,6 @@
+# Path to each flt image
+# This has to be a simulated or observed dispersed image
+
+/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/romansim_prism1_Y106_0_5_3600s_flt.fits
+/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/romansim_prism2_Y106_0_5_3600s_flt.fits
+/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/romansim_prism3_Y106_0_5_3600s_flt.fits

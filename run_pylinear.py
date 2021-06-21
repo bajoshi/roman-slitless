@@ -446,6 +446,10 @@ def main():
     for img in img_suffix_list:
     
         img_suffix = img_suffix_list[sim_count]
+        if img_suffix == 'Y106_0_1':
+            print('Skipping:', img_suffix)
+            sim_count += 1
+            continue
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
         logger.info("Working on direct image: " + dir_img_name)
@@ -670,8 +674,7 @@ def main():
         # for a given direct image are simulated
         sim_count += 1
 
-        logger.info("Finished with first set of sims. Check results. Exiting.")
-        sys.exit(0)
+        logger.info("Finished with set of sims. Check results. Moving to next.")
     
     logger.info("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 

@@ -516,7 +516,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
-    for i in range(200, len(sedlst)):
+    for i in range(len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -551,27 +551,9 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
         # Set noise level based on snr
         noise_lvl = 1/snr
 
-        # Read in the dummy template passed to pyLINEAR
+        # Get template inputs
         template_name = os.path.basename(sedlst['sed_path'][i])
-        template_name_list = template_name.split('.txt')[0].split('_')
-
-        # Get template properties
-        if 'salt' in template_name:
-            
-            sn_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
-            sn_z = float(template_name_list[-2].replace('p', '.').replace('z',''))
-            sn_day = int(template_name_list[-3].replace('day',''))
-
-        else:
-
-            galaxy_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
-            galaxy_met = float(template_name_list[-2].replace('p', '.').replace('met',''))
-            galaxy_tau = float(template_name_list[-3].replace('p', '.').replace('tau',''))
-            galaxy_age = float(template_name_list[-4].replace('p', '.').replace('age',''))
-            galaxy_ms = float(template_name_list[-5].replace('p', '.').replace('ms',''))
-            galaxy_z = float(template_name_list[-6].replace('p', '.').replace('z',''))
-
-            galaxy_logtau = np.log10(galaxy_tau)
+        template_inputs = get_template_inputs(template_name)
 
         # Now plot
         fig = plt.figure(figsize=(13,6))
@@ -597,9 +579,10 @@ def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
         # models
         if 'salt' in template_name:
-            m = model_sn(wav3, sn_z, sn_day, sn_av)
+            m = model_sn(wav3, template_inputs[0], template_inputs[1], template_inputs[2])
         else:
-            m = model_galaxy(wav3, galaxy_z, galaxy_ms, galaxy_age, galaxy_logtau, galaxy_av)
+            m = model_galaxy(wav3, template_inputs[0], template_inputs[1], template_inputs[2], 
+                             template_inputs[3], template_inputs[4])
 
         # Only consider wavelengths where sensitivity is above 25%
         if disperser == 'grism':
@@ -878,7 +861,7 @@ if __name__ == '__main__':
     ext_root = "romansim_prism_"
 
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_1'
+    img_suffix = 'Y106_0_11'
 
     exptime1 = '_900s'
     exptime2 = '_1800s'
