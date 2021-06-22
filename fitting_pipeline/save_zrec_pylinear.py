@@ -60,7 +60,7 @@ with open(resfile, 'w') as fh:
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 14, 1)
+    detectors = np.arange(1, 10, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -261,5 +261,5 @@ with open(resfile, 'w') as fh:
 
                     fh.write('-9999.0' + '  ')
                     fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
+                    fh.write('-9999.0' + '\n')
 
