@@ -445,7 +445,7 @@ def main():
     
     for img in img_suffix_list:
     
-        img_suffix = img_suffix_list[sim_count]
+        img_suffix = 'Y106_0_2'#img_suffix_list[sim_count]
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
         logger.info("Working on direct image: " + dir_img_name)
@@ -517,6 +517,8 @@ def main():
             logger.info("Skipping image due to no or only one SNe matches.")
             sim_count += 1
             continue
+
+        logger.info("Total number of SNe in new image: " + str(num_sn))
 
         # ---------------------- Proceed if all okay
         # ---------------------- Get sources
@@ -671,6 +673,7 @@ def main():
         sim_count += 1
 
         logger.info("Finished with set of sims. Check results. Moving to next.")
+        sys.exit(0)
     
     logger.info("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 

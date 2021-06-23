@@ -422,8 +422,8 @@ def gen_sed_lst():
     truth_match = fits.open(roman_direct_dir + '5deg_truth_gal.fits')
 
     # Arrays to loop over
-    pointings = np.arange(1, 191)
-    detectors = np.arange(1, 19, 1)
+    pointings = np.arange(0, 191)
+    detectors = np.arange(2, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -563,10 +563,17 @@ def gen_sed_lst():
                     No  --> Assign galaxy spectrum
             """
 
+            assigned_sne = []
+
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
                 # -------------- First match object -------------- #
                 current_sextractor_id = int(cat['NUMBER'][i])
+
+                if current_sextractor_id in assigned_sne:
+                    tqdm.write("\nSN spectrum already assigned to " + str(current_sextractor_id))
+                    tqdm.write("Skipping.")
+                    continue
     
                 # The -1 in the index is needed because the SExtractor 
                 # catalog starts counting object ids from 1.
@@ -632,7 +639,7 @@ def gen_sed_lst():
                     sn_idx = get_match(cat['ALPHA_J2000'], cat['DELTA_J2000'], sn_ra, sn_dec)
                     if sn_idx == -99:
                         tqdm.write(f"{bcolors.FAIL}")
-                        tqdm.write("Match not found for SN with hostid " + str(id_fetch))
+                        tqdm.write("Matching SN not found for hostid " + str(id_fetch))
                         tqdm.write("Assigning GALAXY spectrum.")
                         tqdm.write(f"{bcolors.ENDC}")
                         spec_path = get_gal_spec_path(z)
@@ -656,6 +663,8 @@ def gen_sed_lst():
                         fh.write(str(snid) + " " + sn_spec_path + "\n")
                         fh.write(str(current_sextractor_id) + " " + gal_spec_path + "\n")
 
+                        assigned_sne.append(snid)
+
                         tqdm.write("SN SExtractor ID: " + str(snid))
                         tqdm.write("HOST SExtractor ID: " + str(current_sextractor_id))
                         tqdm.write("SN and HOST mags respectively: " + \
@@ -666,6 +675,7 @@ def gen_sed_lst():
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
             fh.close()
+            sys.exit(0)
 
     return None
 

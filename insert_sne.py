@@ -89,8 +89,8 @@ def main():
 
     # ---------------
     # Arrays to loop over
-    pointings = np.arange(1, 191)
-    detectors = np.arange(1, 19, 1)
+    pointings = np.arange(0, 191)
+    detectors = np.arange(2, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -116,6 +116,7 @@ def main():
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
+            tqdm.write("Working on: " + dir_img_name)
             tqdm.write("Will insert " + str(num_to_insert) + " SNe in " + os.path.basename(dir_img_name))
 
             x_ins, y_ins = get_insertion_coords(num_to_insert)
@@ -169,6 +170,7 @@ def main():
             new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
             savefile = dir_img_name.replace('.fits', '_SNadded.fits')
             new_hdu.writeto(savefile, overwrite=True)
+            tqdm.write('Saved: ' + savefile)
 
             # Also add a regions file for the added SNe
             with open(dir_img_name.replace('.fits', '_SNadded.reg'), 'w') as fhreg:
@@ -186,6 +188,8 @@ def main():
                                 "{:.1f}".format(y_ins[i]) + "," + \
                                 "9.5955367)" + " # color=red" + \
                                 " width=3" + "\n")
+
+            sys.exit(0)
 
     return None
 

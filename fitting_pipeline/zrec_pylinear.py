@@ -54,7 +54,7 @@ ax2.axhline(y=0.0, ls='--', color='gray', lw=2.0)
 # Print info
 fail_idx900 = np.where(np.abs(z900acc) >= 0.1)[0]
 
-print('\nCatastrophic failure fraction:', "{:.4f}".format(len(fail_idx900) / len(cat)))
+print('\nCatastrophic failure fraction 900 seconds:', "{:.4f}".format(len(fail_idx900) / len(cat)))
 
 # remove outliers
 z900acc[fail_idx900] = np.nan
@@ -80,7 +80,7 @@ ax2.errorbar(cat['z_true'], z1800acc,
 # Print info
 fail_idx1800 = np.where(np.abs(z1800acc) >= 0.1)[0]
 
-print('\nCatastrophic failure fraction:', "{:.4f}".format(len(fail_idx1800) / len(cat)))
+print('\nCatastrophic failure fraction 1800 seconds:', "{:.4f}".format(len(fail_idx1800) / len(cat)))
 
 # remove outliers
 z1800acc[fail_idx1800] = np.nan
@@ -106,7 +106,7 @@ ax2.errorbar(cat['z_true'], z3600acc,
 # Print info
 fail_idx3600 = np.where(np.abs(z3600acc) >= 0.1)[0]
 
-print('\nCatastrophic failure fraction:', "{:.4f}".format(len(fail_idx3600) / len(cat)))
+print('\nCatastrophic failure fraction 3600 seconds:', "{:.4f}".format(len(fail_idx3600) / len(cat)))
 
 # remove outliers
 z3600acc[fail_idx3600] = np.nan

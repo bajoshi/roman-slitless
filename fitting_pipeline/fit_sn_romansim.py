@@ -10,6 +10,8 @@ import time
 import datetime as dt
 from multiprocessing import Pool
 
+import matplotlib.pyplot as plt
+
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
@@ -33,6 +35,7 @@ from snfit_plots import read_pickle_make_plots_sn
 start = time.time()
 
 # Define any required constants/arrays
+sn_scalefac = 2.0842526537870818e+48  # see sn_scaling.py 
 sn_day_arr = np.arange(-20,51,1)
 
 # Load in all models
@@ -141,7 +144,7 @@ def model_sn(x, z, day, sn_av):
     day_idx_ = np.argmin(abs(sn_day_arr - day))
     day_idx = np.where(salt2_spec['day'] == sn_day_arr[day_idx_])[0]
 
-    sn_spec_llam = salt2_spec['flam'][day_idx]
+    sn_spec_llam = salt2_spec['flam'][day_idx] * sn_scalefac
     sn_spec_lam = salt2_spec['lam'][day_idx]
 
     # ------ Apply dust extinction
@@ -190,18 +193,20 @@ def main():
     label_list_sn = [r'$z$', r'$Day$', r'$A_V [mag]$']
 
     # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-    jump_size_z = 0.01
-    jump_size_av = 0.1  # magnitudes
+    jump_size_z   = 0.01
+    jump_size_av  = 0.1  # magnitudes
     jump_size_day = 2  # days
 
-    zprior = 0.5
+    zprior       = 0.5
     zprior_sigma = 0.02
 
-    #get_optimal_position()
-    rsn_init = np.array([zprior, 0, 0.0])  # redshift, day relative to peak, and dust extinction
+    rsn_init = get_optimal_position()
+    #rsn_init = np.array([zprior, 0, 0.0])  # redshift, day relative to peak, and dust extinction
+    #rsn_init = np.array([2.589, 21, 4.743])
 
     # Setup dims and walkers
-    nwalkers = 300
+    nwalkers = 500
+    niter    = 1000
     ndim_sn  = 3
 
     # generating ball of walkers about initial position defined above
@@ -221,7 +226,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 191)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(3, 19, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -253,82 +258,91 @@ def main():
 
             all_hdus = [ext_hdu1, ext_hdu2, ext_hdu3]
 
+            # --------------- loop and find all SN segids
+            all_sn_segids = []
+            for i in range(len(sedlst)):
+                if 'salt' in sedlst['sed_path'][i]:
+                    all_sn_segids.append(sedlst['segid'][i])
+
+            print('ALL SN segids in this file:', all_sn_segids)
+
             # --------------- Loop over all extracted files and SN in each file
             expcount = 0
             for ext_hdu in all_hdus:
 
-                for i in range(len(sedlst)):
+                #for segid in all_sn_segids:
+ 
+                # Get spectrum
+                segid = 769
 
-                    template_name = os.path.basename(sedlst['sed_path'][i])
-                    if 'salt' not in template_name:
-                        continue
+                segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
-                    # Get spectrum
-                    segid = sedlst['segid'][i]
+                template_name = os.path.basename(sedlst['sed_path'][segid_idx])
+                template_inputs = get_template_inputs(template_name)  # needed for plotting
 
-                    print("\nFitting SegID:", segid)
+                print("\nFitting SegID:", segid)
 
-                    wav = ext_hdu[('SOURCE', segid)].data['wavelength']
-                    flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+                wav = ext_hdu[('SOURCE', segid)].data['wavelength']
+                flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-                    # Check SNR
-                    snr = get_snr(wav, flam)
+                # Check SNR
+                snr = get_snr(wav, flam)
 
-                    print("SNR for this spectrum:", "{:.2f}".format(snr))
+                print("SNR for this spectrum:", "{:.2f}".format(snr))
 
-                    if snr < 3.0:
-                        print("Skipping due to low SNR.")
-                        continue
+                if snr < 3.0:
+                    print("Skipping due to low SNR.")
+                    continue
 
-                    # Set noise level based on snr
-                    noise_lvl = 1/snr
+                # Set noise level based on snr
+                noise_lvl = 1/snr
 
-                    # Create ferr array
-                    ferr = noise_lvl * flam
+                # Create ferr array
+                ferr = noise_lvl * flam
 
-                    # Clip data at the ends
-                    wav_idx = np.where((wav > 7600) & (wav < 18000))[0]
+                # Clip data at the ends
+                wav_idx = np.where((wav > 7600) & (wav < 18000))[0]
 
-                    sn_wav = wav[wav_idx]
-                    sn_flam = flam[wav_idx]
-                    sn_ferr = ferr[wav_idx]
+                sn_wav = wav[wav_idx]
+                sn_flam = flam[wav_idx]
+                sn_ferr = ferr[wav_idx]
 
-                    # Set up args
-                    args_sn = [sn_wav, sn_flam, sn_ferr]
+                # Set up args
+                args_sn = [sn_wav, sn_flam, sn_ferr]
 
-                    print("logpost at starting position for SN:")
-                    print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
+                print("logpost at starting position for SN:")
+                print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
+                print("Starting position:", rsn_init)
 
-                    # Now run on SN
-                    snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
-                    emcee_savefile = results_dir + \
-                                     'emcee_sampler_sn' + snstr + '.h5'
-                    if not os.path.isfile(emcee_savefile):
-                        backend = emcee.backends.HDFBackend(emcee_savefile)
-                        backend.reset(nwalkers, ndim_sn)
-                        
-                        with Pool(2) as pool:
-                            sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
-                                args=args_sn, pool=pool, backend=backend,
-                                moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2),])
-                            sampler.run_mcmc(pos_sn, 2000, progress=True)
+                # Now run on SN
+                snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
+                emcee_savefile = results_dir + \
+                                 'emcee_sampler_sn' + snstr + '.h5'
+                #if not os.path.isfile(emcee_savefile):
 
-                        print(f"{bcolors.GREEN}")
-                        print("Finished running emcee.")
-                        print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
-                        print(f"{bcolors.ENDC}")
+                backend = emcee.backends.HDFBackend(emcee_savefile)
+                backend.reset(nwalkers, ndim_sn)
+                    
+                with Pool(2) as pool:
+                    sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
+                        args=args_sn, pool=pool, backend=backend)
+                    sampler.run_mcmc(pos_sn, niter, progress=True)
 
-                        # ---------- Stuff needed for plotting
-                        template_inputs = get_template_inputs(template_name)
-                        truth_dict = {}
-                        truth_dict['z']     = template_inputs[0]
-                        truth_dict['phase'] = template_inputs[1]
-                        truth_dict['Av']    = template_inputs[2]
+                print(f"{bcolors.GREEN}")
+                print("Finished running emcee.")
+                print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+                print(f"{bcolors.ENDC}")
 
-                        read_pickle_make_plots_sn('sn' + snstr, 
-                            ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+                # ---------- Stuff needed for plotting
+                truth_dict = {}
+                truth_dict['z']     = template_inputs[0]
+                truth_dict['phase'] = template_inputs[1]
+                truth_dict['Av']    = template_inputs[2]
 
-                        print("Finished plotting results.")
+                read_pickle_make_plots_sn('sn' + snstr, 
+                    ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+
+                print("Finished plotting results.")
 
                 expcount += 1
 
@@ -336,6 +350,8 @@ def main():
             ext_hdu1.close()
             ext_hdu2.close()
             ext_hdu3.close()
+
+            sys.exit(0)
 
     return None
 
