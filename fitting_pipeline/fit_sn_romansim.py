@@ -200,8 +200,8 @@ def main():
     zprior       = 0.5
     zprior_sigma = 0.02
 
-    rsn_init = get_optimal_position()
-    #rsn_init = np.array([zprior, 0, 0.0])  # redshift, day relative to peak, and dust extinction
+    #rsn_init = get_optimal_position()
+    rsn_init = np.array([zprior, 0, 0.0])  # redshift, day relative to peak, and dust extinction
     #rsn_init = np.array([2.589, 21, 4.743])
 
     # Setup dims and walkers
@@ -284,6 +284,10 @@ def main():
 
                 wav = ext_hdu[('SOURCE', segid)].data['wavelength']
                 flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+
+                print(wav)
+
+                sys.exit()
 
                 # Check SNR
                 snr = get_snr(wav, flam)

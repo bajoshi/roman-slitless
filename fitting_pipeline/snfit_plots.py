@@ -120,7 +120,7 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
     model_count = 0
     ind_list = []
 
-    while model_count <= 100:
+    while model_count <= 200:
 
         ind = int(np.random.randint(len(flat_samples), size=1))
         ind_list.append(ind)
