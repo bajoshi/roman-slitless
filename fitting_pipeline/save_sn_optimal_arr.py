@@ -5,8 +5,7 @@ from scipy.interpolate import griddata
 import os
 import sys
 
-import matplotlib.pyplot as plt
-
+"""
 # Assign directories and custom imports
 cwd = os.path.dirname(os.path.abspath(__file__))
 fitting_utils = cwd + '/utils/'
@@ -94,15 +93,84 @@ np.save(savepath, allmods)
 print('Saved all modified SN models to:', savepath)
 
 sys.exit(0)
+"""
+
+
 
 # ------------------
 # Now check the output
-# Did this in ipython with the following
-"""
+# Redefined for plotting
+sn_lam = np.arange(7500.0, 18030.0, 30.0)  # NOT THE SAME AS THE sn_lam ARRAY ABOVE
 
-"""
+av_arr = np.arange(0.5, 5.5, 0.5)
+redshift_arr = np.arange(0.01, 3.01, 0.01)
+sn_day_arr = np.arange(-19,51,1)
 
+def retrieve_sn_optpars(big_index):
 
+    av_subidx, z_idx = np.divmod(big_index, len(redshift_arr))
+    trash, av_idx    = np.divmod(av_subidx, len(av_arr))
+    phase_idx, trash = np.divmod(big_index, len(av_arr)*len(redshift_arr))
+
+    #print(z_idx, av_subidx, phase_idx, trash)
+
+    z = redshift_arr[z_idx]
+    av = av_arr[av_idx]
+    phase = sn_day_arr[phase_idx]
+
+    del trash
+
+    return z, phase, av
+
+def check_output():
+
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+
+    import gc
+
+    mpl.rcParams['text.usetex'] = False  # much faster without tex
+
+    a = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
+    print(a.shape)
+
+    for i in range(a.shape[0]):
+
+        z, phase, av = retrieve_sn_optpars(i)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        
+        ax.plot(sn_lam, a[i], color='k')
+        
+        ax.text(x=0.75, y=0.2,  s='z = ' + '{:.3f}'.format(z), 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, color='royalblue', size=12)
+        ax.text(x=0.75, y=0.15, s='Phase = ' + '{:d}'.format(phase),
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, color='royalblue', size=12)
+        ax.text(x=0.75, y=0.1,  s='Av = ' + '{:.3f}'.format(av), 
+            verticalalignment='top', horizontalalignment='left', 
+            transform=ax.transAxes, color='royalblue', size=12)
+
+        plt.pause(0.01)
+
+        plt.cla()
+        plt.clf()
+        #fig.clear()
+        plt.close('all')
+        plt.close(fig)
+
+        #del fig, ax
+        gc.collect()
+
+        # None of the above works for now to release memory
+        # python will just keep taking up memory until the
+        # process is killed. Can only test in small batches.
+
+    return None
+
+check_output()
 
 
 
