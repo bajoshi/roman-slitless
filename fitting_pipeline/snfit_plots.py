@@ -171,9 +171,15 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
     fig3.savefig(savedir + 'emcee_overplot_' + object_type + '.pdf', 
         dpi=200, bbox_inches='tight')
 
-    # close figs
-    plt.clf()
-    plt.cla()
-    plt.close()
+    # Close all figures
+    fig1.clear()
+    fig.clear()
+    fig3.clear()
+
+    #plt.clf()
+    #plt.cla()
+    plt.close(fig1)
+    plt.close(fig)
+    plt.close(fig3)
 
     return None

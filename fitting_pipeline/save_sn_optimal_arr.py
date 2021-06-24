@@ -1,5 +1,6 @@
 import numpy as np
 from tqdm import tqdm
+from scipy.interpolate import griddata
 
 import os
 import sys
@@ -21,6 +22,16 @@ sn_day_arr = np.arange(-19,51,1)
 salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
+# Also load in lookup table for luminosity distance
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', dtype=None, names=True)
+# Get arrays 
+dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
+dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
+
+del dl_cat
+
+# --------------------------------
+# --------------------------------
 # REdshift array
 redshift_arr = np.arange(0.01, 3.01, 0.01)
 
@@ -35,6 +46,9 @@ print('Total models:', total_models)
 # They're all the same
 sn_lam = salt2_spec['lam'][salt2_spec['day'] == 0]
 
+# For clipping to prism wav grid
+x = np.arange(7500.0, 18030.0, 30.0)
+
 # Empty array to write to
 allmods = []
 
@@ -43,38 +57,50 @@ for d in tqdm(range(len(sn_day_arr)), desc='SN Phase'):
     day = sn_day_arr[d]
 
     day_idx = np.where(salt2_spec['day'] == day)[0]
-    spec = salt2_spec['flam'][day_idx]
+    spec = salt2_spec['flam'][day_idx] * sn_scalefac
 
-    # Clip model to observed wavelength range
-    # This must be the same range as the clipped range for the extracted spectra
-    # Also make sure the wav sampling is the same
-    # Currently the pylinear x1d prism spectra have
-    #  np.arange(7500.0, 18030.0, 30.0)
-    
+    for a in range(len(av_arr)):
 
-    for r in range(len(redshift_arr)):
+        sn_av = av_arr[a]
 
-        z = redshift_arr[r]
+        sn_dusty_llam = du.get_dust_atten_model(sn_lam, spec, sn_av)
 
-    adiff = np.abs(dl_z_arr - z)
-    z_idx = np.argmin(adiff)
-    dl = dl_cm_arr[z_idx]
+        for r in range(len(redshift_arr)):
 
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + z))
+            z = redshift_arr[r]
 
-        spec_redshifted = 
+            adiff = np.abs(dl_z_arr - z)
+            z_idx = np.argmin(adiff)
+            dl = dl_cm_arr[z_idx]
 
-        for a in range(len(av_arr)):
+            sn_lam_z = sn_lam * (1 + z)
+            spec_redshifted = sn_dusty_llam / (4 * np.pi * dl * dl * (1 + z))
+            
+            # Clip model to observed wavelength range
+            # This must be the same range as the clipped range for the extracted spectra
+            # Also make sure the wav sampling is the same
+            # Currently the pylinear x1d prism spectra have
+            #  np.arange(7500.0, 18030.0, 30.0) # defined above as x
+            sn_mod = griddata(points=sn_lam_z, values=spec_redshifted, xi=x)
 
+            allmods.append(sn_mod)
 
+allmods = np.array(allmods)
+assert allmods.shape == (total_models, len(x))
 
+savepath = '/Volumes/Joshi_external_HDD/Roman/' + 'allsnmodspec.npy'
+np.save(savepath, allmods)
 
+print('Saved all modified SN models to:', savepath)
 
+sys.exit(0)
 
+# ------------------
+# Now check the output
+# Did this in ipython with the following
+"""
 
-
-
-
+"""
 
 
 
