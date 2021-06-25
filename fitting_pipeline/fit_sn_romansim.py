@@ -3,6 +3,7 @@ from astropy.io import fits
 from scipy.interpolate import griddata
 from numba import jit
 import emcee
+from astropy.convolution import convolve, Box1DKernel
 
 import os
 import sys
@@ -122,10 +123,17 @@ def loglike_sn(theta, x, data, err):
 
 def logprior_sn(theta):
 
+    zp = 1.0
+    zps = 0.5
+
     z, day, av = theta
 
     if ( 0.0001 <= z <= 3.0  and  -19 <= day <= 50  and  0.0 <= av <= 5.0):
-        return 0.0
+
+        # Gaussian prior on redshift
+        ln_pz = np.log( 1.0 / (np.sqrt(2*np.pi)*zps) ) - 0.5*(z - zp)**2/zps**2
+
+        return ln_pz
     
     return -np.inf
 
@@ -208,7 +216,7 @@ def retrieve_sn_optpars_inverse(z, phase, av):
 
 def get_optimal_position(wav, flam, ferr):
 
-    verbose = True
+    verbose = False
 
     if verbose: print('\nGetting optimal starting position...')
 
@@ -223,16 +231,6 @@ def get_optimal_position(wav, flam, ferr):
     big_index = np.argmin(chi2_opt)
 
     z_prior, phase_prior, av_prior = retrieve_sn_optpars(big_index)
-
-    # -----------------------
-    true_z = 2.658
-    true_phase = 12
-    true_av = 0.267
-
-    true_big_index = retrieve_sn_optpars_inverse(true_z, true_phase, true_av)
-    print(true_big_index)
-    print(retrieve_sn_optpars(true_big_index))
-    print(chi2_opt[true_big_index])
 
     if verbose:
 
@@ -254,7 +252,7 @@ def get_optimal_position(wav, flam, ferr):
         ax.plot(wav, model_a[big_index] * sn_opt_arr[big_index], color='crimson')
         ax.plot(wav, model_a[true_big_index] * sn_opt_arr[true_big_index], color='orchid')
 
-        ax.fill_between(wav, flam-ferr,flam+ferr, color='gray', alpha=0.5)
+        ax.fill_between(wav, flam-ferr_lo,flam+ferr_hi, color='gray', alpha=0.5)
 
         ax.axhline(y=0.0, ls='--', color='navy')
 
@@ -332,8 +330,8 @@ def main():
 
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
-    pointings = np.arange(0, 191)
-    detectors = np.arange(5, 19, 1)
+    pointings = np.arange(0, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -377,103 +375,108 @@ def main():
             expcount = 0
             for ext_hdu in all_hdus:
 
-                #for segid in all_sn_segids:
+                for segid in all_sn_segids:
  
-                # ----- Get spectrum
-                segid = 88
+                    # ----- Get spectrum
+                    segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
-                segid_idx = int(np.where(sedlst['segid'] == segid)[0])
+                    template_name = os.path.basename(sedlst['sed_path'][segid_idx])
+                    template_inputs = get_template_inputs(template_name)  # needed for plotting
 
-                template_name = os.path.basename(sedlst['sed_path'][segid_idx])
-                template_inputs = get_template_inputs(template_name)  # needed for plotting
+                    print("\nFitting SegID:", segid, "with exposure time:", all_exptimes[expcount])
 
-                print("\nFitting SegID:", segid)
+                    wav = ext_hdu[('SOURCE', segid)].data['wavelength']
+                    flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-                wav = ext_hdu[('SOURCE', segid)].data['wavelength']
-                flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+                    ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * pylinear_flam_scale_fac
+                    ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
-                ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * pylinear_flam_scale_fac
-                ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
+                    # Smooth with boxcar
+                    smoothing_width_pix = 5
+                    sf = convolve(flam, Box1DKernel(smoothing_width_pix))
 
-                # ----- Check SNR
-                snr = get_snr(wav, flam)
+                    # ----- Check SNR
+                    snr = get_snr(wav, flam)
 
-                print("SNR for this spectrum:", "{:.2f}".format(snr))
+                    print("SNR for this spectrum:", "{:.2f}".format(snr), get_snr(wav, sf))
 
-                if snr < 3.0:
-                    print("Skipping due to low SNR.")
-                    continue
+                    if snr < 3.0:
+                        print("Skipping due to low SNR.")
+                        continue
 
-                # ----- Set noise level based on snr
-                noise_lvl = 1/snr
+                    # ----- Set noise level based on snr
+                    #noise_lvl = 1/snr
 
-                # Create ferr array
-                #ferr = noise_lvl * flam
-                ferr = (ferr_lo + ferr_hi)/ 2.0
+                    # Create ferr array
+                    #ferr = noise_lvl * flam
 
-                # ----- Get optimal starting position
-                z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
-                rsn_init = np.array([z_prior, phase_prior, av_prior])
-                # redshift, day relative to peak, and dust extinction
-                #rsn_init = np.array([2.589, 21, 4.743])
+                    ferr = (ferr_lo + ferr_hi)/2.0
 
-                # generating ball of walkers about optimal position defined above
-                pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
+                    # ----- Get optimal starting position
+                    z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
+                    #z_prior = 2.658
+                    #phase_prior = 12
+                    #av_prior = 0.267
+                    rsn_init = np.array([z_prior, phase_prior, av_prior])
+                    # redshift, day relative to peak, and dust extinction
 
-                for i in range(nwalkers):
+                    # generating ball of walkers about optimal position defined above
+                    pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
 
-                    # ---------- For SN
-                    rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
-                    rsn1 = int(rsn_init[1] + jump_size_day * np.random.normal(size=1))
-                    rsn2 = float(rsn_init[2] + jump_size_av * np.random.normal(size=1))
+                    for i in range(nwalkers):
 
-                    rsn = np.array([rsn0, rsn1, rsn2])
+                        # ---------- For SN
+                        rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
+                        rsn1 = int(rsn_init[1] + jump_size_day * np.random.normal(size=1))
+                        rsn2 = float(rsn_init[2] + jump_size_av * np.random.normal(size=1))
 
-                    pos_sn[i] = rsn
+                        rsn = np.array([rsn0, rsn1, rsn2])
 
-                # ----- Clip data at the ends
-                wav_idx = np.where((wav > 7600) & (wav < 18000))[0]
+                        pos_sn[i] = rsn
 
-                sn_wav = wav[wav_idx]
-                sn_flam = flam[wav_idx]
-                sn_ferr = ferr[wav_idx]
+                    # ----- Clip data at the ends
+                    wav_idx = np.where((wav > 7600) & (wav < 18000))[0]
 
-                # ----- Set up args
-                args_sn = [sn_wav, sn_flam, sn_ferr]
+                    sn_wav = wav[wav_idx]
+                    sn_flam = flam[wav_idx]
+                    sn_ferr = ferr[wav_idx]
 
-                print("logpost at starting position for SN:")
-                print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
-                print("Starting position:", rsn_init)
+                    # ----- Set up args
+                    args_sn = [sn_wav, sn_flam, sn_ferr]
 
-                # ----- Now run emcee on SN
-                snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
-                emcee_savefile = results_dir + \
-                                 'emcee_sampler_sn' + snstr + '.h5'
-                #if not os.path.isfile(emcee_savefile):
+                    print("logpost at starting position for SN:")
+                    print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
+                    print("Starting position:", rsn_init)
 
-                backend = emcee.backends.HDFBackend(emcee_savefile)
-                backend.reset(nwalkers, ndim_sn)
-                    
-                with Pool(4) as pool:
-                    sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
-                        args=args_sn, pool=pool, backend=backend)
-                    sampler.run_mcmc(pos_sn, niter, progress=True)
+                    # ----- Now run emcee on SN
+                    snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
+                    emcee_savefile = results_dir + \
+                                     'emcee_sampler_sn' + snstr + '.h5'
+                    #if not os.path.isfile(emcee_savefile):
 
-                print(f"{bcolors.GREEN}")
-                print("Finished running emcee.")
-                print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
-                print(f"{bcolors.ENDC}")
+                    backend = emcee.backends.HDFBackend(emcee_savefile)
+                    backend.reset(nwalkers, ndim_sn)
+                        
+                    with Pool(4) as pool:
+                        sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
+                            args=args_sn, pool=pool, backend=backend)
+                        sampler.run_mcmc(pos_sn, niter, progress=True)
 
-                # ---------- Stuff needed for plotting
-                truth_dict = {}
-                truth_dict['z']     = template_inputs[0]
-                truth_dict['phase'] = template_inputs[1]
-                truth_dict['Av']    = template_inputs[2]
+                    print(f"{bcolors.GREEN}")
+                    print("Finished running emcee.")
+                    print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+                    print(f"{bcolors.ENDC}")
 
-                read_pickle_make_plots_sn('sn' + snstr, 
-                    ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+                    # ---------- Stuff needed for plotting
+                    truth_dict = {}
+                    truth_dict['z']     = template_inputs[0]
+                    truth_dict['phase'] = template_inputs[1]
+                    truth_dict['Av']    = template_inputs[2]
 
-                print("Finished plotting results.")
+                    read_pickle_make_plots_sn('sn' + snstr, 
+                        ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+
+                    print("Finished plotting results.")
 
                 expcount += 1
 
@@ -481,8 +484,6 @@ def main():
             ext_hdu1.close()
             ext_hdu2.close()
             ext_hdu3.close()
-
-            sys.exit(0)
 
     return None
 

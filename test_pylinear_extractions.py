@@ -476,7 +476,7 @@ def plot_single_exptime_extraction(sedlst, ext_hdu, disperser='prism'):
 def plot_extractions(sedlst, ext_hdu1, ext_hdu2, ext_hdu3, disperser='prism'):
 
     # --------------- plot each spectrum in a for loop
-    for i in range(768,len(sedlst)):
+    for i in range(85,len(sedlst)):
 
         # Get spectra
         segid = sedlst['segid'][i]
@@ -821,7 +821,7 @@ if __name__ == '__main__':
     ext_root = "romansim_prism_"
 
     img_basename = '5deg_'
-    img_suffix = 'Y106_0_3'
+    img_suffix = 'Y106_0_5'
 
     exptime1 = '_900s'
     exptime2 = '_1800s'
