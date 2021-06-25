@@ -36,7 +36,10 @@ start = time.time()
 
 # Define any required constants/arrays
 sn_scalefac = 2.0842526537870818e+48  # see sn_scaling.py 
-sn_day_arr = np.arange(-20,51,1)
+sn_day_arr = np.arange(-19,51,1)
+
+av_optfindarr = np.arange(0.5, 5.5, 0.5)
+redshift_optfindarr = np.arange(0.01, 3.01, 0.01)
 
 # Load in all models
 # ------ THIS HAS TO BE GLOBAL!
@@ -52,6 +55,8 @@ dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
 
 del dl_cat
+
+sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
 
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
@@ -137,7 +142,7 @@ def logpost_sn(theta, x, data, err):
 
 #@jit(nopython=True)
 # griddata is an issue for jit
-# maybe a manually written 'griddate' would be okay
+# maybe a manually written 'griddata' would be okay
 def model_sn(x, z, day, sn_av):
 
     # pull out spectrum for the chosen day
@@ -174,6 +179,129 @@ def get_lnLike(y, data, err):
 
     return lnLike
 
+def retrieve_sn_optpars(big_index):
+
+    av_subidx, z_idx = np.divmod(big_index, len(redshift_optfindarr))
+    trash, av_idx    = np.divmod(av_subidx, len(av_optfindarr))
+    phase_idx, trash = np.divmod(big_index, len(av_optfindarr)*len(redshift_optfindarr))
+
+    #print(z_idx, av_subidx, phase_idx, trash)
+
+    z = redshift_optfindarr[z_idx]
+    av = av_optfindarr[av_idx]
+    phase = sn_day_arr[phase_idx]
+
+    del trash
+
+    return z, phase, av
+
+def retrieve_sn_optpars_inverse(z, phase, av):
+
+    k = np.argmin(abs(redshift_optfindarr - z))
+    j = np.argmin(abs(av_optfindarr - av))
+    i = np.argmin(abs(sn_day_arr - phase))
+
+    big_index = (i * len(av_optfindarr) * len(redshift_optfindarr)) + \
+                (j * len(redshift_optfindarr)) + k
+
+    return big_index
+
+def get_optimal_position(wav, flam, ferr):
+
+    verbose = True
+
+    if verbose: print('\nGetting optimal starting position...')
+
+    model_a = np.sum(flam * sn_opt_arr / ferr**2, axis=1) / np.sum(sn_opt_arr**2 / ferr**2, axis=1)
+
+    optmod_eff = sn_opt_arr.T * model_a
+    optmod_eff = optmod_eff.T
+
+    chi2_opt = ((flam - optmod_eff) / ferr )**2
+    chi2_opt = np.sum(chi2_opt, axis=1)
+
+    big_index = np.argmin(chi2_opt)
+
+    z_prior, phase_prior, av_prior = retrieve_sn_optpars(big_index)
+
+    # -----------------------
+    true_z = 2.658
+    true_phase = 12
+    true_av = 0.267
+
+    true_big_index = retrieve_sn_optpars_inverse(true_z, true_phase, true_av)
+    print(true_big_index)
+    print(retrieve_sn_optpars(true_big_index))
+    print(chi2_opt[true_big_index])
+
+    if verbose:
+
+        print('Data shape:', flam.shape)
+        print('Opt find array shape:', sn_opt_arr.shape)
+        print('A shape:', model_a.shape)
+        print('Effective model shape:', optmod_eff.shape)
+        print('Chi2 array shape:', chi2_opt.shape)
+        print('Chi2 array:', chi2_opt)
+        print('Min chi2:', chi2_opt[big_index], np.min(chi2_opt))
+        print('Big index:', big_index)
+        print('Retrieved priors:', z_prior, phase_prior, av_prior)
+        print('---------------------------\n')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        
+        ax.plot(wav, flam, color='k')
+        ax.plot(wav, model_a[big_index] * sn_opt_arr[big_index], color='crimson')
+        ax.plot(wav, model_a[true_big_index] * sn_opt_arr[true_big_index], color='orchid')
+
+        ax.fill_between(wav, flam-ferr,flam+ferr, color='gray', alpha=0.5)
+
+        ax.axhline(y=0.0, ls='--', color='navy')
+
+        odiff = 0
+        tdiff = 0
+
+        for i in range(len(flam)):
+
+            od = (flam[i] - model_a[big_index] * sn_opt_arr[big_index][i])**2 / ferr[i]**2
+            td = (flam[i] - model_a[true_big_index] * sn_opt_arr[true_big_index][i])**2 / ferr[i]**2
+
+            odiff += od
+            tdiff += td
+
+            #print('\n')
+            #print(wav[i], '{:.3e}'.format(flam[i]), \
+            #    '{:.3e}'.format(model_a[big_index] * sn_opt_arr[big_index][i]), \
+            #    '{:.3e}'.format(ferr[i]), '{:.3f}'.format(od), odiff)
+            #print(wav[i], '{:.3e}'.format(flam[i]), \
+            #    '{:.3e}'.format(model_a[true_big_index] * sn_opt_arr[true_big_index][i]), \
+            #    '{:.3e}'.format(ferr[i]), '{:.3f}'.format(td), tdiff)
+
+        chi2o = np.sum((flam - model_a[big_index] * sn_opt_arr[big_index])**2/ferr**2, axis=None)
+        chi2t = np.sum((flam - model_a[true_big_index]* sn_opt_arr[true_big_index])**2/ferr**2, axis=None)
+        print('Manual chi2 opt:',  chi2o)
+        print('Manual chi2 true:', chi2t)
+        print(model_a[big_index], model_a[true_big_index])
+        print(odiff, tdiff)
+        
+        ax.text(x=0.75, y=0.2,  s='z = ' + '{:.3f}'.format(z_prior),
+            verticalalignment='top', horizontalalignment='left',
+            transform=ax.transAxes, color='royalblue', size=12)
+        ax.text(x=0.75, y=0.15, s='Phase = ' + '{:d}'.format(phase_prior),
+            verticalalignment='top', horizontalalignment='left',
+            transform=ax.transAxes, color='royalblue', size=12)
+        ax.text(x=0.75, y=0.1,  s='Av = ' + '{:.3f}'.format(av_prior),
+            verticalalignment='top', horizontalalignment='left',
+            transform=ax.transAxes, color='royalblue', size=12)
+
+        plt.show()
+        fig.clear()
+        plt.close(fig)
+
+    del optmod_eff
+
+    return z_prior, phase_prior, av_prior
+
 def main():
 
     # ----------------------- Preliminary stuff ----------------------- #
@@ -197,36 +325,15 @@ def main():
     jump_size_av  = 0.1  # magnitudes
     jump_size_day = 2  # days
 
-    zprior       = 0.5
-    zprior_sigma = 0.02
-
-    #rsn_init = get_optimal_position()
-    rsn_init = np.array([zprior, 0, 0.0])  # redshift, day relative to peak, and dust extinction
-    #rsn_init = np.array([2.589, 21, 4.743])
-
     # Setup dims and walkers
     nwalkers = 500
     niter    = 1000
     ndim_sn  = 3
 
-    # generating ball of walkers about initial position defined above
-    pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
-
-    for i in range(nwalkers):
-
-        # ---------- For SN
-        rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
-        rsn1 = int(rsn_init[1] + jump_size_day * np.random.normal(size=1))
-        rsn2 = float(rsn_init[2] + jump_size_av * np.random.normal(size=1))
-
-        rsn = np.array([rsn0, rsn1, rsn2])
-
-        pos_sn[i] = rsn
-
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 191)
-    detectors = np.arange(3, 19, 1)
+    detectors = np.arange(5, 19, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -272,8 +379,8 @@ def main():
 
                 #for segid in all_sn_segids:
  
-                # Get spectrum
-                segid = 769
+                # ----- Get spectrum
+                segid = 88
 
                 segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
@@ -285,11 +392,10 @@ def main():
                 wav = ext_hdu[('SOURCE', segid)].data['wavelength']
                 flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-                print(wav)
+                ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * pylinear_flam_scale_fac
+                ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
-                sys.exit()
-
-                # Check SNR
+                # ----- Check SNR
                 snr = get_snr(wav, flam)
 
                 print("SNR for this spectrum:", "{:.2f}".format(snr))
@@ -298,27 +404,48 @@ def main():
                     print("Skipping due to low SNR.")
                     continue
 
-                # Set noise level based on snr
+                # ----- Set noise level based on snr
                 noise_lvl = 1/snr
 
                 # Create ferr array
-                ferr = noise_lvl * flam
+                #ferr = noise_lvl * flam
+                ferr = (ferr_lo + ferr_hi)/ 2.0
 
-                # Clip data at the ends
+                # ----- Get optimal starting position
+                z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
+                rsn_init = np.array([z_prior, phase_prior, av_prior])
+                # redshift, day relative to peak, and dust extinction
+                #rsn_init = np.array([2.589, 21, 4.743])
+
+                # generating ball of walkers about optimal position defined above
+                pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
+
+                for i in range(nwalkers):
+
+                    # ---------- For SN
+                    rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
+                    rsn1 = int(rsn_init[1] + jump_size_day * np.random.normal(size=1))
+                    rsn2 = float(rsn_init[2] + jump_size_av * np.random.normal(size=1))
+
+                    rsn = np.array([rsn0, rsn1, rsn2])
+
+                    pos_sn[i] = rsn
+
+                # ----- Clip data at the ends
                 wav_idx = np.where((wav > 7600) & (wav < 18000))[0]
 
                 sn_wav = wav[wav_idx]
                 sn_flam = flam[wav_idx]
                 sn_ferr = ferr[wav_idx]
 
-                # Set up args
+                # ----- Set up args
                 args_sn = [sn_wav, sn_flam, sn_ferr]
 
                 print("logpost at starting position for SN:")
                 print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
                 print("Starting position:", rsn_init)
 
-                # Now run on SN
+                # ----- Now run emcee on SN
                 snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
                 emcee_savefile = results_dir + \
                                  'emcee_sampler_sn' + snstr + '.h5'
@@ -327,7 +454,7 @@ def main():
                 backend = emcee.backends.HDFBackend(emcee_savefile)
                 backend.reset(nwalkers, ndim_sn)
                     
-                with Pool(2) as pool:
+                with Pool(4) as pool:
                     sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
                         args=args_sn, pool=pool, backend=backend)
                     sampler.run_mcmc(pos_sn, niter, progress=True)

@@ -164,7 +164,7 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
     ax3.text(x=0.65, y=0.92, s='--- Simulated data', 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax3.transAxes, color='k', size=12)
-    ax3.text(x=0.65, y=0.85, s='--- 100 randomly chosen samples', 
+    ax3.text(x=0.65, y=0.85, s='--- 200 randomly chosen samples', 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax3.transAxes, color='royalblue', size=12)
 
