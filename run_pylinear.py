@@ -686,7 +686,7 @@ def main():
 
         logger.info("Finished with set of sims for: " + img_suffix)
 
-    logger.info("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
+    logger.info("Total time taken: " + "{:.2f}".format(time.time() - start) + " seconds.")
 
     return None
 

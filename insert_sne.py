@@ -77,6 +77,10 @@ def main():
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
 
+    # Mag limits for choosing random SN mag
+    lowmag = 19.0
+    highmag = 25.0
+
     # ---------------
     # Read in the reference image of the star from 
     # Y106_0_6 at 72.1175280, -53.5739388 (~16th mag)
@@ -89,8 +93,8 @@ def main():
 
     # ---------------
     # Arrays to loop over
-    pointings = np.arange(0, 191)
-    detectors = np.arange(2, 19, 1)
+    pointings = np.arange(1, 30)
+    detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -131,7 +135,11 @@ def main():
             for i in range(num_to_insert):
 
                 # Decide some random mag for the SN
-                snmag = np.random.uniform(low=19.0, high=24.0)
+                # This is a power law # previously uniform dist
+                # chosen from low=19.0, high=26.0 mag
+                pow_idx = 3.0  # power law index # PDF given by: P(x;a) = a * x^(a-1)
+                snmag = np.random.power(pow_idx, size=None)
+                snmag = snmag * (highmag - lowmag) + lowmag
                 snmag_arr[i] = snmag
 
                 # Now scale reference
@@ -188,8 +196,6 @@ def main():
                                 "{:.1f}".format(y_ins[i]) + "," + \
                                 "9.5955367)" + " # color=red" + \
                                 " width=3" + "\n")
-
-            sys.exit(0)
 
     return None
 
