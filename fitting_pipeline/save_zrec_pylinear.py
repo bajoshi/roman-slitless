@@ -45,6 +45,7 @@ img_filt = 'Y106_'
 # Save results to text file
 resfile = results_dir + 'zrecovery_pylinear_sims.txt'
 res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
+          'SNR900  SNR1800  SNR3600  ' + \
           'z900  z900_lowerr  z900_uperr  ' + \
           'phase900  phase900_lowerr  phase900_uperr  ' + \
           'Av900  Av900_lowerr  Av900_uperr  ' + \
@@ -60,16 +61,13 @@ with open(resfile, 'w') as fh:
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 10, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
         for det in detectors:
 
             # ----- Get img suffix, segid, and truth values
             img_suffix = img_filt + str(pt) + '_' + str(det)
-
-            if img_suffix == 'Y106_0_2':
-                continue
 
             # ----- Read in sed.lst
             sedlst_header = ['segid', 'sed_path']
@@ -87,6 +85,10 @@ with open(resfile, 'w') as fh:
 
             # ----- Now loop over all segids in this img
             for segid in all_sn_segids:
+
+                if segid == 188 and img_suffix == 'Y106_0_17':
+                    print('Skipping SN', segid, 'in img_suffix', img_suffix)
+                    continue
 
                 segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 

@@ -319,9 +319,9 @@ def main():
     label_list_sn = [r'$z$', r'$Day$', r'$A_V [mag]$']
 
     # Set jump sizes # ONLY FOR INITIAL POSITION SETUP
-    jump_size_z   = 0.01
-    jump_size_av  = 0.1  # magnitudes
-    jump_size_day = 2  # days
+    jump_size_z   = 0.1
+    jump_size_av  = 0.5  # magnitudes
+    jump_size_day = 3  # days
 
     # Setup dims and walkers
     nwalkers = 500
@@ -330,7 +330,7 @@ def main():
 
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
-    pointings = np.arange(0, 1)
+    pointings = np.arange(1, 30)
     detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
@@ -376,14 +376,18 @@ def main():
             for ext_hdu in all_hdus:
 
                 for segid in all_sn_segids:
+
+                    #if segid == 188 and img_suffix == 'Y106_0_17':
+                    #    print('Skipping SN', segid, 'in img_suffix', img_suffix)
+                    #    continue
+
+                    print("\nFitting SegID:", segid, "with exposure time:", all_exptimes[expcount])
  
                     # ----- Get spectrum
                     segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
                     template_name = os.path.basename(sedlst['sed_path'][segid_idx])
                     template_inputs = get_template_inputs(template_name)  # needed for plotting
-
-                    print("\nFitting SegID:", segid, "with exposure time:", all_exptimes[expcount])
 
                     wav = ext_hdu[('SOURCE', segid)].data['wavelength']
                     flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
@@ -406,7 +410,6 @@ def main():
 
                     # ----- Set noise level based on snr
                     #noise_lvl = 1/snr
-
                     # Create ferr array
                     #ferr = noise_lvl * flam
 
@@ -414,9 +417,6 @@ def main():
 
                     # ----- Get optimal starting position
                     z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
-                    #z_prior = 2.658
-                    #phase_prior = 12
-                    #av_prior = 0.267
                     rsn_init = np.array([z_prior, phase_prior, av_prior])
                     # redshift, day relative to peak, and dust extinction
 
@@ -452,31 +452,31 @@ def main():
                     snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
                     emcee_savefile = results_dir + \
                                      'emcee_sampler_sn' + snstr + '.h5'
-                    #if not os.path.isfile(emcee_savefile):
+                    if not os.path.isfile(emcee_savefile):
 
-                    backend = emcee.backends.HDFBackend(emcee_savefile)
-                    backend.reset(nwalkers, ndim_sn)
-                        
-                    with Pool(4) as pool:
-                        sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
-                            args=args_sn, pool=pool, backend=backend)
-                        sampler.run_mcmc(pos_sn, niter, progress=True)
+                        backend = emcee.backends.HDFBackend(emcee_savefile)
+                        backend.reset(nwalkers, ndim_sn)
+                            
+                        with Pool(4) as pool:
+                            sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
+                                args=args_sn, pool=pool, backend=backend)
+                            sampler.run_mcmc(pos_sn, niter, progress=True)
 
-                    print(f"{bcolors.GREEN}")
-                    print("Finished running emcee.")
-                    print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
-                    print(f"{bcolors.ENDC}")
+                        print(f"{bcolors.GREEN}")
+                        print("Finished running emcee.")
+                        print("Mean acceptance Fraction:", np.mean(sampler.acceptance_fraction), "\n")
+                        print(f"{bcolors.ENDC}")
 
-                    # ---------- Stuff needed for plotting
-                    truth_dict = {}
-                    truth_dict['z']     = template_inputs[0]
-                    truth_dict['phase'] = template_inputs[1]
-                    truth_dict['Av']    = template_inputs[2]
+                        # ---------- Stuff needed for plotting
+                        truth_dict = {}
+                        truth_dict['z']     = template_inputs[0]
+                        truth_dict['phase'] = template_inputs[1]
+                        truth_dict['Av']    = template_inputs[2]
 
-                    read_pickle_make_plots_sn('sn' + snstr, 
-                        ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+                        read_pickle_make_plots_sn('sn' + snstr, 
+                            ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
 
-                    print("Finished plotting results.")
+                        print("Finished plotting results.")
 
                 expcount += 1
 

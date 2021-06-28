@@ -315,8 +315,8 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 def gen_img_suffixes():
 
     # Arrays to loop over
-    pointings = np.arange(191)
-    detectors = np.arange(15, 19, 1)
+    pointings = np.arange(1, 30)
+    detectors = np.arange(1, 19, 1)
 
     img_filt = 'Y106_'
 
@@ -355,23 +355,6 @@ def main():
     # Get starting time
     start = time.time()
     logger.info("Starting now.")
-
-    """
-    import subprocess 
-    
-    lscpu = subprocess.Popen(['lscpu'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    nproc = subprocess.Popen(['vmstat', '-s'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
-    lscpu_out, lscpu_err = lscpu.communicate()
-    nproc_out, nproc_err = nproc.communicate()
-    
-    print(lscpu_out)
-    print(lscpu_err)
-    print(nproc_out)
-    print(nproc_err)
-    
-    sys.exit(0)
-    """
     
     # Change directory to make sure results go in the right place
     home = os.getenv('HOME')
@@ -407,8 +390,9 @@ def main():
         pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
         roman_direct_dir = home + '/Documents/roman_direct_sims/sims2021/'
 
-        # Define paths for tables
-        tablespath = home + '/Documents/roman_slitless_sims_results/tables/'
+        # Define paths for tables and matrices
+        tablespath =  result_path + '/tables/'
+        matricespath = result_path + 'matrices/'
 
         # Define path for SEDs
         seds_path = home + '/Documents/roman_slitless_sims_seds/'
@@ -423,6 +407,7 @@ def main():
         result_path = '/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/'
         obsstr = ''
         tablespath = result_path + 'tables/'
+        matricespath = result_path + 'matrices/'
     
     # Set imaging sims dir
     img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
@@ -445,7 +430,7 @@ def main():
     
     for img in img_suffix_list:
     
-        img_suffix = 'Y106_0_2'#img_suffix_list[sim_count]
+        img_suffix = img_suffix_list[sim_count]
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
         logger.info("Working on direct image: " + dir_img_name)
@@ -629,6 +614,7 @@ def main():
             ts = time.time()
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
 
+
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
                      str(exptime) + 's' + obsstr + '.lst'
@@ -666,15 +652,40 @@ def main():
                 logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
             except NameError:
                 logger.info("Finished at: " + dt.datetime.now())
+
+        # ---------------------- Remove matrices, tables, and *_res.fits.gz files to save space
+        # MATRICES
+        for e in range(len(exptime_list)):
+            exptime = exptime_list[e]
+            rmextroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
+            pth = matricespath + rmextroot + '_grp0.h5'
+            os.remove(pth)
+            logger.info('Deleted matrix file: ' + rmextroot + '_grp0.h5')
+
+        # TABLES
+        for i in range(len(roll_angle_list)):
+            pth = tablespath + simroot + str(i+1) + '_' + img_suffix + '.h5'
+            os.remove(pth)
+            logger.info('Deleted table file: ' + pth)
+            for e in range(len(exptime_list)):
+                exptime = exptime_list[e]
+                pth = tablespath + simroot + str(i+1) + '_' + img_suffix + '_' + str(exptime) + 's' + '.h5'
+                os.remove(pth)
+                logger.info('Deleted table file: ' + pth)
+
+        # *_res.fits.gz
+        for fl in glob.glob(result_path + '*_res.fits.gz'):
+            os.remove(fl)
+            logger.info('Deleted res file: ' + fl)
     
+        # ----------------------
         # Increment simulation counter
         # This only increments after all the exptimes 
         # for a given direct image are simulated
         sim_count += 1
 
-        logger.info("Finished with set of sims. Check results. Moving to next.")
-        sys.exit(0)
-    
+        logger.info("Finished with set of sims for: " + img_suffix)
+
     logger.info("Total time taken:", "{:.2f}".format(time.time() - start), "seconds.")
 
     return None
