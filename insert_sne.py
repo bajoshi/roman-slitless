@@ -93,7 +93,7 @@ def main():
 
     # ---------------
     # Arrays to loop over
-    pointings = np.arange(1, 30)
+    pointings = np.arange(28, 30)
     detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):

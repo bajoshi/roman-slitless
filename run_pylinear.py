@@ -387,7 +387,7 @@ def main():
         result_path = home + '/Documents/roman_slitless_sims_results/'
         
         # Define directories for imaging and lst files
-        pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
+        pylinear_lst_dir = home + '/Documents/pylinear_lst_files/'
         roman_direct_dir = home + '/Documents/roman_direct_sims/sims2021/'
 
         # Define paths for tables and matrices
@@ -402,7 +402,7 @@ def main():
 
     else:  # on laptop
         roman_direct_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/'
-        pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
+        pylinear_lst_dir = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/'
         seds_path = '/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/'
         result_path = '/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/'
         obsstr = ''
@@ -433,6 +433,15 @@ def main():
         img_suffix = img_suffix_list[sim_count]
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
+
+        # Because some direct images are missing
+        try:
+            assert os.path.isfile(img_sim_dir + dir_img_name)
+        except AssertionError:
+            logger.info("Missing image file for: " + dir_img_name)
+            logger.info("Moving to next direct image.")
+            continue
+
         logger.info("Working on direct image: " + dir_img_name)
 
         # Leave commented out # Do not delete

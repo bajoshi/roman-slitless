@@ -422,11 +422,24 @@ def gen_sed_lst():
     truth_match = fits.open(roman_direct_dir + '5deg_truth_gal.fits')
 
     # Arrays to loop over
-    pointings = np.arange(0, 191)
-    detectors = np.arange(2, 19, 1)
+    pointings = np.arange(1, 30)
+    detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
+
+            img_suffix = img_filt + str(pt) + '_' + str(det)
+            dir_img_name = img_basename + img_suffix + '_SNadded.fits'
+
+            # Because some direct images are missing
+            try:
+                assert os.path.isfile(img_sim_dir + dir_img_name)
+            except AssertionError:
+                tqdm.write(f"{bcolors.FAIL}")
+                tqdm.write("Missing image file for: " + dir_img_name)
+                tqdm.write("Moving to next direct image.")
+                tqdm.write(f"{bcolors.ENDC}")
+                continue
 
             # Open empty file for saving sed.lst
             sed_filename = roman_slitless_dir + 'pylinear_lst_files/' + \
@@ -675,7 +688,6 @@ def gen_sed_lst():
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
             fh.close()
-            sys.exit(0)
 
     return None
 
