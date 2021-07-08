@@ -33,13 +33,15 @@ if 'plffsn2' in socket.gethostname():
     modeldir = extdir + 'bc03_output_dir/'
     roman_sims_seds = "/home/bajoshi/Documents/roman_slitless_sims_seds/"
     pylinear_lst_dir = "/home/bajoshi/Documents/pylinear_lst_files/"
+    roman_direct_dir = '/home/bajoshi/Documents/roman_direct_sims/sims2021/'
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
     roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
     pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
+    roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
-roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_direct_dir)
 
