@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 
 home = os.getenv("HOME")
 roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
 fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
 sys.path.append(fitting_utils)
@@ -32,9 +31,13 @@ Lsol = 3.826e33
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
     modeldir = extdir + 'bc03_output_dir/'
+    roman_sims_seds = "/home/bajoshi/Documents/roman_slitless_sims_seds/"
+    pylinear_lst_dir = "/home/bajoshi/Documents/pylinear_lst_files/"
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
+    roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
+    pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
 
 roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 assert os.path.isdir(modeldir)
@@ -442,7 +445,7 @@ def gen_sed_lst():
                 continue
 
             # Open empty file for saving sed.lst
-            sed_filename = roman_slitless_dir + 'pylinear_lst_files/' + \
+            sed_filename = pylinear_lst_dir + \
             'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
             tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + \
                 sed_filename + f"{bcolors.ENDC}")
