@@ -691,6 +691,16 @@ def main():
         for fl in glob.glob(result_path + '*_flt.fits'):
             os.remove(fl)
             logger.info('Deleted FLT file: ' + fl)
+
+        # Clean up all the sed files too
+        sedcat = np.genfromtxt(sedlst, dtype=None, names=['segid', 'sedpath'], 
+            delimiter=' ', encoding='ascii', skip_header=2)
+        for f in range(len(sedcat)):
+            try:
+                os.remove(sedcat['sedpath'][f])
+                logger.info('Deleted SED file: ' + sedcat['sedpath'][f])
+            except FileNotFoundError:
+                continue
     
         # ----------------------
         # Increment simulation counter
