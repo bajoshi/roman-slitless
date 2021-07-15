@@ -685,7 +685,12 @@ def main():
         # *_res.fits.gz
         for fl in glob.glob(result_path + '*_res.fits.gz'):
             os.remove(fl)
-            logger.info('Deleted res file: ' + fl)
+            logger.info('Deleted RES file: ' + fl)
+
+        # simulated flt fits files
+        for fl in glob.glob(result_path + '*_flt.fits'):
+            os.remove(fl)
+            logger.info('Deleted FLT file: ' + fl)
     
         # ----------------------
         # Increment simulation counter
