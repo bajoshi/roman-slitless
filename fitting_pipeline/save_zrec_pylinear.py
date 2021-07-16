@@ -1,6 +1,7 @@
 import numpy as np
 import emcee
 import corner
+from astropy.io import fits
 
 import os
 import sys
@@ -18,6 +19,9 @@ roman_slitless_dir = os.path.dirname(cwd)
 sys.path.append(fitting_utils)
 from get_snr import get_snr
 from get_template_inputs import get_template_inputs
+
+# Set pylinear f_lambda scaling factor
+pylinear_flam_scale_fac = 1e-17
 
 def get_burn_thin(sampler):
 
@@ -41,9 +45,9 @@ exptime2 = '_1800s'
 exptime3 = '_3600s'
 
 img_filt = 'Y106_'
+ext_root = 'romansim_prism_'
 
-# Save results to text file
-resfile = results_dir + 'zrecovery_pylinear_sims.txt'
+# Header for the results file
 res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
           'SNR900  SNR1800  SNR3600  ' + \
           'z900  z900_lowerr  z900_uperr  ' + \
@@ -56,14 +60,18 @@ res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
           'phase3600  phase3600_lowerr  phase3600_uperr  ' + \
           'Av3600  Av3600_lowerr  Av3600_uperr'
 
-with open(resfile, 'w') as fh:
-    fh.write(res_hdr + '\n')
+# Arrays to loop over
+pointings = np.arange(0, 1)
+detectors = np.arange(1, 19, 1)
 
-    # Arrays to loop over
-    pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+for pt in pointings:
 
-    for pt in pointings:
+    # Save results to text file
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt' + str(pt) + '.txt'
+
+    with open(resfile, 'w') as fh:
+        fh.write(res_hdr + '\n')
+
         for det in detectors:
 
             # ----- Get img suffix, segid, and truth values
@@ -71,14 +79,24 @@ with open(resfile, 'w') as fh:
 
             # ----- Read in sed.lst
             sedlst_header = ['segid', 'sed_path']
-            sedlst_path = roman_slitless_dir + '/pylinear_lst_files/' + 'sed_' + img_suffix + '.lst'
+            sedlst_path = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/' + 'sed_' + img_suffix + '.lst'
             sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
+
+            # ----- Read in x1d file to get spectra for SNR
+            ext_spec_filename1 = ext_spectra_dir + ext_root + img_suffix + exptime1 + '_x1d.fits'
+            ext_hdu1 = fits.open(ext_spec_filename1)
+
+            ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
+            ext_hdu2 = fits.open(ext_spec_filename2)
+
+            ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
+            ext_hdu3 = fits.open(ext_spec_filename3)
 
             # ----- loop and find all SN segids
             all_sn_segids = []
             for i in range(len(sedlst)):
-                if 'salt' in sedlst['sed_path'][i]:
-                    all_sn_segids.append(sedlst['segid'][i])
+            if 'salt' in sedlst['sed_path'][i]:
+                all_sn_segids.append(sedlst['segid'][i])
 
             print('ALL SN segids in this file:', all_sn_segids)
             print(len(all_sn_segids), 'SN in', img_suffix + '\n')
@@ -100,13 +118,25 @@ with open(resfile, 'w') as fh:
                 true_av    = template_inputs[2]
 
                 # ----- Get SNR
-                #snr1 = get_snr(wav1, flam1)
+                wav1 = ext_hdu1[('SOURCE', segid)].data['wavelength']
+                flam1 = ext_hdu1[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+                wav2 = ext_hdu2[('SOURCE', segid)].data['wavelength']
+                flam2 = ext_hdu2[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+                wav3 = ext_hdu3[('SOURCE', segid)].data['wavelength']
+                flam3 = ext_hdu3[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+
+                snr1 = get_snr(wav1, flam1)
+                snr2 = get_snr(wav2, flam2)
+                snr3 = get_snr(wav3, flam3)
 
                 # ----- Write to file
                 # --- ID and true quantities
                 fh.write(img_suffix + '  ' + str(segid) + '  ')
                 fh.write('{:.3f}'.format(true_z) + '  ' + str(true_phase) + '  ')
-                fh.write('{:.3f}'.format(true_av) + '  ')# + '{:.2f}'.format(snr) + '  ')
+                fh.write('{:.3f}'.format(true_av) + '  ')
+                fh.write('{:.2f}'.format(snr1) + '  ')
+                fh.write('{:.2f}'.format(snr2) + '  ')
+                fh.write('{:.2f}'.format(snr3) + '  ')
 
                 # ----- Construct the filenames for this segid
                 snstr1 = str(segid) + '_' + img_suffix + exptime1
@@ -264,4 +294,12 @@ with open(resfile, 'w') as fh:
                     fh.write('-9999.0' + '  ')
                     fh.write('-9999.0' + '  ')
                     fh.write('-9999.0' + '\n')
+
+            ext_hdu1.close()
+            ext_hdu2.close()
+            ext_hdu3.close()
+
+
+
+
 
