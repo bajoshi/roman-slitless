@@ -99,7 +99,7 @@ def main():
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
 
-            num_to_insert = np.random.randint(low=10, high=20)
+            num_to_insert = np.random.randint(low=20, high=40)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
 
