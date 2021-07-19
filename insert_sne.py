@@ -173,6 +173,7 @@ def main():
             added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
             snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
             np.save(snadd_fl, added_sn_data)
+            tqdm.write('Saved: ' + snadd_fl)
 
             # Save and check with ds9
             new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
@@ -181,7 +182,8 @@ def main():
             tqdm.write('Saved: ' + savefile)
 
             # Also add a regions file for the added SNe
-            with open(dir_img_name.replace('.fits', '_SNadded.reg'), 'w') as fhreg:
+            snadd_regfl = dir_img_name.replace('.fits', '_SNadded.reg')
+            with open(snadd_regfl, 'w') as fhreg:
 
                 fhreg.write("# Region file format: DS9 version 4.1" + "\n")
                 fhreg.write("global color=red dashlist=8 3 width=3 font=\"helvetica 10 normal roman\" ")
@@ -196,6 +198,8 @@ def main():
                                 "{:.1f}".format(y_ins[i]) + "," + \
                                 "9.5955367)" + " # color=red" + \
                                 " width=3" + "\n")
+
+            tqdm.write('Saved: ' + snadd_regfl)
 
     return None
 

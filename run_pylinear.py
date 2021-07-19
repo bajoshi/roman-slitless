@@ -315,8 +315,8 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 def gen_img_suffixes():
 
     # Arrays to loop over
-    pointings = np.arange(1, 30)
-    detectors = np.arange(1, 19, 1)
+    pointings = np.arange(1, 2)
+    detectors = np.arange(11, 19, 1)
 
     img_filt = 'Y106_'
 
@@ -391,7 +391,7 @@ def main():
         roman_direct_dir = home + '/Documents/roman_direct_sims/sims2021/'
 
         # Define paths for tables and matrices
-        tablespath =  result_path + '/tables/'
+        tablespath =  result_path + 'tables/'
         matricespath = result_path + 'matrices/'
 
         # Define path for SEDs

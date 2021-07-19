@@ -16,14 +16,6 @@ from numba import jit
 
 import matplotlib.pyplot as plt
 
-home = os.getenv("HOME")
-roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
-
-sys.path.append(fitting_utils)
-import proper_and_lum_dist as cosmo
-import dust_utils as du
-
 # Define constants
 Lsol = 3.826e33
 
@@ -31,20 +23,34 @@ Lsol = 3.826e33
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
     modeldir = extdir + 'bc03_output_dir/'
-    roman_sims_seds = "/home/bajoshi/Documents/roman_slitless_sims_seds/"
-    pylinear_lst_dir = "/home/bajoshi/Documents/pylinear_lst_files/"
-    roman_direct_dir = '/home/bajoshi/Documents/roman_direct_sims/sims2021/'
+    
+    roman_sims_seds = extdir + 'roman_slitless_sims_seds/'
+    pylinear_lst_dir = extdir + 'pylinear_lst_files/'
+    roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+
+    roman_slitless_dir = extdir + "GitHub/roman-slitless/"
+    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
+
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
+    
     roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
     pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
+    home = os.getenv("HOME")
+    roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
+    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
 assert os.path.isdir(modeldir)
+assert os.path.isdir(roman_sims_seds)
+assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
 
+sys.path.append(fitting_utils)
+import proper_and_lum_dist as cosmo
+import dust_utils as du
 
 # Read in SALT2 SN IA file  from Lou
 salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
@@ -117,7 +123,7 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     """
 
     # Create array for days relative to max
-    days_arr = np.arange(-5, 30, 1)
+    days_arr = np.arange(-19, 51, 1)
 
     # Define scaling factor
     # Check sn_scaling.py in same folder as this code
@@ -427,8 +433,8 @@ def gen_sed_lst():
     truth_match = fits.open(roman_direct_dir + '5deg_truth_gal.fits')
 
     # Arrays to loop over
-    pointings = np.arange(1, 30)
-    detectors = np.arange(1, 19, 1)
+    pointings = np.arange(1, 2)
+    detectors = np.arange(11, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
