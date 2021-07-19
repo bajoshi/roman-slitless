@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
     modeldir = extdir + 'bc03_output_dir/'
-    roman_direct_dir = home + '/Documents/roman_direct_sims/sims2021/'
+    roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
@@ -93,13 +93,13 @@ def main():
 
     # ---------------
     # Arrays to loop over
-    pointings = np.arange(28, 30)
-    detectors = np.arange(1, 19, 1)
+    pointings = np.arange(1, 2)
+    detectors = np.arange(11, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
 
-            num_to_insert = np.random.randint(low=20, high=40)
+            num_to_insert = np.random.randint(low=20, high=30)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
 
