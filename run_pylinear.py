@@ -383,19 +383,21 @@ def main():
         obsstr = '_marcc'
     
     elif 'plffsn2' in socket.gethostname():
+        extdir = '/astro/ffsn/Joshi/'
+
         # Define path for results and change to that directory
-        result_path = home + '/Documents/roman_slitless_sims_results/'
+        result_path = extdir + 'roman_slitless_sims_results/'
         
         # Define directories for imaging and lst files
-        pylinear_lst_dir = home + '/Documents/pylinear_lst_files/'
-        roman_direct_dir = home + '/Documents/roman_direct_sims/sims2021/'
+        pylinear_lst_dir = extdir + 'pylinear_lst_files/'
+        roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
         # Define paths for tables and matrices
         tablespath =  result_path + 'tables/'
         matricespath = result_path + 'matrices/'
 
         # Define path for SEDs
-        seds_path = home + '/Documents/roman_slitless_sims_seds/'
+        seds_path = extdir + 'roman_slitless_sims_seds/'
         
         # Define identifier for machine
         obsstr = '_plffsn2'
