@@ -9,6 +9,7 @@ import glob
 
 ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
 results_dir = ext_spectra_dir + 'fitting_results/'
+img_sim_dir = "/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/K_5degimages_part1/"
 
 # Assign directories and custom imports
 cwd = os.path.dirname(os.path.abspath(__file__))
@@ -49,7 +50,7 @@ ext_root = 'romansim_prism_'
 
 # Header for the results file
 res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
-          'SNR900  SNR1800  SNR3600  ' + \
+          'Y106mag  SNR900  SNR1800  SNR3600  ' + \
           'z900  z900_lowerr  z900_uperr  ' + \
           'phase900  phase900_lowerr  phase900_uperr  ' + \
           'Av900  Av900_lowerr  Av900_uperr  ' + \
@@ -59,6 +60,10 @@ res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
           'z3600  z3600_lowerr  z3600_uperr  ' + \
           'phase3600  phase3600_lowerr  phase3600_uperr  ' + \
           'Av3600  Av3600_lowerr  Av3600_uperr'
+
+# Header for SExtractor catalog
+cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
 
 # Arrays to loop over
 pointings = np.arange(0, 1)
@@ -92,11 +97,15 @@ for pt in pointings:
             ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
             ext_hdu3 = fits.open(ext_spec_filename3)
 
+            # ----- Read in catalog from SExtractor
+            cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'
+            cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+
             # ----- loop and find all SN segids
             all_sn_segids = []
             for i in range(len(sedlst)):
-            if 'salt' in sedlst['sed_path'][i]:
-                all_sn_segids.append(sedlst['segid'][i])
+                if 'salt' in sedlst['sed_path'][i]:
+                    all_sn_segids.append(sedlst['segid'][i])
 
             print('ALL SN segids in this file:', all_sn_segids)
             print(len(all_sn_segids), 'SN in', img_suffix + '\n')
@@ -129,11 +138,16 @@ for pt in pointings:
                 snr2 = get_snr(wav2, flam2)
                 snr3 = get_snr(wav3, flam3)
 
+                # ----- Get magnitude in Y106
+                mag_idx = int(np.where(cat['NUMBER'] == segid)[0])
+                mag = cat['MAG_AUTO'][mag_idx]
+
                 # ----- Write to file
                 # --- ID and true quantities
                 fh.write(img_suffix + '  ' + str(segid) + '  ')
                 fh.write('{:.3f}'.format(true_z) + '  ' + str(true_phase) + '  ')
                 fh.write('{:.3f}'.format(true_av) + '  ')
+                fh.write('{:.2f}'.format(mag)  + '  ')
                 fh.write('{:.2f}'.format(snr1) + '  ')
                 fh.write('{:.2f}'.format(snr2) + '  ')
                 fh.write('{:.2f}'.format(snr3) + '  ')
