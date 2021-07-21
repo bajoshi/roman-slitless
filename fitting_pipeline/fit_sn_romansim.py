@@ -330,8 +330,8 @@ def main():
 
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
-    pointings = np.arange(1, 30)
-    detectors = np.arange(1, 19, 1)
+    pointings = np.arange(1, 2)
+    detectors = np.arange(1, 11, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -340,7 +340,7 @@ def main():
 
             # --------------- Read in sed.lst
             sedlst_header = ['segid', 'sed_path']
-            sedlst_path = roman_slitless_dir + '/pylinear_lst_files/' + 'sed_' + img_suffix + '.lst'
+            sedlst_path = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/' + 'sed_' + img_suffix + '.lst'
             sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
             print("Read in sed.lst from:", sedlst_path)
 
@@ -457,7 +457,7 @@ def main():
                         backend = emcee.backends.HDFBackend(emcee_savefile)
                         backend.reset(nwalkers, ndim_sn)
                             
-                        with Pool(4) as pool:
+                        with Pool(6) as pool:
                             sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, logpost_sn,
                                 args=args_sn, pool=pool, backend=backend)
                             sampler.run_mcmc(pos_sn, niter, progress=True)
