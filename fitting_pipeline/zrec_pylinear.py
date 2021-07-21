@@ -145,6 +145,13 @@ fig.savefig(results_dir + 'pylinearrecovery_z.pdf',
 fig.clear()
 plt.close(fig)
 
+print('IDs for 3600 sec catastrophic fails:')
+for i in range(len(fail_idx3600)):
+    print(cat['img_suffix'][fail_idx3600][i], '  ', cat['SNSegID'][fail_idx3600][i], '  ', \
+        cat['z_true'][fail_idx3600][i], '  ', cat['z3600'][fail_idx3600][i])
+
+sys.exit(0)
+
 ###########################################
 # -------------------- phase recovery plt
 fig = plt.figure(figsize=(7, 9))
