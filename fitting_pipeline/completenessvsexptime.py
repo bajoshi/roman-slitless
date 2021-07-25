@@ -65,25 +65,60 @@ def main():
 
         # Cumulative completeness fraction
         # ONLY SHOWN FOR LONGEST EXPTIME
-        if '3600' in et:
-            ts = np.cumsum(total_counts)
-            zs1 = np.cumsum(ztol_counts1)
-            zs2 = np.cumsum(ztol_counts2)
+        #if '900' in et:
+        #    ts = np.cumsum(total_counts)
+        #    zs1 = np.cumsum(ztol_counts1)
+        #    zs2 = np.cumsum(ztol_counts2)
 
-            pc1 = zs1 / ts
-            pc2 = zs2 / ts
+        #    pc1 = zs1 / ts
+        #    pc2 = zs2 / ts
 
-            ax.plot(mags, pc1, '-', color='k')
-            ax.plot(mags, pc2, '--', color='k')
+        #    ax.plot(mags, pc1, '-', color='k', label=r'$\frac{\Delta z}{1+z} \leq 0.01$')
+        #    ax.plot(mags, pc2, '--', color='k', label=r'$\frac{\Delta z}{1+z} \leq 0.001$')
 
     # Show the mag dist as a light histogram
     ax1 = ax.twinx()
     ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray', alpha=0.3)
 
+    #ax.legend(loc=6, frameon=False, fontsize=14)
+
+    mag22_bin_idx = np.where((cat['Y106mag'] >= 22.0) & (cat['Y106mag'] < 22.5))[0]
+    snr_mag22_3600 = np.mean(cat['SNR3600'][mag22_bin_idx])
+    snr_mag22_1800 = np.mean(cat['SNR1800'][mag22_bin_idx])
+    snr_mag22_900 = np.mean(cat['SNR900'][mag22_bin_idx])
+
+    # Text info
+    ax.text(x=22.53, y=0.7, 
+        s=r'$3600\ \mathrm{seconds; \left<SNR\right>}=$' + '{:.1f}'.format(snr_mag22_3600), 
+        verticalalignment='top', horizontalalignment='left', 
+        transform=ax.transData, color='crimson', size=14)
+    ax.text(x=22.53, y=0.65, 
+        s=r'$1800\ \mathrm{seconds; \left<SNR\right>}=$' + '{:.1f}'.format(snr_mag22_1800), 
+        verticalalignment='top', horizontalalignment='left', 
+        transform=ax.transData, color='dodgerblue', size=14)
+    ax.text(x=22.53, y=0.55, 
+        s=r'$900\ \mathrm{seconds; \left<SNR\right>}=$' + '{:.1f}'.format(snr_mag22_900), 
+        verticalalignment='top', horizontalalignment='left', 
+        transform=ax.transData, color='goldenrod', size=14)
+
+    ax.text(x=17.5, y=0.2, s=r'$\mbox{---}\ \frac{\Delta z}{1+z} \leq 0.01$', 
+        verticalalignment='top', horizontalalignment='left', 
+        transform=ax.transData, color='k', size=14)
+    ax.text(x=17.5, y=0.1, s=r'$-- \frac{\Delta z}{1+z} \leq 0.001$',
+        verticalalignment='top', horizontalalignment='left', 
+        transform=ax.transData, color='k', size=14)
+
     # labels
     ax.set_ylabel(r'$\mathrm{Frac}.\ z\ \mathrm{completeness}$', fontsize=14)
     ax.set_xlabel(r'$m_{Y106}$', fontsize=14)
     ax1.set_ylabel(r'$\#\ \mathrm{objects}$', fontsize=14)
+
+    # Limits
+    ax.set_xlim(17.0, 27.5)
+
+    # save
+    fig.savefig(results_dir + 'pylinearrecovery_completeness.pdf', 
+        dpi=200, bbox_inches='tight')
 
     plt.show()
 
