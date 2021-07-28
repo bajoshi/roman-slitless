@@ -405,6 +405,24 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
     return idx
 
+def get_sn_z(snmag):
+
+    # Neglecting K-corr for now. When needed, the code to compute K-corr
+    # is already written in massive-galaxies/grismz_pipeline/intg_lum_func.py
+
+    g_absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
+
+    dist_mod = snmag - g_absmag
+    dl = 10 * np.power(10, dist_mod/5.0)  # in parsecs
+    dl *= 3.086e18  # convert to cm # this is the unit in the lookup table
+
+    # Now reverse lookup z corresponding to dl in lookup table
+    z_idx = np.argmin(abs(dl_cm_arr - dl))
+
+    sn_z = dl_z_arr[z_idx]
+
+    return sn_z
+
 def gen_sed_lst():
 
     print(f"{bcolors.WARNING}")
@@ -612,7 +630,7 @@ def gen_sed_lst():
                     tqdm.write("\nObjID:" + str(current_sextractor_id))
                     tqdm.write("No matches found in truth file.")
 
-                    z_nomatch = np.random.uniform(low=0.0, high=3.0)
+                    z_nomatch_gal = np.random.uniform(low=0.0, high=3.0)
 
                     # There are some galaxies that have no matches in the truth
                     # files. I'm assigning a random redshift and spectrum to them.
@@ -630,13 +648,15 @@ def gen_sed_lst():
                     if len(added_match) < 1:
                         tqdm.write('Assigning galaxy spectrum to object with no match in truth')
                         tqdm.write('and is not an object added through insert_sne.py')
-                        spec_path = get_gal_spec_path(z_nomatch)
+                        spec_path = get_gal_spec_path(z_nomatch_gal)
                         fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
                         continue
 
                     else:
                         tqdm.write("Assigning random redshift to added fake SN.")
-                        sn_spec_path = get_sn_spec_path(z_nomatch)
+                        # SN z must be consistent with cosmological dimming
+                        z_nomatch_sn = get_sn_z(cat['MAG_AUTO'][i])
+                        sn_spec_path = get_sn_spec_path(z_nomatch_sn)
                         fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
                         continue
 
