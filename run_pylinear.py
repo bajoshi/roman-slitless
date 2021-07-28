@@ -502,12 +502,12 @@ def main():
         # in it. 
         # For getting larger numbers of SNe spectra to analyze I'm only
         # going through the images with at least 2 SNe in them, first.
-        sed_fh = open(sedlst, 'r')
-        all_sed_lines = sed_fh.readlines()
-        num_sn = 0
-        for l in all_sed_lines:
-            if 'salt' in l:
-                num_sn += 1
+        with open(sedlst, 'r') as sed_fh:
+            all_sed_lines = sed_fh.readlines()
+            num_sn = 0
+            for l in all_sed_lines:
+                if 'salt' in l:
+                    num_sn += 1
 
         if num_sn <= 1:
             logger.info("Skipping image due to no or only one SNe matches.")

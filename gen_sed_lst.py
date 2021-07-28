@@ -451,8 +451,8 @@ def gen_sed_lst():
     truth_match = fits.open(roman_direct_dir + '5deg_truth_gal.fits')
 
     # Arrays to loop over
-    pointings = np.arange(1, 2)
-    detectors = np.arange(11, 19, 1)
+    pointings = np.arange(2, 3)
+    detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -520,9 +520,9 @@ def gen_sed_lst():
                 # It will not work if you join all of these args in a 
                 # string with spaces where they are supposed to be; 
                 # even if the command looks right when printed out.
-                sextractor = subprocess.run(['sex', img_filename, \
-                    '-c', 'roman_sims_sextractor_config.txt', \
-                    '-CATALOG_NAME', os.path.basename(cat_filename), \
+                sextractor = subprocess.run(['sex', img_filename, 
+                    '-c', 'roman_sims_sextractor_config.txt', 
+                    '-CATALOG_NAME', os.path.basename(cat_filename), 
                     '-CHECKIMAGE_NAME', checkimage], check=True)
                 
                 tqdm.write("Finished SExtractor run. Check cat and segmap if needed.")
@@ -530,7 +530,7 @@ def gen_sed_lst():
                 # Go back to roman-slitless directory
                 os.chdir(roman_slitless_dir)
 
-            cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
+            cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
             'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
             cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
             tqdm.write(f"{bcolors.GREEN}" + str(len(cat)) + " objects in catalog." + f"{bcolors.ENDC}")
@@ -653,7 +653,9 @@ def gen_sed_lst():
                         continue
 
                     else:
+                        tqdm.write(f'{bcolors.CYAN}')
                         tqdm.write("Assigning random redshift to added fake SN.")
+                        tqdm.write(f'{bcolors.ENDC}')
                         # SN z must be consistent with cosmological dimming
                         z_nomatch_sn = get_sn_z(cat['MAG_AUTO'][i])
                         sn_spec_path = get_sn_spec_path(z_nomatch_sn)
@@ -719,6 +721,11 @@ def gen_sed_lst():
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
             fh.close()
+
+            # Assert that each object got a spectrum
+            sedlst = np.genfromtxt(sed_filename, dtype=None, 
+                names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
+            assert len(cat) == len(sedlst)
 
     return None
 
