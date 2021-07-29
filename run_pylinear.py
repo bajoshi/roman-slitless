@@ -315,8 +315,8 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 def gen_img_suffixes():
 
     # Arrays to loop over
-    pointings = np.arange(1, 2)
-    detectors = np.arange(11, 19, 1)
+    pointings = np.arange(2, 3)
+    detectors = np.arange(1, 19, 1)
 
     img_filt = 'Y106_'
 

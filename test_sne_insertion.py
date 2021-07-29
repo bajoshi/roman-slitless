@@ -116,7 +116,7 @@ ax.set_ylabel('Inserted SN AB mag in F106', fontsize=14)
 
 ax.scatter(all_sn_z, all_sn_mags, s=3, color='k')
 
-plt.show()
+fig.savefig(extdir + 'test_sn_insert_mag_z.pdf', dpi=200, bbox_inches='tight')
 
 print('Testing finished.')
 
