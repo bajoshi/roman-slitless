@@ -83,6 +83,8 @@ for i in range(18):
         names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
     cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
+    assert len(sed) == len(cat)
+
     # ----- Now get each SN mag and z
     for j in range(len(sed)):
         pth = sed['sed_path'][j]

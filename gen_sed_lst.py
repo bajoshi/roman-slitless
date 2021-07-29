@@ -587,7 +587,7 @@ def gen_sed_lst():
 
               2. IF MATCH IS NOT FOUND:
 
-                2A: Pick a random z
+                2A: Pick a random z; separately for galaxy and SN
 
                 2B: Is it one of the fake SNe that we added?
                     Yes --> Assign SN spectrum
@@ -602,10 +602,13 @@ def gen_sed_lst():
                             spectrum to the same redshift.
                         --> Ensure that when the SN ID is encountered in the loop
                             it is skipped.
+                        --> Must also ensure that the SN ID wasn't previously 
+                            assigned a galaxy spectrum when a match wasn't found.
                     No  --> Assign galaxy spectrum
             """
 
             assigned_sne = []
+            assigned_gal = []
 
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
@@ -650,6 +653,8 @@ def gen_sed_lst():
                         tqdm.write('and is not an object added through insert_sne.py')
                         spec_path = get_gal_spec_path(z_nomatch_gal)
                         fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
+
+                        assigned_gal.append(current_sextractor_id)
                         continue
 
                     else:
@@ -660,6 +665,8 @@ def gen_sed_lst():
                         z_nomatch_sn = get_sn_z(cat['MAG_AUTO'][i])
                         sn_spec_path = get_sn_spec_path(z_nomatch_sn)
                         fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
+
+                        assigned_sne.append(current_sextractor_id)
                         continue
 
                 id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
@@ -690,6 +697,8 @@ def gen_sed_lst():
                         tqdm.write(f"{bcolors.ENDC}")
                         spec_path = get_gal_spec_path(z)
                         fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
+
+                        assigned_gal.append(current_sextractor_id)
                         continue
 
                     snid = cat['NUMBER'][sn_idx]
@@ -701,6 +710,8 @@ def gen_sed_lst():
                         fh.write(str(snid) + " " + sn_spec_path + "\n")
                         tqdm.write("Only SN detected. SN SExtractor ID: " + str(snid))
                         tqdm.write("SN mag: " + str(cat['MAG_AUTO'][sn_idx]))
+
+                        assigned_sne.append(current_sextractor_id)
                         
                     elif snid != current_sextractor_id:
                         sn_spec_path = get_sn_spec_path(z)
@@ -710,6 +721,7 @@ def gen_sed_lst():
                         fh.write(str(current_sextractor_id) + " " + gal_spec_path + "\n")
 
                         assigned_sne.append(snid)
+                        assigned_gal.append(current_sextractor_id)
 
                         tqdm.write("SN SExtractor ID: " + str(snid))
                         tqdm.write("HOST SExtractor ID: " + str(current_sextractor_id))
@@ -720,12 +732,26 @@ def gen_sed_lst():
                     spec_path = get_gal_spec_path(z)
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
+                    assigned_gal.append(current_sextractor_id)
+
             fh.close()
 
             # Assert that each object got a spectrum
             sedlst = np.genfromtxt(sed_filename, dtype=None, 
                 names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
-            assert len(cat) == len(sedlst)
+            try:
+                assert len(cat) == len(sedlst)
+            except AssertionError:
+                tqdm.write(f'{bcolors.FAIL}')
+                
+                tqdm.write('Lengths of catalog and SED lst not consistent.')
+                tqdm.write('Need to manually remove one of the following repeated SegIDs:')
+
+                assigned_gal = np.asarray(assigned_gal)
+                assigned_sne = np.asarray(assigned_sne)
+                print(np.intersect1d(assigned_sne, assigned_gal))
+
+                tqdm.write(f'{bcolors.ENDC}')
 
     return None
 
