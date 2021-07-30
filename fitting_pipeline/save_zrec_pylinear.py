@@ -66,8 +66,8 @@ cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
 
 # Arrays to loop over
-pointings = np.arange(0, 1)
-detectors = np.arange(1, 19, 1)
+pointings = np.arange(2, 3)
+detectors = np.arange(1, 5, 1)
 
 for pt in pointings:
 

@@ -330,8 +330,8 @@ def main():
 
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
-    pointings = np.arange(1, 2)
-    detectors = np.arange(1, 11, 1)
+    pointings = np.arange(2, 3)
+    detectors = np.arange(1, 5, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -381,7 +381,8 @@ def main():
                     #    print('Skipping SN', segid, 'in img_suffix', img_suffix)
                     #    continue
 
-                    print("\nFitting SegID:", segid, "with exposure time:", all_exptimes[expcount])
+                    print("\n-----------------")
+                    print("Fitting SegID:", segid, "with exposure time:", all_exptimes[expcount])
  
                     # ----- Get spectrum
                     segid_idx = int(np.where(sedlst['segid'] == segid)[0])
@@ -401,12 +402,19 @@ def main():
 
                     # ----- Check SNR
                     snr = get_snr(wav, flam)
+                    smoothed_snr = get_snr(wav, sf)
 
-                    print("SNR for this spectrum:", "{:.2f}".format(snr), get_snr(wav, sf))
+                    print("SNR for this spectrum:", "{:.2f}".format(snr), "{:.2f}".format(smoothed_snr))
 
                     if snr < 3.0:
                         print("Skipping due to low SNR.")
                         continue
+
+                    if smoothed_snr > 2 * snr:
+                        flam = sf
+                        print(f'{bcolors.HEADER}')
+                        print("------> Fitting smoothed spectrum.")
+                        print(f'{bcolors.ENDC}')
 
                     # ----- Set noise level based on snr
                     #noise_lvl = 1/snr

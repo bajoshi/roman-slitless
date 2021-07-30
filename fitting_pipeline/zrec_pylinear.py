@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
 results_dir = ext_spectra_dir + 'fitting_results/'
 
-resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
+resfile = results_dir + 'zrecovery_pylinear_sims_pt2.txt'
 cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
 # Remove invalid measures
@@ -150,8 +150,7 @@ for i in range(len(fail_idx3600)):
     print(cat['img_suffix'][fail_idx3600][i], '  ', cat['SNSegID'][fail_idx3600][i], '  ', \
         cat['z_true'][fail_idx3600][i], '  ', cat['z3600'][fail_idx3600][i])
 
-sys.exit(0)
-
+"""
 ###########################################
 # -------------------- phase recovery plt
 fig = plt.figure(figsize=(7, 9))
@@ -274,6 +273,7 @@ fig.savefig(results_dir + 'pylinearrecovery_dust.pdf',
 
 fig.clear()
 plt.close(fig)
+"""
 
 ###########################################
 # -------------------- Plot SNR vs % accuracy
@@ -311,7 +311,25 @@ ax1.set_ylim(-0.015, 0.015)
 fig.savefig(results_dir + 'pylinearrecovery_snr.pdf',
     dpi=200, bbox_inches='tight')
 
+fig.clear()
+plt.close(fig)
 
+###########################################
+# --------- For modifying FITRES file from Dan
+# need a 'functional form' of z error vs SNR.
+snr = cat['SNR3600']
+snr_idx = np.where((snr >= 10.0) & (snr <= 20.0))[0]
+
+print(z3600acc[snr_idx])
+print(np.nanmax(z3600acc[snr_idx]))
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+
+ax.scatter(snr[snr_idx], z3600acc[snr_idx], s=7, color='k',  zorder=2)
+ax.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
+
+plt.show()
 
 
 
