@@ -123,7 +123,8 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     """
 
     # Create array for days relative to max
-    days_arr = np.arange(-19, 51, 1)
+    #days_arr = np.arange(-19, 51, 1)
+    days_arr = np.arange(-5, 5, 1)
 
     # Define scaling factor
     # Check sn_scaling.py in same folder as this code
