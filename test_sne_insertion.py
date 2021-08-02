@@ -34,7 +34,7 @@ assert os.path.isdir(roman_direct_dir)
 # This is because most of the SNe inserted are quite faint and 
 # although there are quite a few inserted, SExtractor won't detect all of them.
 
-pt = '2'  # Enter the pointing you want to test
+pt = '0'  # Enter the pointing you want to test
 
 def read_numsn(sedlst):
 

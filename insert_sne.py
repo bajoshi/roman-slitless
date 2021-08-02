@@ -93,13 +93,13 @@ def main():
 
     # ---------------
     # Arrays to loop over
-    pointings = np.arange(2, 3)
+    pointings = np.arange(0, 1)
     detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
 
-            num_to_insert = np.random.randint(low=20, high=40)
+            num_to_insert = np.random.randint(low=30, high=50)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
 
@@ -137,7 +137,7 @@ def main():
                 # Decide some random mag for the SN
                 # This is a power law # previously uniform dist
                 # chosen from low=19.0, high=26.0 mag
-                pow_idx = 3.0  # power law index # PDF given by: P(x;a) = a * x^(a-1)
+                pow_idx = 2.0  # power law index # PDF given by: P(x;a) = a * x^(a-1)
                 snmag = np.random.power(pow_idx, size=None)
                 snmag = snmag * (highmag - lowmag) + lowmag
                 snmag_arr[i] = snmag

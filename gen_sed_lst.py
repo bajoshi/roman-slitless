@@ -451,7 +451,7 @@ def gen_sed_lst():
     truth_match = fits.open(roman_direct_dir + '5deg_truth_gal.fits')
 
     # Arrays to loop over
-    pointings = np.arange(2, 3)
+    pointings = np.arange(0, 1)
     detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
