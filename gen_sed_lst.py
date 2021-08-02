@@ -119,7 +119,7 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
 
     The spectrum file contains a type 1A spectrum from -20 to +50 days relative to max.
     Since the -20 spectrum is essentially empty, I won't choose that spectrum for now.
-    Also, for now, I will restrict this function to -5 to +20 days relative to maximum.
+    Also, for now, I will restrict this function to -5 to +5 days relative to maximum.
     """
 
     # Create array for days relative to max
