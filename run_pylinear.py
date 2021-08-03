@@ -316,7 +316,7 @@ def gen_img_suffixes():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(2, 19, 1)
 
     img_filt = 'Y106_'
 
@@ -521,6 +521,7 @@ def main():
         sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
 
         # Set up
+        """
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
         tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
         tabnames = tabulate.run(grisms, sources, beam)
@@ -532,6 +533,7 @@ def main():
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         fltnames = simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
+        """
 
         # ---------------------- Now do the exptime dependent stuff
         for e in range(len(exptime_list)):
@@ -552,6 +554,7 @@ def main():
             #nobs = nobs_list[e]
             #dithertime = int(exptime / nobs)
             
+            """
             for i in range(len(roll_angle_list)):
 
                 #ditherstr = 'd' + str(d)
@@ -624,7 +627,7 @@ def main():
             logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
-
+            """
 
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
