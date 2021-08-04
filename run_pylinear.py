@@ -316,7 +316,7 @@ def gen_img_suffixes():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(3, 19, 1)
+    detectors = np.arange(2, 19, 1)
 
     img_filt = 'Y106_'
 
@@ -416,9 +416,9 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [3600, 900]
+    exptime_list = [6000, 1500]
     nobs_list = [2, 3, 4]  # no of dithers
-    roll_angle_list = [0.0, 5.0, 10.0, 15.0, 20.0]
+    roll_angle_list = [0.0, 10.0, 20.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
     disp_elem = 'P127'
