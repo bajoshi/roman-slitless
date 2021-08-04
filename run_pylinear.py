@@ -316,7 +316,7 @@ def gen_img_suffixes():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(2, 19, 1)
+    detectors = np.arange(1, 4, 1)
 
     img_filt = 'Y106_'
 
@@ -434,7 +434,7 @@ def main():
     
         img_suffix = img_suffix_list[sim_count]
 
-        dir_img_name = img_basename + img_suffix + '_SNadded.fits'
+        dir_img_name = img_basename + img_suffix + '_SNadded_nonoise.fits'
 
         # Because some direct images are missing
         try:
@@ -540,8 +540,8 @@ def main():
             logger.info("Adding noise... ")
             # check Russell's notes in pylinear notebooks
             # also check WFIRST tech report TR1901
-            sky  = 1.1     # e/s
-            npix = 4096 * 4096
+            sky  = 1.1     # e/s/pix  # zodi + thermal + sky
+            npix = 4088 * 4088
             #sky /= npix    # e/s/pix
     
             dark = 0.015   # e/s/pix
@@ -637,7 +637,7 @@ def main():
     
             extraction_parameters = grisms.get_default_extraction()
 
-            # Reset dlamb to 50.0 for the prism
+            # Reset dlamb for the prism
             # Hack for now. This should be hardcoded to 50 in the xml file.
             if disp_elem == 'P127':
                 extraction_parameters['dlamb'] = 30.0

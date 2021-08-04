@@ -453,13 +453,13 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(1, 4, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
 
             img_suffix = img_filt + str(pt) + '_' + str(det)
-            dir_img_name = img_basename + img_suffix + '_SNadded.fits'
+            dir_img_name = img_basename + img_suffix + '_SNadded_nonoise.fits'
 
             # Because some direct images are missing
             try:
@@ -494,8 +494,9 @@ def gen_sed_lst():
             # Read in catalog from SExtractor
             cat_filename = img_sim_dir + img_basename + img_filt + \
                            str(pt) + '_' + str(det) + '_SNadded.cat'
-            tqdm.write("Checking for catalog: " + cat_filename)
-
+            tqdm.write("Read catalog: " + cat_filename)
+            #tqdm.write("Checking for catalog: " + cat_filename)
+            """
             if not os.path.isfile(cat_filename):
                 tqdm.write("Cannot find object catalog. SExtractor will be run automatically.")
 
@@ -530,6 +531,7 @@ def gen_sed_lst():
 
                 # Go back to roman-slitless directory
                 os.chdir(roman_slitless_dir)
+            """
 
             cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
             'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']

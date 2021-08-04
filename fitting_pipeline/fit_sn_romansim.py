@@ -309,10 +309,10 @@ def main():
     img_filt = 'Y106_'
 
     exptime1 = '_900s'
-    exptime2 = '_1800s'
+    #exptime2 = '_1800s'
     exptime3 = '_3600s'
 
-    all_exptimes = [exptime1, exptime2, exptime3]
+    all_exptimes = [exptime1, exptime3]  # [exptime1, exptime2, exptime3]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -352,16 +352,16 @@ def main():
             ext_hdu1 = fits.open(ext_spec_filename1)
             print("Read in extracted spectra from:", ext_spec_filename1)
 
-            ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
-            ext_hdu2 = fits.open(ext_spec_filename2)
-            print("Read in extracted spectra from:", ext_spec_filename2)
+            #ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
+            #ext_hdu2 = fits.open(ext_spec_filename2)
+            #print("Read in extracted spectra from:", ext_spec_filename2)
 
             ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
             ext_hdu3 = fits.open(ext_spec_filename3)
             print("Read in extracted spectra from:", ext_spec_filename3)
             print('\n')
 
-            all_hdus = [ext_hdu1, ext_hdu2, ext_hdu3]
+            all_hdus = [ext_hdu1, ext_hdu3]  # [ext_hdu1, ext_hdu2, ext_hdu3]
 
             # --------------- loop and find all SN segids
             all_sn_segids = []
@@ -410,11 +410,11 @@ def main():
                         print("Skipping due to low SNR.")
                         continue
 
-                    if smoothed_snr > 2 * snr:
-                        flam = sf
-                        print(f'{bcolors.HEADER}')
-                        print("------> Fitting smoothed spectrum.")
-                        print(f'{bcolors.ENDC}')
+                    #if smoothed_snr > 2 * snr:
+                    #    flam = sf
+                    #    print(f'{bcolors.HEADER}')
+                    #    print("------> Fitting smoothed spectrum.")
+                    #    print(f'{bcolors.ENDC}')
 
                     # ----- Set noise level based on snr
                     #noise_lvl = 1/snr
