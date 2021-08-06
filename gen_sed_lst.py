@@ -124,7 +124,7 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
 
     # Create array for days relative to max
     #days_arr = np.arange(-19, 51, 1)
-    days_arr = np.arange(-5, 5, 1)
+    days_arr = np.arange(-5, 6, 1)
 
     # Define scaling factor
     # Check sn_scaling.py in same folder as this code
@@ -169,6 +169,13 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
 
         fh_sn.close()
     #print("Saved:", sn_spec_path)
+
+    print('#####################')
+    print('Write code here that will confirm that the SN spec being')
+    print('passed with the specified redshift when convolved with')
+    print('the filter curve for F105W gives the expected mag.')
+    print('DO NOT remove sys.exit prior to writing this block.')
+    sys.exit(0)
 
     return sn_spec_path
 
