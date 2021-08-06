@@ -16,21 +16,24 @@ def main():
 
     # Create arrays for plotting
     deltamag = 0.5
-    mag_bins = np.arange(17.5, 26.5, deltamag)  # left edges of mag bins
+    low_maglim = 18.5
+    high_maglim = 26.0
+
+    mag_bins = np.arange(low_maglim, high_maglim, deltamag)  # left edges of mag bins
     mags = [(mag_bins[m] + mag_bins[m+1])/2 for m in range(len(mag_bins) - 1)]
 
     z_tol1 = 0.01  # abs val of delta-z/(1+z)
     z_tol2 = 0.001
 
     # Do this for each exposure time separately
-    exptime_labels = ['z3600', 'z1800', 'z900']
-    colors = ['crimson', 'dodgerblue', 'goldenrod']
+    exptime_labels = ['z3600', 'z900']  # ['z3600', 'z1800', 'z900']
+    colors = ['crimson', 'dodgerblue']  #, 'goldenrod']
 
     # Setup figure
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8,5))
     ax = fig.add_subplot(111)
 
-    for e in range(3):
+    for e in range(len(exptime_labels)):
 
         et = exptime_labels[e]
 
@@ -47,7 +50,7 @@ def main():
 
             z_acc = np.abs(temp_z - temp_z_true) / (1 + temp_z_true)
 
-            mag_idx = int((mag - 17.5) / deltamag)
+            mag_idx = int((mag - low_maglim) / deltamag)
 
             total_counts[mag_idx] += 1
 
@@ -84,37 +87,37 @@ def main():
 
     mag22_bin_idx = np.where((cat['Y106mag'] >= 22.0) & (cat['Y106mag'] < 22.5))[0]
     snr_mag22_3600 = np.mean(cat['SNR3600'][mag22_bin_idx])
-    snr_mag22_1800 = np.mean(cat['SNR1800'][mag22_bin_idx])
+    #snr_mag22_1800 = np.mean(cat['SNR1800'][mag22_bin_idx])
     snr_mag22_900 = np.mean(cat['SNR900'][mag22_bin_idx])
 
     # Text info
-    ax.text(x=22.53, y=0.7, 
-        s=r'$3600\ \mathrm{seconds; \left<SNR\right>}=$' + '{:.1f}'.format(snr_mag22_3600), 
+    ax.text(x=22.0, y=0.93, 
+        s=r'$18000\ \mathrm{seconds; \left<SNR\right>}_{F106\sim22.25}=$' + '{:.1f}'.format(snr_mag22_3600), 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='crimson', size=14)
-    ax.text(x=22.53, y=0.65, 
-        s=r'$1800\ \mathrm{seconds; \left<SNR\right>}=$' + '{:.1f}'.format(snr_mag22_1800), 
+    #ax.text(x=22.0, y=0.65, 
+    #    s=r'$1800\ \mathrm{seconds; \left<SNR\right>}_{F106\sim22.25}=$' + '{:.1f}'.format(snr_mag22_1800), 
+    #    verticalalignment='top', horizontalalignment='left', 
+    #    transform=ax.transData, color='dodgerblue', size=14)
+    ax.text(x=22.0, y=0.87, 
+        s=r'$4500\ \mathrm{seconds; \left<SNR\right>}_{F106\sim22.25}=$' + '{:.1f}'.format(snr_mag22_900), 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='dodgerblue', size=14)
-    ax.text(x=22.53, y=0.55, 
-        s=r'$900\ \mathrm{seconds; \left<SNR\right>}=$' + '{:.1f}'.format(snr_mag22_900), 
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax.transData, color='goldenrod', size=14)
 
-    ax.text(x=17.5, y=0.2, s=r'$\mbox{---}\ \frac{\Delta z}{1+z} \leq 0.01$', 
+    ax.text(x=low_maglim, y=0.2, s=r'$\mbox{---}\ \frac{\Delta z}{1+z} \leq 0.01$', 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='k', size=14)
-    ax.text(x=17.5, y=0.1, s=r'$-- \frac{\Delta z}{1+z} \leq 0.001$',
+    ax.text(x=low_maglim, y=0.1, s=r'$-- \frac{\Delta z}{1+z} \leq 0.001$',
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='k', size=14)
 
     # labels
     ax.set_ylabel(r'$\mathrm{Frac}.\ z\ \mathrm{completeness}$', fontsize=14)
-    ax.set_xlabel(r'$m_{Y106}$', fontsize=14)
+    ax.set_xlabel(r'$m_{F106}$', fontsize=14)
     ax1.set_ylabel(r'$\#\ \mathrm{objects}$', fontsize=14)
 
     # Limits
-    ax.set_xlim(17.0, 27.5)
+    ax.set_xlim(low_maglim - 0.5, high_maglim + 0.5)
 
     # save
     fig.savefig(results_dir + 'pylinearrecovery_completeness.pdf', 

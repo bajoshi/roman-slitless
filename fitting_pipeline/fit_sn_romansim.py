@@ -308,11 +308,14 @@ def main():
     img_basename = '5deg_'
     img_filt = 'Y106_'
 
-    exptime1 = '_900s'
+    #exptime1 = '_900s'
     #exptime2 = '_1800s'
-    exptime3 = '_3600s'
+    #exptime3 = '_3600s'
 
-    all_exptimes = [exptime1, exptime3]  # [exptime1, exptime2, exptime3]
+    exptime1 = '_900s'
+    exptime2 = '_3600s'
+
+    all_exptimes = [exptime1, exptime2]  # [exptime1, exptime2, exptime3]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -331,7 +334,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.array([5, 6, 7]) #np.arange(1, 2, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -352,16 +355,16 @@ def main():
             ext_hdu1 = fits.open(ext_spec_filename1)
             print("Read in extracted spectra from:", ext_spec_filename1)
 
-            #ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
-            #ext_hdu2 = fits.open(ext_spec_filename2)
-            #print("Read in extracted spectra from:", ext_spec_filename2)
+            ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
+            ext_hdu2 = fits.open(ext_spec_filename2)
+            print("Read in extracted spectra from:", ext_spec_filename2)
 
-            ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
-            ext_hdu3 = fits.open(ext_spec_filename3)
-            print("Read in extracted spectra from:", ext_spec_filename3)
-            print('\n')
+            #ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
+            #ext_hdu3 = fits.open(ext_spec_filename3)
+            #print("Read in extracted spectra from:", ext_spec_filename3)
+            #print('\n')
 
-            all_hdus = [ext_hdu1, ext_hdu3]  # [ext_hdu1, ext_hdu2, ext_hdu3]
+            all_hdus = [ext_hdu1, ext_hdu2]  # [ext_hdu1, ext_hdu2, ext_hdu3]
 
             # --------------- loop and find all SN segids
             all_sn_segids = []
@@ -376,10 +379,6 @@ def main():
             for ext_hdu in all_hdus:
 
                 for segid in all_sn_segids:
-
-                    #if segid == 188 and img_suffix == 'Y106_0_17':
-                    #    print('Skipping SN', segid, 'in img_suffix', img_suffix)
-                    #    continue
 
                     print("\n-----------------")
                     print("Fitting SegID:", segid, "with exposure time:", all_exptimes[expcount])
@@ -410,18 +409,17 @@ def main():
                         print("Skipping due to low SNR.")
                         continue
 
-                    #if smoothed_snr > 2 * snr:
-                    #    flam = sf
-                    #    print(f'{bcolors.HEADER}')
-                    #    print("------> Fitting smoothed spectrum.")
-                    #    print(f'{bcolors.ENDC}')
-
                     # ----- Set noise level based on snr
                     #noise_lvl = 1/snr
                     # Create ferr array
                     #ferr = noise_lvl * flam
 
                     ferr = (ferr_lo + ferr_hi)/2.0
+
+                    #if smoothed_snr > 2 * snr:
+                    #    flam = sf
+                    #    ferr /= np.sqrt(5)
+                    #    print(f'{bcolors.HEADER}', "------> Fitting smoothed spectrum.", f'{bcolors.ENDC}')
 
                     # ----- Get optimal starting position
                     z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
@@ -491,7 +489,7 @@ def main():
             # --------------- close all open fits files
             ext_hdu1.close()
             ext_hdu2.close()
-            ext_hdu3.close()
+            #ext_hdu3.close()
 
     return None
 

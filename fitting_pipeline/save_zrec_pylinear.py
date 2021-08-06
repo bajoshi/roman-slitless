@@ -41,14 +41,18 @@ def get_burn_thin(sampler):
 
 
 # ---------------------------------------
+#exptime1 = '_900s'
+#exptime2 = '_1800s'
+#exptime3 = '_3600s'
+
 exptime1 = '_900s'
-exptime2 = '_1800s'
-exptime3 = '_3600s'
+exptime2 = '_3600s'
 
 img_filt = 'Y106_'
 ext_root = 'romansim_prism_'
 
 # Header for the results file
+"""
 res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
           'Y106mag  SNR900  SNR1800  SNR3600  ' + \
           'z900  z900_lowerr  z900_uperr  ' + \
@@ -60,14 +64,23 @@ res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
           'z3600  z3600_lowerr  z3600_uperr  ' + \
           'phase3600  phase3600_lowerr  phase3600_uperr  ' + \
           'Av3600  Av3600_lowerr  Av3600_uperr'
+"""
+res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
+          'Y106mag  SNR900  SNR3600  ' + \
+          'z900  z900_lowerr  z900_uperr  ' + \
+          'phase900  phase900_lowerr  phase900_uperr  ' + \
+          'Av900  Av900_lowerr  Av900_uperr  ' + \
+          'z3600  z3600_lowerr  z3600_uperr  ' + \
+          'phase3600  phase3600_lowerr  phase3600_uperr  ' + \
+          'Av3600  Av3600_lowerr  Av3600_uperr'
 
 # Header for SExtractor catalog
 cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
 
 # Arrays to loop over
-pointings = np.arange(2, 3)
-detectors = np.arange(1, 5, 1)
+pointings = np.arange(0, 1)
+detectors = np.array([1, 3, 4, 5, 6, 7])
 
 for pt in pointings:
 
@@ -94,8 +107,8 @@ for pt in pointings:
             ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
             ext_hdu2 = fits.open(ext_spec_filename2)
 
-            ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
-            ext_hdu3 = fits.open(ext_spec_filename3)
+            #ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
+            #ext_hdu3 = fits.open(ext_spec_filename3)
 
             # ----- Read in catalog from SExtractor
             cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'
@@ -113,10 +126,6 @@ for pt in pointings:
             # ----- Now loop over all segids in this img
             for segid in all_sn_segids:
 
-                if segid == 188 and img_suffix == 'Y106_0_17':
-                    print('Skipping SN', segid, 'in img_suffix', img_suffix)
-                    continue
-
                 segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
                 template_name = os.path.basename(sedlst['sed_path'][segid_idx])
@@ -131,12 +140,12 @@ for pt in pointings:
                 flam1 = ext_hdu1[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
                 wav2 = ext_hdu2[('SOURCE', segid)].data['wavelength']
                 flam2 = ext_hdu2[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
-                wav3 = ext_hdu3[('SOURCE', segid)].data['wavelength']
-                flam3 = ext_hdu3[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
+                #wav3 = ext_hdu3[('SOURCE', segid)].data['wavelength']
+                #flam3 = ext_hdu3[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
                 snr1 = get_snr(wav1, flam1)
                 snr2 = get_snr(wav2, flam2)
-                snr3 = get_snr(wav3, flam3)
+                #snr3 = get_snr(wav3, flam3)
 
                 # ----- Get magnitude in Y106
                 mag_idx = int(np.where(cat['NUMBER'] == segid)[0])
@@ -150,7 +159,7 @@ for pt in pointings:
                 fh.write('{:.2f}'.format(mag)  + '  ')
                 fh.write('{:.2f}'.format(snr1) + '  ')
                 fh.write('{:.2f}'.format(snr2) + '  ')
-                fh.write('{:.2f}'.format(snr3) + '  ')
+                #fh.write('{:.2f}'.format(snr3) + '  ')
 
                 # ----- Construct the filenames for this segid
                 snstr1 = str(segid) + '_' + img_suffix + exptime1
@@ -161,9 +170,9 @@ for pt in pointings:
                 emcee_savefile2 = results_dir + \
                                   'emcee_sampler_sn' + snstr2 + '.h5'
 
-                snstr3 = str(segid) + '_' + img_suffix + exptime3
-                emcee_savefile3 = results_dir + \
-                                  'emcee_sampler_sn' + snstr3 + '.h5'
+                #snstr3 = str(segid) + '_' + img_suffix + exptime3
+                #emcee_savefile3 = results_dir + \
+                #                  'emcee_sampler_sn' + snstr3 + '.h5'
 
                 # Make sure the sampler file exists
                 if os.path.isfile(emcee_savefile1):
@@ -178,7 +187,7 @@ for pt in pointings:
                     cq_day1 = corner.quantile(x=flat_samples1[:, 1], q=[0.16, 0.5, 0.84])
                     cq_av1 = corner.quantile(x=flat_samples1[:, 2], q=[0.16, 0.5, 0.84])
 
-                    # --- EXPTIME 900 seconds
+                    # --- EXPTIME 900 seconds  # wide survey
                     z900_lowerr = cq_z1[1] - cq_z1[0]
                     z900_uperr = cq_z1[2] - cq_z1[1]
 
@@ -246,7 +255,7 @@ for pt in pointings:
 
                     fh.write('{:.3f}'.format(cq_av2[1]) + '  ')
                     fh.write('{:.3f}'.format(av1800_lowerr) + '  ')
-                    fh.write('{:.3f}'.format(av1800_uperr) + '  ')
+                    fh.write('{:.3f}'.format(av1800_uperr) + '\n')
 
                 else:
                     fh.write('-9999.0' + '  ')
@@ -259,9 +268,9 @@ for pt in pointings:
 
                     fh.write('-9999.0' + '  ')
                     fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
+                    fh.write('-9999.0' + '\n')
 
-
+                """
                 if os.path.isfile(emcee_savefile2):
 
                     # ----- Get flat samples
@@ -308,10 +317,11 @@ for pt in pointings:
                     fh.write('-9999.0' + '  ')
                     fh.write('-9999.0' + '  ')
                     fh.write('-9999.0' + '\n')
+                """
 
             ext_hdu1.close()
             ext_hdu2.close()
-            ext_hdu3.close()
+            #ext_hdu3.close()
 
 
 
