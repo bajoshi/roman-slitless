@@ -174,6 +174,8 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     print('Write code here that will confirm that the SN spec being')
     print('passed with the specified redshift when convolved with')
     print('the filter curve for F105W gives the expected mag.')
+    print('\nDo the same for the output spectra from pyLINEAR.')
+    print('\nAlso check the ETC with SN Ia spectra passed to it.')
     print('DO NOT remove sys.exit prior to writing this block.')
     sys.exit(0)
 
@@ -715,8 +717,9 @@ def gen_sed_lst():
 
                     # This means that the SN and host matched to the same location
                     # i.e., the SN is bright enough that it outshines the host 
+                    z_sn = get_sn_z(cat['MAG_AUTO'][i])
                     if snid == current_sextractor_id:
-                        sn_spec_path = get_sn_spec_path(z)
+                        sn_spec_path = get_sn_spec_path(z_sn)
                         fh.write(str(snid) + " " + sn_spec_path + "\n")
                         tqdm.write("Only SN detected. SN SExtractor ID: " + str(snid))
                         tqdm.write("SN mag: " + str(cat['MAG_AUTO'][sn_idx]))
@@ -724,8 +727,8 @@ def gen_sed_lst():
                         assigned_sne.append(current_sextractor_id)
                         
                     elif snid != current_sextractor_id:
-                        sn_spec_path = get_sn_spec_path(z)
-                        gal_spec_path = get_gal_spec_path(z)
+                        sn_spec_path = get_sn_spec_path(z_sn)
+                        gal_spec_path = get_gal_spec_path(z_sn)
 
                         fh.write(str(snid) + " " + sn_spec_path + "\n")
                         fh.write(str(current_sextractor_id) + " " + gal_spec_path + "\n")
