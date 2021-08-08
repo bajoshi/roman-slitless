@@ -48,17 +48,79 @@ def read_numsn(sedlst):
     return num_sn
 
 total_sne1 = 0
-for i in range(18):
+num_sn_list = []
+for i in range(3):
     s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(i+1) + '.lst'
     n = read_numsn(s)
     print(s, ' has ', n, 'SNe.')
     total_sne1 += n
+    num_sn_list.append(n)
 
 print('Total SNe in pointing: ', total_sne1)
 print('-------'*5)
 
 # ------------------------------------
 # TEST 2:
+# For the inserted SNe esure that SExtractor magnitude
+# is same (or almost the same) as the inserted magnitude.
+# SEt cat header
+cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+    'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
+
+# For this test you need to read in the SExtractor 
+# catalog and the numpy file where the inserted mags
+# are stored and compare the two.
+
+sextractor_mags = []
+inserted_mags = []
+
+for i in range(3):
+
+    # Read catalog
+    cat_filename = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' + pt + '_' + str(i+1) + '_SNadded.cat'
+    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+
+    # Read in npy file
+    ins_npy = np.load(cat_filename.replace('.cat', '.npy'))
+
+    for j in range(len(ins_npy)):
+
+        current_x = ins_npy[j][0]
+        current_y = ins_npy[j][1]
+
+        # Look for center within +- 4 pix
+        cat_idx = np.where( (cat['X_IMAGE'] >= current_x - 4) & (cat['X_IMAGE'] <= current_x + 3) \
+                          & (cat['Y_IMAGE'] >= current_y - 3) & (cat['Y_IMAGE'] <= current_y + 3))[0]
+
+        #print(current_x, current_y, ' | ', cat['X_IMAGE'][cat_idx], cat['Y_IMAGE'][cat_idx])
+
+        if cat_idx.size:
+            sextractor_mags.append(float(cat['MAG_AUTO'][cat_idx]))
+            inserted_mags.append(float(ins_npy[j][-1]))
+
+# convert to numpy arrays
+sextractor_mags = np.asarray(sextractor_mags)
+inserted_mags = np.asarray(inserted_mags)
+
+magdiff = sextractor_mags - inserted_mags
+
+# plot
+fig = plt.figure()
+ax = fig.add_subplot(111)
+
+ax.set_ylabel('Mag. diff.', fontsize=14)
+ax.set_xlabel('Inserted SN AB mag in F106', fontsize=14)
+
+ax.scatter(inserted_mags, magdiff, s=7, color='k')
+ax.axhline(y=0.0, ls='--', color='gray', lw=2.5)
+
+fig.savefig(extdir + 'check_inserted_sn_mag.pdf', dpi=200, bbox_inches='tight')
+
+fig.clear()
+plt.close(fig)
+
+# ------------------------------------
+# TEST 3:
 # Make sure that the inserted SNe follow cosmological dimming
 # as expected. This test simply plots SN magnitude vs redshift.
 
@@ -67,16 +129,12 @@ all_sn_z = []
 
 total_sne2 = 0
 
-for i in range(18):
+for i in range(3):
 
     # ------ Read the SED lst and the corresponding SExtractor catalog
     # Set filenames
     sed_filename = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(i+1) + '.lst'
     cat_filename = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' + pt + '_' + str(i+1) + '_SNadded.cat'
-
-    # SEt cat header
-    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-        'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
 
     # Read in the files
     sed = np.genfromtxt(sed_filename, dtype=None, 
@@ -112,9 +170,18 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 
 ax.set_xlabel('Inserted SN z', fontsize=14)
-ax.set_ylabel('Inserted SN AB mag in F106', fontsize=14)
+ax.set_ylabel('Distance modulus', fontsize=14)
 
-ax.scatter(all_sn_z, all_sn_mags, s=3, color='k')
+# Plot dist mod vs z
+absmag = -18.4  # in Y band # from Dhawan et al 2015
+dist_mod = np.asarray(all_sn_mags) - absmag
+
+ax.scatter(all_sn_z, dist_mod, s=7, color='k')
+
+# Also plot apparent mag
+axt = ax.twinx()
+axt.scatter(all_sn_z, all_sn_mags, s=7, color='k')
+axt.set_ylabel('Inserted SN AB mag in F106', fontsize=14)
 
 fig.savefig(extdir + 'test_sn_insert_mag_z.pdf', dpi=200, bbox_inches='tight')
 

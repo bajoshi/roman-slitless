@@ -170,14 +170,14 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
         fh_sn.close()
     #print("Saved:", sn_spec_path)
 
-    print('#####################')
-    print('Write code here that will confirm that the SN spec being')
-    print('passed with the specified redshift when convolved with')
-    print('the filter curve for F105W gives the expected mag.')
-    print('\nDo the same for the output spectra from pyLINEAR.')
-    print('\nAlso check the ETC with SN Ia spectra passed to it.')
-    print('DO NOT remove sys.exit prior to writing this block.')
-    sys.exit(0)
+    #print('#####################')
+    #print('Write code here that will confirm that the SN spec being')
+    #print('passed with the specified redshift when convolved with')
+    #print('the filter curve for F105W gives the expected mag.')
+    #print('\nDo the same for the output spectra from pyLINEAR.')
+    #print('\nAlso check the ETC with SN Ia spectra passed to it.')
+    #print('DO NOT remove sys.exit prior to writing this block.')
+    #sys.exit(0)
 
     return sn_spec_path
 
@@ -415,14 +415,16 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
     return idx
 
-def get_sn_z(snmag):
+def get_sn_z(snmag, scatter=False):
 
     # Neglecting K-corr for now. When needed, the code to compute K-corr
     # is already written in massive-galaxies/grismz_pipeline/intg_lum_func.py
 
-    g_absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
+    # Abs Mag of SN Ia in required band at peak
+    # absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
+    absmag = -18.4  # in Y band # from Dhawan et al 2015
 
-    dist_mod = snmag - g_absmag
+    dist_mod = snmag - absmag
     dl = 10 * np.power(10, dist_mod/5.0)  # in parsecs
     dl *= 3.086e18  # convert to cm # this is the unit in the lookup table
 
@@ -430,6 +432,9 @@ def get_sn_z(snmag):
     z_idx = np.argmin(abs(dl_cm_arr - dl))
 
     sn_z = dl_z_arr[z_idx]
+
+    if scatter:
+        sn_z = np.random.normal(loc=sn_z, scale=0.001, size=None)
 
     return sn_z
 
@@ -468,7 +473,7 @@ def gen_sed_lst():
         for det in tqdm(detectors, desc="Detector", leave=False):
 
             img_suffix = img_filt + str(pt) + '_' + str(det)
-            dir_img_name = img_basename + img_suffix + '_SNadded_nonoise.fits'
+            dir_img_name = img_basename + img_suffix + '_SNadded.fits' #_nonoise.fits'
 
             # Because some direct images are missing
             try:
@@ -504,8 +509,8 @@ def gen_sed_lst():
             cat_filename = img_sim_dir + img_basename + img_filt + \
                            str(pt) + '_' + str(det) + '_SNadded.cat'
             tqdm.write("Read catalog: " + cat_filename)
-            #tqdm.write("Checking for catalog: " + cat_filename)
-            """
+            tqdm.write("Checking for catalog: " + cat_filename)
+            
             if not os.path.isfile(cat_filename):
                 tqdm.write("Cannot find object catalog. SExtractor will be run automatically.")
 
@@ -540,7 +545,6 @@ def gen_sed_lst():
 
                 # Go back to roman-slitless directory
                 os.chdir(roman_slitless_dir)
-            """
 
             cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
             'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
