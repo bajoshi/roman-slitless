@@ -27,8 +27,8 @@ def main():
 
     home = os.getenv('HOME')
     
-    img_sim_dir = roman_direct_dir + 'K_5degimages_part1/' #'sextractor_mag_zp_test/'
-    img_basename = '5deg_' #'test_5deg_'
+    img_sim_dir = roman_direct_dir + 'sextractor_mag_zp_test/'
+    img_basename = '5deg_'
     
     truth_dir = roman_direct_dir + 'K_5degtruth/'
     truth_basename = '5deg_index_'
@@ -46,13 +46,16 @@ def main():
     ax.set_xlabel(r'$\Delta m, m_\mathrm{true} - m_\mathrm{SExtractor}$', fontsize=15)
     ax.set_ylabel('\# objects', fontsize=15)
 
+    # Array to hold all of the mag diff
+    all_mag_diff = []
+
     # Now loop over all images
     for img_suffix in img_suffix_list:
 
         # Read in SExtractor catalog
         cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
         'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
-        cat = np.genfromtxt(img_sim_dir + img_basename + img_suffix + '.cat', \
+        cat = np.genfromtxt(img_sim_dir + img_basename + img_suffix + '_cps.cat', \
             dtype=None, names=cat_header, encoding='ascii')
     
         test_obj_ids = np.arange(len(cat))
@@ -145,15 +148,28 @@ def main():
         plt.cla()
         plt.close()
         """
+        
+        # Append to list first
+        # For later when we need mean and median
+        all_mag_diff.append(mag_diff)
 
         # Histogram of magnitude differences
         mag_diff = np.asarray(mag_diff)
-
         ax.hist(mag_diff, 40, histtype='step', lw=2.5, label=img_suffix.replace('_','-'), range=(-2.0, 2.0))
 
     ax.legend(fontsize=14)
 
-    fig.savefig('mag_diff_hist_imagesims.pdf', dpi=300, bbox_inches='tight')
+    # Compute mean and median mag diff
+    all_mag_diff = np.asarray(all_mag_diff, dtype=object)
+    all_mag_diff = all_mag_diff.flatten()
+
+    magdiff_mean = np.mean(np.mean(all_mag_diff))  # don't kknow why this has to be done twice. don't have time to figure it out.
+    magdiff_median = np.median(np.median(all_mag_diff))  # don't kknow why this has to be done twice. don't have time to figure it out.
+
+    print('\nMean mag diff:', magdiff_mean)
+    print('\nMedian mag diff:', magdiff_median)
+
+    fig.savefig('figures/mag_diff_hist_imagesims.pdf', dpi=300, bbox_inches='tight')
 
     plt.show()
 

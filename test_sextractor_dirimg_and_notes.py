@@ -108,8 +108,6 @@ def main():
             '-CATALOG_NAME', cat_filename1, 
             '-CHECKIMAGE_NAME', checkimage1], check=True)
 
-    os.chdir(roman_slitless_dir)
-
     # loop over all catalog objects
     # Only doing this for one img
     # The diff is pretty evident
@@ -120,7 +118,7 @@ def main():
     ra_tol = 0.5 / 3600
     dec_tol = 0.5 / 3600
 
-    allra = truth_match[1].data['ra'] * 180.0/np.pi  # since the truth's are in radians
+    allra  = truth_match[1].data['ra']  * 180.0/np.pi  # since the truth's are in radians
     alldec = truth_match[1].data['dec'] * 180.0/np.pi  # since the truth's are in radians
 
     magdiff_list = []
@@ -182,7 +180,7 @@ def main():
                 '-CATALOG_NAME', cat_filename, 
                 '-CHECKIMAGE_NAME', checkimage], check=True)
 
-    print(' *** Prepped next test. Run test_for_zp.py now.\n')
+    print('\n *** Prepped next test. Run test_for_zp.py now.\n')
 
     # Close hdus
     h1.close()
