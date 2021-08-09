@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 Lsol = 3.826e33
 # Define scaling factor
 # Check sn_scaling.py in same folder as this code
-sn_scalefac = 1.449e8
+sn_scalefac = 1.734e40
 
 # -----------------
 if 'plffsn2' in socket.gethostname():
@@ -110,7 +110,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
     dl = get_dl_at_z(redshift)
 
     redshifted_wav = restframe_wav * (1 + redshift)
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl)  # * (1 + redshift))
+    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
 
     return redshifted_wav, redshifted_flux
 

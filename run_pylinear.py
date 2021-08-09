@@ -481,7 +481,7 @@ def main():
         wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
 
         beam = '+1'
-        maglim = 99.0
+        maglim = 27.0
 
         # make sure the files exist
         assert os.path.isfile(segfile)

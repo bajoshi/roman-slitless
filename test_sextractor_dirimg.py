@@ -56,6 +56,26 @@ assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
 # ------------------------------------
 
+def phot_check_f105w(mag, counts):
+    """
+    Func accepts mag and counts from SExtractor catalog as args
+    """
+
+    # Working in AB mags
+    m = mag + 48.6
+    m /= -2.5
+    
+    fnu = 10**m
+    speed_of_light_Ang = 3e18  # in angstroms per second
+    lam_pivot = 10552.0 # angstroms for F105W
+    flam = speed_of_light_Ang * fnu / lam_pivot**2  # convert to flam
+    
+    PHOTFLAM = 3.037e-20
+    flam_pylinear = PHOTFLAM * counts
+
+    # Return # Both flam should be consistent!
+    return fnu, flam, flam_pylinear
+
 def main():
 
     dir_img_part = 'part1'

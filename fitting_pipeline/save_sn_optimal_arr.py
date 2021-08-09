@@ -5,7 +5,6 @@ from scipy.interpolate import griddata
 import os
 import sys
 
-"""
 # Assign directories and custom imports
 cwd = os.path.dirname(os.path.abspath(__file__))
 fitting_utils = cwd + '/utils/'
@@ -14,7 +13,7 @@ sys.path.append(fitting_utils)
 import dust_utils as du
 
 # Define any required constants/arrays
-sn_scalefac = 2.0842526537870818e+48  # see sn_scaling.py 
+sn_scalefac = 1.734e40  # see sn_scaling.py 
 sn_day_arr = np.arange(-19,51,1)
 
 # Read in SALT2 SN IA file from Lou
@@ -87,14 +86,14 @@ for d in tqdm(range(len(sn_day_arr)), desc='SN Phase'):
 allmods = np.array(allmods)
 assert allmods.shape == (total_models, len(x))
 
-savepath = '/Volumes/Joshi_external_HDD/Roman/' + 'allsnmodspec.npy'
+#savepath = '/Volumes/Joshi_external_HDD/Roman/' + 'allsnmodspec.npy'
+home = os.getenv('HOME')
+savepath = home + '/Documents/temp_sbux_work/' + 'allsnmodspec.npy'
 np.save(savepath, allmods)
 
 print('Saved all modified SN models to:', savepath)
 
 sys.exit(0)
-"""
-
 
 
 # ------------------

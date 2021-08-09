@@ -176,11 +176,11 @@ ax.set_ylabel('Distance modulus', fontsize=14)
 absmag = -18.4  # in Y band # from Dhawan et al 2015
 dist_mod = np.asarray(all_sn_mags) - absmag
 
-ax.scatter(all_sn_z, dist_mod, s=7, color='k')
+ax.scatter(all_sn_z, dist_mod, s=15, color='k')
 
 # Also plot apparent mag
 axt = ax.twinx()
-axt.scatter(all_sn_z, all_sn_mags, s=7, color='k')
+axt.scatter(all_sn_z, all_sn_mags, s=3, color='r')
 axt.set_ylabel('Inserted SN AB mag in F106', fontsize=14)
 
 fig.savefig(extdir + 'test_sn_insert_mag_z.pdf', dpi=200, bbox_inches='tight')

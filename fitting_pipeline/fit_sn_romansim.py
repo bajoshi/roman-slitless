@@ -22,8 +22,14 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 fitting_utils = cwd + '/utils/'
 
 roman_slitless_dir = os.path.dirname(cwd)
-ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
+#ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
+
+home = os.getenv('HOME')
+ext_spectra_dir = home + '/Documents/temp_sbux_work/'
 results_dir = ext_spectra_dir + 'fitting_results/'
+
+#pylinear_lst_dir = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/'
+pylinear_lst_dir = ext_spectra_dir + 'pylinear_lst_files/'
 
 sys.path.append(roman_slitless_dir)
 sys.path.append(fitting_utils)
@@ -36,7 +42,7 @@ from snfit_plots import read_pickle_make_plots_sn
 start = time.time()
 
 # Define any required constants/arrays
-sn_scalefac = 1.449e8  # see sn_scaling.py 
+sn_scalefac = 1.734e40  # see sn_scaling.py 
 sn_day_arr = np.arange(-19,51,1)
 
 # Set pylinear f_lambda scaling factor
@@ -60,8 +66,8 @@ dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
 
 del dl_cat
 
-sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
-
+#sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
+sn_opt_arr = np.load(ext_spectra_dir + 'allsnmodspec.npy')
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
 # This class came from stackoverflow
@@ -85,7 +91,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
     dl = dl_cm_arr[z_idx]
 
     redshifted_wav = restframe_wav * (1 + redshift)
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl)
+    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
 
     return redshifted_wav, redshifted_flux
 
@@ -343,7 +349,7 @@ def main():
 
             # --------------- Read in sed.lst
             sedlst_header = ['segid', 'sed_path']
-            sedlst_path = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/' + 'sed_' + img_suffix + '.lst'
+            sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
             sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
             print("Read in sed.lst from:", sedlst_path)
 
