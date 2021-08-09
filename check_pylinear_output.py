@@ -115,9 +115,9 @@ if __name__ == '__main__':
     ax.set_xlabel('F106 mag', fontsize=14)
 
     ax.scatter(all_sn_mags, all_sn_snr, s=8, color='k', label='pyLINEAR sim result')
-    ax.scatter(etc_mags, etc_g102_snr, s=8, color='royalblue', label='WFC3 G102 ETC prediction')
+    ax.scatter(etc_mags, etc_g102_snr, s=8, color='royalblue', label='WFC3 G102 ETC prediction' + '\n' + 'Exptime: 18000s')
 
-    ax.legend(loc=0, fontsize=14)
+    ax.legend(loc=0, fontsize=11)
 
     ax.set_yscale('log')
 

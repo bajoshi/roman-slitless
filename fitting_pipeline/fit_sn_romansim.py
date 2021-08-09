@@ -396,7 +396,7 @@ def main():
                     ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
                     # Smooth with boxcar
-                    smoothing_width_pix = 5
+                    smoothing_width_pix = 3
                     sf = convolve(flam, Box1DKernel(smoothing_width_pix))
 
                     # ----- Check SNR
@@ -405,10 +405,6 @@ def main():
 
                     print("SNR for this spectrum:", "{:.2f}".format(snr), "{:.2f}".format(smoothed_snr))
 
-                    if snr < 3.0:
-                        print("Skipping due to low SNR.")
-                        continue
-
                     # ----- Set noise level based on snr
                     #noise_lvl = 1/snr
                     # Create ferr array
@@ -416,10 +412,13 @@ def main():
 
                     ferr = (ferr_lo + ferr_hi)/2.0
 
-                    #if smoothed_snr > 2 * snr:
-                    #    flam = sf
-                    #    ferr /= np.sqrt(5)
-                    #    print(f'{bcolors.HEADER}', "------> Fitting smoothed spectrum.", f'{bcolors.ENDC}')
+                    if snr < 3.0:
+                        if (smoothed_snr > 2 * snr) and (smoothed_snr > 3.0):
+                            flam = sf
+                            ferr /= np.sqrt(5)
+                            print(f'{bcolors.HEADER}', "------> Fitting smoothed spectrum.", f'{bcolors.ENDC}')
+                        else:
+                            continue
 
                     # ----- Get optimal starting position
                     z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
