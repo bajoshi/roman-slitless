@@ -434,7 +434,7 @@ def main():
     
         img_suffix = img_suffix_list[sim_count]
 
-        dir_img_name = img_basename + img_suffix + '_SNadded_nonoise.fits'
+        dir_img_name = img_basename + img_suffix + '_SNadded.fits' #_nonoise.fits'
 
         # Because some direct images are missing
         try:
