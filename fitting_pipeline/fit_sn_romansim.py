@@ -36,8 +36,11 @@ from snfit_plots import read_pickle_make_plots_sn
 start = time.time()
 
 # Define any required constants/arrays
-sn_scalefac = 2.0842526537870818e+48  # see sn_scaling.py 
+sn_scalefac = 1.449e8  # see sn_scaling.py 
 sn_day_arr = np.arange(-19,51,1)
+
+# Set pylinear f_lambda scaling factor
+pylinear_flam_scale_fac = 1e-17
 
 av_optfindarr = np.arange(0.5, 5.5, 0.5)
 redshift_optfindarr = np.arange(0.01, 3.01, 0.01)
@@ -61,9 +64,6 @@ sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
 
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
-# Set pylinear f_lambda scaling factor
-pylinear_flam_scale_fac = 1e-17
-
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
@@ -85,7 +85,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
     dl = dl_cm_arr[z_idx]
 
     redshifted_wav = restframe_wav * (1 + redshift)
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
+    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl)
 
     return redshifted_wav, redshifted_flux
 
@@ -312,10 +312,10 @@ def main():
     #exptime2 = '_1800s'
     #exptime3 = '_3600s'
 
-    exptime1 = '_900s'
-    exptime2 = '_3600s'
+    exptime1 = '_6000s'
+    exptime2 = '_1500s'
 
-    all_exptimes = [exptime1, exptime2]  # [exptime1, exptime2, exptime3]
+    all_exptimes = [exptime1, exptime2]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -334,7 +334,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.array([5, 6, 7]) #np.arange(1, 2, 1)
+    detectors = np.arange(1, 2, 1)
 
     for pt in pointings:
         for det in detectors:

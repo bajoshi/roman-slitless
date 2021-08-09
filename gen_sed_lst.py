@@ -18,6 +18,9 @@ import matplotlib.pyplot as plt
 
 # Define constants
 Lsol = 3.826e33
+# Define scaling factor
+# Check sn_scaling.py in same folder as this code
+sn_scalefac = 1.449e8
 
 # -----------------
 if 'plffsn2' in socket.gethostname():
@@ -125,10 +128,6 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     # Create array for days relative to max
     #days_arr = np.arange(-19, 51, 1)
     days_arr = np.arange(-5, 6, 1)
-
-    # Define scaling factor
-    # Check sn_scaling.py in same folder as this code
-    sn_scalefac = 1.449e8
 
     # choose a random day relative to max
     if not day_chosen:
