@@ -107,7 +107,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
     dl = get_dl_at_z(redshift)
 
     redshifted_wav = restframe_wav * (1 + redshift)
-    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl * (1 + redshift))
+    redshifted_flux = restframe_lum / (4 * np.pi * dl * dl)  # * (1 + redshift))
 
     return redshifted_wav, redshifted_flux
 
@@ -128,7 +128,7 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
 
     # Define scaling factor
     # Check sn_scaling.py in same folder as this code
-    sn_scalefac = 2.0842526537870818e+48
+    sn_scalefac = 1.449e8
 
     # choose a random day relative to max
     if not day_chosen:
@@ -143,7 +143,7 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     # Apply dust extinction
     # Apply Calzetti dust extinction depending on av value chosen
     if not chosen_av:
-        av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
+        av_arr = np.arange(0.0, 2.0, 0.001)  # in mags
         chosen_av = np.random.choice(av_arr)
 
     sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)

@@ -70,6 +70,10 @@ def gen_reference_cutout():
 
 def main():
 
+    print('THIS IS FLUX UNITS BEING PUT IN TO AN IMAGE OF ')
+    print('UNIT COUNTS. FIX!! You need to use ZP to get back to counts per sec.')
+    print('Also -- fix the two hacks in this code.')
+
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
@@ -118,6 +122,7 @@ def main():
             cps_sci_arr = dir_hdu[1].data / float(dir_hdu[1].header['EXPTIME'])
             cps_hdr = dir_hdu[1].header
             dir_hdu.close()
+            cps_hdr['BUNIT'] = 'ELECTRONS'
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
@@ -154,16 +159,19 @@ def main():
                 # SExtractor count and consequently mag falls short i.e., fainter.
                 # Hacked for now, will have to figure out some fix later.
 
+                # Another hack because we know that SExtractor 
+                # mags are fainter than truth mags by about 0.25 mag.
+                # NOT just for SNe but for all objects.
+                # This hack works only the SNe for now.
+                # See result of test_for_zp.py
+                snmag_eff -= 0.25
+
                 # Now scale reference
                 delta_m = ref_mag - snmag_eff
                 snflux = ref_flux * (1/np.power(10, -1*0.4*delta_m))
 
                 scale_fac = snflux / ref_flux
                 new_cutout = ref_data * scale_fac
-
-                print('THIS IS FLUX UNITS BEING PUT IN TO AN IMAGE OF ')
-                print('UNIT COUNTS. FIX!! You need to use ZP to get back to counts per sec.')
-                sys.exit(0)
 
                 if verbose:
                     tqdm.write('Inserted SN mag: ' + "{:.3f}".format(snmag))

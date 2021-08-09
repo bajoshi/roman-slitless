@@ -148,7 +148,7 @@ def main():
         plt.cla()
         plt.close()
         """
-        
+
         # Append to list first
         # For later when we need mean and median
         all_mag_diff.append(mag_diff)
@@ -170,8 +170,6 @@ def main():
     print('\nMedian mag diff:', magdiff_median)
 
     fig.savefig('figures/mag_diff_hist_imagesims.pdf', dpi=300, bbox_inches='tight')
-
-    plt.show()
 
     return None
 
