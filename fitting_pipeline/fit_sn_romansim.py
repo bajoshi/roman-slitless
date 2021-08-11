@@ -22,14 +22,9 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 fitting_utils = cwd + '/utils/'
 
 roman_slitless_dir = os.path.dirname(cwd)
-#ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
-
-home = os.getenv('HOME')
-ext_spectra_dir = home + '/Documents/temp_sbux_work/'
+ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
 results_dir = ext_spectra_dir + 'fitting_results/'
-
-#pylinear_lst_dir = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/'
-pylinear_lst_dir = ext_spectra_dir + 'pylinear_lst_files/'
+pylinear_lst_dir = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/'
 
 sys.path.append(roman_slitless_dir)
 sys.path.append(fitting_utils)
@@ -66,8 +61,7 @@ dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
 
 del dl_cat
 
-#sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
-sn_opt_arr = np.load(ext_spectra_dir + 'allsnmodspec.npy')
+sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
 
 # This class came from stackoverflow
@@ -318,8 +312,8 @@ def main():
     #exptime2 = '_1800s'
     #exptime3 = '_3600s'
 
-    exptime1 = '_6000s'
-    exptime2 = '_1500s'
+    exptime1 = '_1500s'
+    exptime2 = '_6000s'
 
     all_exptimes = [exptime1, exptime2]
 
@@ -340,7 +334,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(2, 3, 1)
 
     for pt in pointings:
         for det in detectors:

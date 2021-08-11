@@ -4,18 +4,18 @@ import os
 import sys
 
 # ---------------------------
-home = os.getenv('HOME')
-tablespath = home + '/Documents/roman_slitless_sims_results/tables/'
-pylinear_lst_dir = home + '/Documents/GitHub/roman-slitless/pylinear_lst_files/'
-roman_direct_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/'
+extdir = '/Volumes/Joshi_external_HDD/Roman/'
+tablespath = extdir + 'roman_slitless_sims_results/tables/'
+pylinear_lst_dir = extdir + 'pylinear_lst_files/'
+roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
 # ---------------------------
 # Info for sim
-segid_list = [228, 260, 322, 487, 493]  # segids to test region for
-exptime = 3600
+segid_list = [212, 213, 288, 1372, 540]  # segids to test region for
+exptime = 6000
 obsstr = ''
 img_basename = '5deg_'
-img_suffix = 'Y106_0_6'
+img_suffix = 'Y106_0_1'
 
 maglim = 99.0
 

@@ -45,8 +45,8 @@ def get_burn_thin(sampler):
 #exptime2 = '_1800s'
 #exptime3 = '_3600s'
 
-exptime1 = '_900s'
-exptime2 = '_3600s'
+exptime1 = '_1500s'
+exptime2 = '_6000s'
 
 img_filt = 'Y106_'
 ext_root = 'romansim_prism_'
@@ -80,7 +80,7 @@ cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
 
 # Arrays to loop over
 pointings = np.arange(0, 1)
-detectors = np.array([1, 3, 4, 5, 6, 7])
+detectors = np.arange(1, 3)
 
 for pt in pointings:
 

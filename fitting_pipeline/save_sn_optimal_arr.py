@@ -86,9 +86,7 @@ for d in tqdm(range(len(sn_day_arr)), desc='SN Phase'):
 allmods = np.array(allmods)
 assert allmods.shape == (total_models, len(x))
 
-#savepath = '/Volumes/Joshi_external_HDD/Roman/' + 'allsnmodspec.npy'
-home = os.getenv('HOME')
-savepath = home + '/Documents/temp_sbux_work/' + 'allsnmodspec.npy'
+savepath = '/Volumes/Joshi_external_HDD/Roman/' + 'allsnmodspec.npy'
 np.save(savepath, allmods)
 
 print('Saved all modified SN models to:', savepath)

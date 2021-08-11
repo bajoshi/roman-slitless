@@ -164,7 +164,7 @@ def main():
                 # NOT just for SNe but for all objects.
                 # This hack works only the SNe for now.
                 # See result of test_for_zp.py
-                snmag_eff -= 0.25
+                #snmag_eff -= 0.25
 
                 # Now scale reference
                 delta_m = ref_mag - snmag_eff
