@@ -481,7 +481,7 @@ def main():
         wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
 
         beam = '+1'
-        maglim = 27.0
+        maglim = 30.0
 
         # make sure the files exist
         assert os.path.isfile(segfile)
@@ -525,15 +525,12 @@ def main():
         tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
         tabnames = tabulate.run(grisms, sources, beam)
         logger.info("Done with tabulation.")
-        #sys.exit(0)
 
         ## ---------------------- Simulate
         logger.info("Simulating...")
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         fltnames = simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
-
-        sys.exit(0)
 
         # ---------------------- Now do the exptime dependent stuff
         for e in range(len(exptime_list)):
@@ -596,13 +593,11 @@ def main():
                     # first get the uncertainty
                     variance = signal + read**2
                     sigma = np.sqrt(variance)
-                    print('Sigma arr shape: ', sigma.shape)
-                    sci_scaled = sci * exptime
-                    new_sig = np.random.normal(loc=sci_scaled, scale=sigma, size=size)
+                    new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
     
                     # now divide by the exptime and subtract the sky again 
                     # to get back to e/s. LINEAR expects a background subtracted image
-                    final_sig = (new_sig / exptime) # - sky
+                    final_sig = (new_sig / exptime) - sky
     
                     # Stop if you find nans
                     nan_idx = np.where(np.isnan(final_sig))
@@ -617,8 +612,6 @@ def main():
                     # update the uncertainty extension with the sigma
                     err = np.sqrt(signal) / exptime  # or just np.sqrt(sci + dark + bck + read**2)
                     print("Change error here to sigma / exptime???")
-
-                    sys.exit(0)
     
                     hdul[('ERR',1)].data = err
     
@@ -631,8 +624,6 @@ def main():
             logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
-
-            sys.exit(0)
 
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \

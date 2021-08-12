@@ -1,9 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import griddata
 
 import os
 import sys
 import socket
+
+home = os.getenv('HOME')
 
 # ------------------------------------
 if 'plffsn2' in socket.gethostname():
@@ -14,6 +17,9 @@ if 'plffsn2' in socket.gethostname():
     pylinear_lst_dir = extdir + 'pylinear_lst_files/'
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
+    roman_slitless_dir = extdir + "GitHub/roman-slitless/"
+    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
+
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
@@ -21,6 +27,10 @@ else:
     roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
     pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+
+    home = os.getenv("HOME")
+    roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
+    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_sims_seds)
@@ -121,6 +131,121 @@ plt.close(fig)
 
 # ------------------------------------
 # TEST 3:
+# This test is for ALL objects (galaxies included).
+# This will test if the spectrum passed to pylinear when
+# convolved with the filter curve gives the expected mag
+# which we have from SExtractor.
+def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
+
+    # First grid the spectrum wavelengths to the filter wavelengths
+    spec_on_filt_grid = griddata(points=spec_wav, values=spec_flam, xi=filter_wav)
+
+    # Remove NaNs
+    valid_idx = np.where(~np.isnan(spec_on_filt_grid))
+
+    filter_wav = filter_wav[valid_idx]
+    filter_thru = filter_thru[valid_idx]
+    spec_on_filt_grid = spec_on_filt_grid[valid_idx]
+
+    # Now do the two integrals
+    num = np.trapz(y=spec_on_filt_grid * filter_thru, x=filter_wav)
+    den = np.trapz(y=filter_thru, x=filter_wav)
+
+    filter_flux = num / den
+
+    return filter_flux
+
+# Read in the F105W filter throughput
+filt = np.genfromtxt(fitting_utils + 'F105W_IR_throughput.csv', \
+                     delimiter=',', dtype=None, names=True, encoding='ascii', usecols=(1,2))
+plot_filt = True
+plot_magdiff = True
+if plot_filt:
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_xlabel('Wavelength [Angstroms]')
+    ax.set_ylabel('Throughput')
+    ax.plot(filt['Wave_Angstroms'], filt['Throughput'])
+    fig.savefig(extdir + 'f105w_filt_curve.pdf', dpi=200, bbox_inches='tight')
+    fig.clear()
+    plt.close(fig)
+
+# Loop through all objects and
+# get the diff in mag between sextrator and 
+# spec thru filt
+mdiff = []
+
+for d in range(1,3):
+
+    # Read sedlst
+    s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(d+1) + '.lst'
+    sedlst = np.genfromtxt(s, dtype=None, names=['segid', 'sed_path'], encoding='ascii', skip_header=2)
+
+    # Read catalog
+    cat_filename = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' + pt + '_' + str(d+1) + '_SNadded.cat'
+    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+
+    print('--------- Working on detector:', d+1)
+
+    for i in range(len(cat)):
+        
+        current_segid = cat['NUMBER'][i]
+        mag = cat['MAG_AUTO'][i]
+
+        sed_idx = np.where(sedlst['segid'] == current_segid)[0]
+        if not sed_idx.size:
+            print('Matched idx:', sed_idx)
+            print('current_segid:', current_segid, type(current_segid))
+            print(s)
+            print(sedlst['segid'])
+            print('Could not match segid:', current_segid, 'on detector ', d+1)
+            print('Stopping. Check sedlst and catalog.')
+            sys.exit(0)
+        else:
+            sed_idx = int(sed_idx)
+
+        pth = sedlst['sed_path'][sed_idx]
+        spec = np.genfromtxt(pth, dtype=None, names=True, encoding='ascii')
+        
+        flux = filter_conv(filt['Wave_Angstroms'], filt['Throughput'], spec['lam'], spec['flux'])
+        fnu = (10552**2 / 3e18) * flux
+        implied_mag_pylinear = -2.5 * np.log10(fnu) - 48.6
+        
+        md = mag - implied_mag_pylinear
+        mdiff.append(md)
+
+        # Only scale spectrum if the mag diff is larger than 0.1
+        if np.abs(md) > 0.1:    
+            # Now scale the spectrum to be supplied to pylinear
+            # to be consistent with the broadband mag through the F105W filt
+            flux_scale_fac = 10**(-0.4 * md)
+            # above equation is flux in sextractor divided by the 
+            # flux implied from the spectrum passed to pylinear
+            new_sed_flux = spec['flux'] * flux_scale_fac
+
+            with open(pth, 'w') as fh:
+                fh.write('#  lam  flux' + '\n')
+                for j in range(len(spec['lam'])):
+                    fh.write('{:.2f}'.format(spec['lam'][j]) + ' ' + '{:.5e}'.format(new_sed_flux[j]) + '\n')
+
+            print('Scaled and saved:', os.path.basename(pth), ' Scaled by:', '{:.2f}'.format(flux_scale_fac))
+
+        else:
+            print('Skipped:', os.path.basename(pth))
+            continue
+
+if plot_magdiff:
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_xlabel('Sextractor mag - flam thru filter')
+    ax.set_ylabel('Number')
+    ax.hist(mdiff, 40, range=(-10,10))
+    fig.savefig(extdir + 'sextractor_and_pylinear_magdiff.pdf', dpi=200, bbox_inches='tight')
+    fig.clear()
+    plt.close(fig)
+
+# ------------------------------------
+# TEST 4:
 # Make sure that the inserted SNe follow cosmological dimming
 # as expected. This test simply plots SN magnitude vs redshift.
 

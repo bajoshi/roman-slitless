@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 def add_noise_new(sci, exptime):
     sky  = 1.1     # e/s/pix  # zodi + thermal + sky
-    npix = 4088 * 4088
+    npix = 4096 * 4096
     dark = 0.015   # e/s/pix
     read = 10.0    # electrons per read
     read /= npix
@@ -20,6 +20,10 @@ def add_noise_new(sci, exptime):
     signal = sci + sky + dark
     variance = signal + read**2
     sigma = np.sqrt(variance)
+    print('sigma shape', sigma.shape)
+
+    print('Average sci:', np.mean(sci, axis=None))
+    print('Average sigma:', np.mean(sigma, axis=None))
     
     sci_scaled = sci * exptime
     new_sig = np.random.normal(loc=sci_scaled, scale=sigma, size=size)
@@ -32,7 +36,7 @@ def add_noise_new(sci, exptime):
 
 def add_noise_old(sci, exptime):
     sky  = 1.1     # e/s/pix  # zodi + thermal + sky
-    npix = 4088 * 4088
+    npix = 4096 * 4096
     dark = 0.015   # e/s/pix
     read = 10.0    # electrons per read
     read /= npix
@@ -41,9 +45,14 @@ def add_noise_old(sci, exptime):
     print('img of shape:', size)
     
     signal = sci + sky + dark
+    signal = signal * exptime  # this is now in electrons
+
     variance = signal + read**2
     sigma = np.sqrt(variance)
     
+    print('Average sci:', np.mean(sci, axis=None))
+    print('Average sigma:', np.mean(sigma, axis=None))
+
     new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
     
     final_sig = (new_sig / exptime) - sky
@@ -75,5 +84,5 @@ if __name__ == '__main__':
         h2 = fits.PrimaryHDU(data=fso, header=fh[1].header)
         h2.writeto(fltimg.replace('.fits', '_old_noised.fits'), overwrite=True)
 
-    sys.exit(0)
+        sys.exit(0)
 

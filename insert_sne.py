@@ -45,9 +45,9 @@ def gen_reference_cutout():
     xloc = 2512
     yloc = 2268
 
-    dir_img_name = img_sim_dir + img_basename + img_suffix + '_cps.fits'
+    dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
     dir_hdu = fits.open(dir_img_name)
-    img_arr = dir_hdu[0].data
+    img_arr = dir_hdu[1].data
 
     r = yloc
     c = xloc
@@ -77,14 +77,14 @@ def main():
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
-    ref_mag = 15.7536
-    ref_flux = 16000.81  # read from SExtractor catalog on cps img
+    ref_mag = 15.6224
+    ref_flux = 2244114  # read in mag and counts from SExtractor catalog on dir img
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
 
     # Mag limits for choosing random SN mag
     lowmag = 19.0
-    highmag = 25.0
+    highmag = 26.0
 
     # ---------------
     # Read in the reference image of the star from 
@@ -104,7 +104,7 @@ def main():
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
 
-            num_to_insert = np.random.randint(low=100, high=150)
+            num_to_insert = np.random.randint(low=150, high=250)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
 
@@ -119,10 +119,10 @@ def main():
             dir_hdu = fits.open(dir_img_name)
 
             # Now divide by the exptime to get the image to counts per sec
-            cps_sci_arr = dir_hdu[1].data / float(dir_hdu[1].header['EXPTIME'])
+            cps_sci_arr = dir_hdu[1].data # / float(dir_hdu[1].header['EXPTIME'])
             cps_hdr = dir_hdu[1].header
             dir_hdu.close()
-            cps_hdr['BUNIT'] = 'ELECTRONS'
+            #cps_hdr['BUNIT'] = 'ELECTRONS'
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
@@ -149,9 +149,9 @@ def main():
                 snmag_arr[i] = snmag
 
                 # Hack because Sextractor for some reason assigns 
-                # fainter mags to these SNe # by about ~0.2 to 0.3 mag
+                # fainter mags to these SNe # by about ~0.1 to 0.3 mag
                 # depending on the inserted magnitude.
-                snmag_eff = snmag - 0.25
+                snmag_eff = snmag - 0.15
                 # I think this problem is because when SExtractor is 
                 # run again on the SNadded images the flux is summed 
                 # within a smaller area NOT the whole cutout area (like
