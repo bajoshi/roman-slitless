@@ -12,9 +12,17 @@ home = os.getenv('HOME')
 roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
 fitting_utils = roman_slitless_dir + 'fitting_pipeline/utils/'
 
-sys.path.append(roman_slitless_dir)
-from test_pylinear_extractions import model_galaxy, model_sn, get_template_inputs, get_chi2, get_dl_at_z
+# Custom imports
+sys.path.append(fitting_utils)
 import dust_utils as du
+from get_snr import get_snr
+
+# Set pylinear f_lambda scaling factor
+pylinear_flam_scale_fac = 1e-17
+
+# Header for SExtractor catalog
+cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
 
 basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/'
 tablespath = basic_testdir + 'tables/'
@@ -22,15 +30,14 @@ tablespath = basic_testdir + 'tables/'
 ext_spec_filename = basic_testdir + 'romansim_prism_basic_test_x1d.fits'
 
 # -------------------------
-pylinear_flam_scale_fac = 1e-17
-
+"""
 # Read in SALT2 SN IA file from Lou
 salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
-sn_day_arr = np.arange(-20,51,1)
+sn_day_arr = np.arange(-19,51,1)
 sn_scalefac = 2.0842526537870818e+48  # see sn_scaling.py 
-
+"""
 # -------------------------
 create_reg = False
 def create_2d_ext_regions(segid_list, grisms, sources):
@@ -97,18 +104,91 @@ if create_reg:
     print('Regions created. Turn flag off and rerun.')
     sys.exit(0)
 
-# -------------------------
-# Read in extracted spectra
+# ------------------------- Read in extracted spectra
 ext_hdu = fits.open(ext_spec_filename)
 
-# Read in sed lst
-#sedlst = np.genfromtxt(basic_testdir + 'small_num_sources_test/sed_small.lst', 
-#    dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
-sedlst = np.genfromtxt(basic_testdir + 'sed.lst', 
-    dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
+# ------------------------- Read in sextractor catalog
+catfile = basic_testdir + '5deg_Y106_0_1_SNadded.cat'
+cat = np.genfromtxt(catfile, dtype=None, names=cat_header, encoding='ascii')
+
+# ------------------------- Read in sed lst
+sedlst_header = ['segid', 'sed_path']
+sedlst_path = basic_testdir + 'sed.lst'
+sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
+
+# ------------------------- Make SNR vs mag plot
+all_sn_segids = []
+for i in range(len(sedlst)):
+    if 'salt' in sedlst['sed_path'][i]:
+        all_sn_segids.append(sedlst['segid'][i])
+
+print('ALL SN segids in this file:', all_sn_segids)
+print('Total SNe:', len(all_sn_segids))
+
+# -----------
+# Manual entries from running HST/WFC3 spectroscopic ETC
+# For G102 and G141
+etc_mags = np.arange(18.0, 25.5, 0.5)
+etc_g102_snr = np.array([558.0, 414.0, 300.1, 211.89, 145.79, 
+                         98.03, 64.68, 42.07, 27.09, 17.32, 
+                         11.02, 6.99, 4.43, 2.80, 1.77])
+
+all_sn_mags = []
+all_sn_snr  = []
+
+all_galaxy_mags = []
+all_galaxy_snr  = []
+
+for i in range(len(sedlst)):
+
+    # First match with catalog
+    current_segid = sedlst['segid'][i]
+    cat_idx = np.where(cat['NUMBER'] == current_segid)[0]
+
+    # now get magnitude
+    mag = cat['MAG_AUTO'][cat_idx]
+
+    # Get spectrum from extracted file adn SNR
+    wav = ext_hdu[('SOURCE', current_segid)].data['wavelength']
+    flam = ext_hdu[('SOURCE', current_segid)].data['flam'] * pylinear_flam_scale_fac
+    snr = get_snr(wav, flam)
+
+    # Append to appropriate lists depending on object type
+    if 'salt' in sedlst['sed_path'][i]:
+        all_sn_mags.append(mag)
+        all_sn_snr.append(snr)
+    else:
+        all_galaxy_mags.append(mag)
+        all_galaxy_snr.append(snr)
+
+# ------------
+fig = plt.figure()
+ax = fig.add_subplot(111)
+
+ax.set_ylabel('SNR of extracted 1d spec', fontsize=14)
+ax.set_xlabel('F106 mag', fontsize=14)
+
+ax.scatter(all_galaxy_mags, all_galaxy_snr, marker='o', s=10, 
+    color='k', label='pyLINEAR sim result, galaxies', zorder=1)
+ax.scatter(all_sn_mags, all_sn_snr,         marker='o', s=10, 
+    color='k', facecolors='None', label='pyLINEAR sim result, SNe', zorder=2)
+
+ax.scatter(etc_mags, etc_g102_snr, s=8, color='royalblue', label='WFC3 G102 ETC prediction' + '\n' + 'Exptime: 18000s')
+
+ax.legend(loc=0, fontsize=11)
+ax.set_yscale('log')
+
+fig.savefig(basic_testdir + 'pylinear_sim_snr_vs_mag.pdf', 
+    dpi=200, bbox_inches='tight')
+
+fig.clear()
+plt.close(fig)
+sys.exit(0)
+
+# ------------------------- Plotting extracted spectra
 
 # loop over all sources to plot
-for i in range(110,len(sedlst)):
+for i in range(1,len(sedlst)):
 
     segid = sedlst['segid'][i]
     #if segid not in segids_for_2dreg:
@@ -189,6 +269,7 @@ for i in range(110,len(sedlst)):
     """
 
     #ax.set_xlim(9800, 19500)
+    ax.set_ylim(np.nanmin(sf) * 0.5, np.nanmax(sf) * 1.4)
     ax.set_xlim(7300, 18200)
     ax.legend(frameon=False)
 
@@ -199,6 +280,9 @@ for i in range(110,len(sedlst)):
     plt.close()
 
     #if i > 10: sys.exit()
+
+
+
 
 
 

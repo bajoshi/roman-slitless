@@ -175,7 +175,7 @@ if plot_filt:
 # spec thru filt
 mdiff = []
 
-for d in range(1,3):
+for d in range(3):
 
     # Read sedlst
     s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(d+1) + '.lst'

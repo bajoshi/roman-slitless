@@ -14,7 +14,6 @@ import shutil
 import matplotlib.pyplot as plt
 
 home = os.getenv('HOME')
-#basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/small_num_sources_test/'
 basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/'
 
 """
@@ -38,42 +37,62 @@ create_reqs_for_smalltest function
 # Also make sure that the contents of the lst files are consistent
 
 """
-def create_reqs_for_smalltest(num_sources=100):
+def create_reqs_for_smalltest(sedlst, num_sources=100, num_sne=10, get_sne_sedlst=False):
 
-    chosen_segids = np.random.randint(low=1, high=1005, size=num_sources)
-    # check this range by eye in the catalog
-    chosen_segids = np.append(chosen_segids, [43, 104, 221, 434, 440, 666])  # SNe in the chosen image
+    # --------------- Galaxies to be included
+    chosen_segids = np.random.randint(low=1, high=len(sedlst), size=num_sources)
 
-    segmap = fits.open('5deg_Y106_0_1_cps_segmap.fits')
+    # --------------- loop and find all SN segids
+    if get_sne_sedlst:
+        all_sn_segids = []
+        for i in range(len(sedlst)):
+            if 'salt' in sedlst['sed_path'][i]:
+                all_sn_segids.append(sedlst['segid'][i])
+        print('ALL SN segids in this file:', all_sn_segids)
+    else:
+        all_sn_segids = np.random.randint(low=1, high=len(sedlst), size=num_sne)
+
+    chosen_segids = np.append(chosen_segids, all_sn_segids)  # SNe in the chosen image
+    chosen_segids = np.unique(chosen_segids)
+
+    print('Will only keep the following segmap ids in the sim:')
+    print(chosen_segids)
+
+    # --------------- Now edit the segmap to only include 
+    # the sources chosen above.
+    segmap = fits.open('5deg_Y106_0_1_segmap.fits')
     new_segmap = np.zeros(segmap[0].data.shape)
 
-    for i in range(1,1006):  # check this range by eye in the catalog
+    for i in range(1,len(sedlst)):
         if i in chosen_segids:
             print('Adding SegID:', i)
             idx = np.where(segmap[0].data == i)
             new_segmap[idx] += segmap[0].data[idx]
 
     hnew = fits.PrimaryHDU(header=segmap[0].header, data=new_segmap)
-    hnew.writeto('5deg_Y106_0_1_cps_segmap_small.fits', overwrite=True)
+    hnew.writeto('5deg_Y106_0_1_segmap_small.fits', overwrite=True)
 
-    # Make sure to move it to the small num sources test folder
+    print('Segmap edited and saved.')
 
-    # Also make sure that only the chosen segids remain in sed.lst
-    sedlst = np.genfromtxt('sed.lst', dtype=None, names=['segid','path'], skip_header=2, encoding='ascii')
-
-    with open('sed_small.lst','w') as fh:
+    # Also make sure that only the chosen segids remain in sed lst
+    # This simply prints the sed lst format text to the terminal
+    # which can be copy pasted in a new file.
+    with open('sed.lst','w') as fh:
         all_segids = sedlst['segid']
         for i in all_segids:
             if i in chosen_segids:
                 idx = int(np.where(all_segids == i)[0])
-                fh.write(str(i) + '  ' + sedlst['path'][idx] + '\n')
-                print(str(i) + '  ' + sedlst['path'][idx])
+                fh.write(str(i) + '  ' + sedlst['sed_path'][idx] + '\n')
+                print(str(i) + '  ' + sedlst['sed_path'][idx])
 
     return None
 
-#create_reqs_for_smalltest()
+# Comment these three lines out once create_reqs_for_smalltest() is run
+#sedlst = np.genfromtxt('sed_Y106_0_1.lst', dtype=None, names=['segid','sed_path'], encoding='ascii')
+#create_reqs_for_smalltest(sedlst)
 #sys.exit(0)
 
+# This function isn't required anymore
 def create_sedlst():
     
     sys.path.append('/Users/baj/Documents/GitHub/roman-slitless/')
@@ -99,6 +118,8 @@ def create_sedlst():
             fh.write(str(segid) + "  " + pth + "\n")
             print(segid, '  ', '{:.3f}'.format(redshift), '  ', os.path.basename(pth))
 
+    return None
+
 # Make sure to use the counts-per-second image
 """
 cd to pylinear_basic_test folder
@@ -113,7 +134,7 @@ hnew.writeto('5deg_Y106_0_1_cps.fits')
 
 # Run sextractor through the command line manually
 # e.g., sex 5deg_Y106_0_1_cps.fits -c roman_sims_sextractor_config.txt 
-segfile = basic_testdir + '5deg_Y106_0_1_cps_segmap.fits'
+segfile = basic_testdir + '5deg_Y106_0_1_segmap_small.fits'
 # Make sure to rename segmap and cat accordingly afterwards
 
 #create_sedlst()
@@ -129,10 +150,10 @@ wcslst = basic_testdir + 'wcs.lst'
 fltlst = basic_testdir + 'flt.lst'
 
 beam = '+1'
-maglim = 99.0
+maglim = 30.0
 
 # ------- Other preliminaries
-exptime = 3600 # s
+exptime = 6000 # s
 
 sky  = 1.1     # e/s
 npix = 4096 * 4096
@@ -140,25 +161,26 @@ npix = 4096 * 4096
     
 dark = 0.015   # e/s/pix
 read = 10.0    # electrons
+read /= npix
 
-readtime = 600 # s
-nreads = int(exptime / readtime)
-print('NREADS:', nreads)
-readeff = read * nreads  # effective read noise i.e., total electrons from read noise
-readeff /= npix
+#readtime = 600 # s
+#nreads = int(exptime / readtime)
+#print('NREADS:', nreads)
+#readeff = read #* nreads  # effective read noise i.e., total electrons from read noise
+#readeff /= npix
 
 simroot = 'romansim_prism'
 
 # -------- Generate dispersed images
 sources = pylinear.source.SourceCollection(segfile,obslst,detindex=0,maglim=maglim)
 
-"""
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
 tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
 tabnames = tabulate.run(grisms, sources, beam)
 
 simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
 fltnames = simulate.run(grisms, sources, beam)
+print('Simulation done.')
 
 # -------- Add noise according to exptime
 for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
@@ -176,16 +198,6 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
             print("* * * * * Found NaNs in SCI. Resolve this issue first. Exiting.")
             sys.exit(1)
 
-        # Commenting this out -------
-        # I don't think neg values are a problem for the extraction
-        # Even when I don't add noise there are neg vals in the sim
-        # and those extractions work perfectly fine.
-        #neg_idx = np.where(sci < 0.0)
-        #neg_idx = np.asarray(neg_idx)
-        #if neg_idx.size:
-        #    sci[neg_idx] = 0.0
-        #    print('Setting some negative values to zero.')
-
         # update signal with sky and dark
         signal = (sci + sky + dark)
 
@@ -195,7 +207,7 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
 
         # Randomly vary signal about its mean. Assuming Gaussian distribution
         # first get the uncertainty
-        variance = signal + readeff**2
+        variance = signal + read**2
 
         sigma = np.sqrt(variance)
         new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
@@ -228,11 +240,12 @@ for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
 
         # If all is good
         # first save a copy
-        #shutil.copy(fl, fl.replace('.fits', '_copy.fits'))
+        shutil.copy(fl, fl.replace('.fits', '_noiseless.fits'))
         # now write
+        # We are overwriting here to avoid redoing the tables in the extraction
+        # since the flt names will be the same.
         hdul.writeto(fl, overwrite=True)
         print('Noised sim saved for:', os.path.basename(fl))
-"""
 
 # -------- Extraction
 grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
