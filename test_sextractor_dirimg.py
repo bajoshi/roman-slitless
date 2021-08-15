@@ -81,6 +81,7 @@ def main():
     dir_img_part = 'part1'
     img_sim_dir = roman_direct_dir + 'sextractor_mag_zp_test/'
 
+    """
     # ---------- open test images
     img1 = img_sim_dir + '5deg_Y106_0_2.fits'
     img2 = img_sim_dir + '5deg_Y106_0_15.fits'
@@ -167,8 +168,16 @@ def main():
     magdiff_list = np.asarray(magdiff_list)
     print('Average mag diff [True - SExtractor]:', np.mean(magdiff_list))
     print('Done with test 0.-----------------\n')
+    """
     # ----------------------------------------------
     # # ---------------------- TEST 1
+
+    # Scaling factor for direct images
+    # The difference here that appears in the power of 10
+    # is the difference between the ZP of the current img
+    # and what I think the correct ZP is i.e., the WFC3/F105W ZP.
+    dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
+
     # List of images to test
     img_suffix_list = ['Y106_0_1', 'Y106_0_5', 'Y106_0_9', 'Y106_0_12', 'Y106_0_13']
 
@@ -180,11 +189,11 @@ def main():
         # First divide and save all cps imgs
         if not os.path.isfile(img_cps):
             dir_hdu = fits.open(img)
-            cps_sci_arr = dir_hdu[1].data / float(dir_hdu[1].header['EXPTIME'])
+            cps_sci_arr = dir_hdu[1].data * dirimg_scaling
             cps_hdr = dir_hdu[1].header
             dir_hdu.close()
 
-            cps_hdr['BUNIT'] = 'ELECTRONS'
+            cps_hdr['BUNIT'] = 'CPS'
             
             chdu = fits.PrimaryHDU(data=cps_sci_arr, header=cps_hdr)
             chdu.writeto(img_cps, overwrite=True)
@@ -203,8 +212,8 @@ def main():
     print('\n *** Prepped next test. Run test_for_zp.py now.\n')
 
     # Close hdus
-    h1.close()
-    h2.close()
+    #h1.close()
+    #h2.close()
 
     return None
 

@@ -178,6 +178,8 @@ ax.scatter(etc_mags, etc_g102_snr, s=8, color='royalblue', label='WFC3 G102 ETC 
 ax.legend(loc=0, fontsize=11)
 ax.set_yscale('log')
 
+#ax.set_xlim(17.8, 26.0)
+
 fig.savefig(basic_testdir + 'pylinear_sim_snr_vs_mag.pdf', 
     dpi=200, bbox_inches='tight')
 

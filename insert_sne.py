@@ -45,9 +45,9 @@ def gen_reference_cutout():
     xloc = 2512
     yloc = 2268
 
-    dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
+    dir_img_name = img_sim_dir + img_basename + img_suffix + '_forref.fits'
     dir_hdu = fits.open(dir_img_name)
-    img_arr = dir_hdu[1].data
+    img_arr = dir_hdu[0].data
 
     r = yloc
     c = xloc
@@ -77,10 +77,16 @@ def main():
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
-    ref_mag = 15.6224
-    ref_flux = 2244114  # read in mag and counts from SExtractor catalog on dir img
+    ref_mag = 15.9180
+    ref_flux = 13753.24  # read in mag and counts from SExtractor catalog on dir img
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
+
+    # Scaling factor for direct images
+    # The difference here that appears in the power of 10
+    # is the difference between the ZP of the current img
+    # and what I think the correct ZP is i.e., the WFC3/F105W ZP.
+    dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
 
     # Mag limits for choosing random SN mag
     lowmag = 19.0
@@ -118,8 +124,8 @@ def main():
             # Open dir image
             dir_hdu = fits.open(dir_img_name)
 
-            # Now divide by the exptime to get the image to counts per sec
-            cps_sci_arr = dir_hdu[1].data # / float(dir_hdu[1].header['EXPTIME'])
+            # Now scale image to get the image to counts per sec
+            cps_sci_arr = dir_hdu[1].data * dirimg_scaling
             cps_hdr = dir_hdu[1].header
             dir_hdu.close()
             #cps_hdr['BUNIT'] = 'ELECTRONS'

@@ -80,9 +80,11 @@ def main():
     print('FITRES files modified and saved.')
 
     # put all iterations in one tar.gz
-    flist = glob.glob(roman_slitless_dir + '*iter*.FITRES')
-    with tarfile.open(home + '/Documents/bajmod_fitres.tar.gz', 'w:gz') as tar:
+    os.chdir(roman_slitless_dir)
+    flist = glob.glob('*iter*.FITRES')
+    with tarfile.open(roman_slitless_dir + 'fitres_mod_baj.tar.gz', 'w:gz') as tar:
         for fl in flist:
+            print('Adding to tarball:', fl)
             tar.add(fl)
 
     # Now delete all individual modified FITRES files

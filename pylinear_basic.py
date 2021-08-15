@@ -35,8 +35,8 @@ create_reqs_for_smalltest function
 # 4. obs, wcs, and flt lists can stay the same.
 
 # Also make sure that the contents of the lst files are consistent
-
 """
+
 def create_reqs_for_smalltest(sedlst, num_sources=100, num_sne=10, get_sne_sedlst=False):
 
     # --------------- Galaxies to be included
@@ -74,6 +74,7 @@ def create_reqs_for_smalltest(sedlst, num_sources=100, num_sne=10, get_sne_sedls
 
     print('Segmap edited and saved.')
 
+    # --------------- Edit SED LST
     # Also make sure that only the chosen segids remain in sed lst
     # This simply prints the sed lst format text to the terminal
     # which can be copy pasted in a new file.
@@ -181,6 +182,8 @@ tabnames = tabulate.run(grisms, sources, beam)
 simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
 fltnames = simulate.run(grisms, sources, beam)
 print('Simulation done.')
+
+do_back_est()
 
 # -------- Add noise according to exptime
 for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
