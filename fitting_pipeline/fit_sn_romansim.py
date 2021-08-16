@@ -308,12 +308,8 @@ def main():
     img_basename = '5deg_'
     img_filt = 'Y106_'
 
-    #exptime1 = '_900s'
-    #exptime2 = '_1800s'
-    #exptime3 = '_3600s'
-
-    exptime1 = '_1500s'
-    exptime2 = '_6000s'
+    exptime1 = '_6000s'
+    exptime2 = '_1500s'
 
     all_exptimes = [exptime1, exptime2]
 
@@ -349,23 +345,6 @@ def main():
 
             print("Number of spectra in file:", len(sedlst))
 
-            # --------------- Read in the extracted spectra
-            # For all exposure times
-            ext_spec_filename1 = ext_spectra_dir + ext_root + img_suffix + exptime1 + '_x1d.fits'
-            ext_hdu1 = fits.open(ext_spec_filename1)
-            print("Read in extracted spectra from:", ext_spec_filename1)
-
-            ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
-            ext_hdu2 = fits.open(ext_spec_filename2)
-            print("Read in extracted spectra from:", ext_spec_filename2)
-
-            #ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
-            #ext_hdu3 = fits.open(ext_spec_filename3)
-            #print("Read in extracted spectra from:", ext_spec_filename3)
-            #print('\n')
-
-            all_hdus = [ext_hdu1, ext_hdu2]  # [ext_hdu1, ext_hdu2, ext_hdu3]
-
             # --------------- loop and find all SN segids
             all_sn_segids = []
             for i in range(len(sedlst)):
@@ -374,14 +353,21 @@ def main():
 
             print('ALL SN segids in this file:', all_sn_segids)
 
-            # --------------- Loop over all extracted files and SN in each file
-            expcount = 0
-            for ext_hdu in all_hdus:
+            # --------------- Loop over all extracted files
+            for e in range(len(all_exptimes)):
 
+                exptime = all_exptimes[e]
+
+                # --------------- Read in the extracted spectra                
+                ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + exptime + '_x1d.fits'
+                ext_hdu = fits.open(ext_spec_filename)
+                print("Read in extracted spectra from:", ext_spec_filename)
+
+                # Loop over each SN in x1d file
                 for segid in all_sn_segids:
 
                     print("\n-----------------")
-                    print("Fitting SegID:", segid, "with exposure time:", all_exptimes[expcount])
+                    print("Fitting SegID:", segid, "with exposure time:", exptime)
  
                     # ----- Get spectrum
                     segid_idx = int(np.where(sedlst['segid'] == segid)[0])
@@ -405,11 +391,7 @@ def main():
 
                     print("SNR for this spectrum:", "{:.2f}".format(snr), "{:.2f}".format(smoothed_snr))
 
-                    # ----- Set noise level based on snr
-                    #noise_lvl = 1/snr
-                    # Create ferr array
-                    #ferr = noise_lvl * flam
-
+                    # ----- Get noise level
                     ferr = (ferr_lo + ferr_hi)/2.0
 
                     if snr < 3.0:
@@ -454,7 +436,7 @@ def main():
                     print("Starting position:", rsn_init)
 
                     # ----- Now run emcee on SN
-                    snstr = str(segid) + '_' + img_suffix + all_exptimes[expcount]
+                    snstr = str(segid) + '_' + img_suffix + exptime
                     emcee_savefile = results_dir + \
                                      'emcee_sampler_sn' + snstr + '.h5'
                     if not os.path.isfile(emcee_savefile):
@@ -483,12 +465,8 @@ def main():
 
                         print("Finished plotting results.")
 
-                expcount += 1
-
-            # --------------- close all open fits files
-            ext_hdu1.close()
-            ext_hdu2.close()
-            #ext_hdu3.close()
+                # --------------- close all open fits files
+                ext_hdu.close()
 
     return None
 

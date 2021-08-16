@@ -71,17 +71,7 @@ if __name__ == '__main__':
     sedlst_header = ['segid', 'sed_path']
     sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
     sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
-
-    # --------------- loop and find all SN segids
-    """
-    all_sn_segids = []
-    for i in range(len(sedlst)):
-        if 'salt' in sedlst['sed_path'][i]:
-            all_sn_segids.append(sedlst['segid'][i])
-
-    print('Total SNe:', len(all_sn_segids))
-    """
-
+    
     # -------- Get SNR and mag for all objects
     all_sn_mags = []
     all_sn_snr  = []
