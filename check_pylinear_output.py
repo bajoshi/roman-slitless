@@ -2,6 +2,7 @@ import numpy as np
 from astropy.io import fits
 
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 import os
 import sys
@@ -72,33 +73,43 @@ if __name__ == '__main__':
     sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
 
     # --------------- loop and find all SN segids
+    """
     all_sn_segids = []
     for i in range(len(sedlst)):
         if 'salt' in sedlst['sed_path'][i]:
             all_sn_segids.append(sedlst['segid'][i])
 
-    print('ALL SN segids in this file:', all_sn_segids)
     print('Total SNe:', len(all_sn_segids))
+    """
 
-    # -------- Get SNR and mag for all SNe
+    # -------- Get SNR and mag for all objects
     all_sn_mags = []
-    all_sn_snr = []
-
-    for segid in all_sn_segids:
-
-        # ---- Get magnitude from catalog
-        cat_segid_idx = np.where(cat['NUMBER'] == segid)[0]
-        mag = cat['MAG_AUTO'][cat_segid_idx]
-
-        all_sn_mags.append(mag)
-
-        # ---- Get SNR from extracted spectrum
-        wav = ext_hdu[('SOURCE', segid)].data['wavelength']
-        flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
-
+    all_sn_snr  = []
+    
+    all_galaxy_mags = []
+    all_galaxy_snr  = []
+    
+    for i in tqdm(range(len(sedlst)), desc='Processing object'):
+    
+        # First match with catalog
+        current_segid = sedlst['segid'][i]
+        cat_idx = np.where(cat['NUMBER'] == current_segid)[0]
+    
+        # now get magnitude
+        mag = cat['MAG_AUTO'][cat_idx]
+    
+        # Get spectrum from extracted file adn SNR
+        wav = ext_hdu[('SOURCE', current_segid)].data['wavelength']
+        flam = ext_hdu[('SOURCE', current_segid)].data['flam'] * pylinear_flam_scale_fac
         snr = get_snr(wav, flam)
-
-        all_sn_snr.append(snr)
+    
+        # Append to appropriate lists depending on object type
+        if 'salt' in sedlst['sed_path'][i]:
+            all_sn_mags.append(mag)
+            all_sn_snr.append(snr)
+        else:
+            all_galaxy_mags.append(mag)
+            all_galaxy_snr.append(snr)
 
     # ---------------------------- SNR vs mag plot
     # Manual entries from running HST/WFC3 spectroscopic ETC
@@ -114,12 +125,18 @@ if __name__ == '__main__':
     ax.set_ylabel('SNR of extracted 1d spec', fontsize=14)
     ax.set_xlabel('F106 mag', fontsize=14)
 
-    ax.scatter(all_sn_mags, all_sn_snr, s=8, color='k', label='pyLINEAR sim result')
-    ax.scatter(etc_mags, etc_g102_snr, s=8, color='royalblue', label='WFC3 G102 ETC prediction' + '\n' + 'Exptime: 18000s')
+    ax.scatter(all_galaxy_mags, all_galaxy_snr, marker='o', s=6, 
+        color='k', label='pyLINEAR sim result, galaxies', zorder=1)
+    ax.scatter(all_sn_mags, all_sn_snr,         marker='o', s=7, 
+        color='crimson', facecolors='None', label='pyLINEAR sim result, SNe', zorder=2)
+    ax.scatter(etc_mags, etc_g102_snr, s=8, color='royalblue', zorder=3,
+        label='WFC3 G102 ETC prediction' + '\n' + 'Exptime: 18000s')
 
     ax.legend(loc=0, fontsize=11)
 
     ax.set_yscale('log')
+
+    ax.set_xlim(17.03, 25.38)
 
     fig.savefig(results_dir + 'pylinear_sim_snr_vs_mag.pdf', 
         dpi=200, bbox_inches='tight')

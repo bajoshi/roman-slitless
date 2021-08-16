@@ -117,15 +117,6 @@ sedlst_path = basic_testdir + 'sed.lst'
 sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
 
 # ------------------------- Make SNR vs mag plot
-all_sn_segids = []
-for i in range(len(sedlst)):
-    if 'salt' in sedlst['sed_path'][i]:
-        all_sn_segids.append(sedlst['segid'][i])
-
-print('ALL SN segids in this file:', all_sn_segids)
-print('Total SNe:', len(all_sn_segids))
-
-# -----------
 # Manual entries from running HST/WFC3 spectroscopic ETC
 # For G102 and G141
 etc_mags = np.arange(18.0, 25.5, 0.5)
@@ -178,7 +169,7 @@ ax.scatter(etc_mags, etc_g102_snr, s=8, color='royalblue', label='WFC3 G102 ETC 
 ax.legend(loc=0, fontsize=11)
 ax.set_yscale('log')
 
-#ax.set_xlim(17.8, 26.0)
+ax.set_xlim(17.0, 26.5)
 
 fig.savefig(basic_testdir + 'pylinear_sim_snr_vs_mag.pdf', 
     dpi=200, bbox_inches='tight')

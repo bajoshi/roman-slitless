@@ -37,7 +37,7 @@ create_reqs_for_smalltest function
 # Also make sure that the contents of the lst files are consistent
 """
 
-def create_reqs_for_smalltest(sedlst, num_sources=100, num_sne=10, get_sne_sedlst=False):
+def create_reqs_for_smalltest(sedlst, num_sources=300, num_sne=30, get_sne_sedlst=False):
 
     # --------------- Galaxies to be included
     chosen_segids = np.random.randint(low=1, high=len(sedlst), size=num_sources)
@@ -173,6 +173,7 @@ read /= npix
 simroot = 'romansim_prism'
 
 # -------- Generate dispersed images
+
 sources = pylinear.source.SourceCollection(segfile,obslst,detindex=0,maglim=maglim)
 
 grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
@@ -183,7 +184,7 @@ simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
 fltnames = simulate.run(grisms, sources, beam)
 print('Simulation done.')
 
-do_back_est()
+#do_back_est()
 
 # -------- Add noise according to exptime
 for fl in glob.glob(basic_testdir + simroot + '*flt.fits'):
