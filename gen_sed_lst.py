@@ -420,8 +420,10 @@ def get_sn_z(snmag, scatter=False):
     # is already written in massive-galaxies/grismz_pipeline/intg_lum_func.py
 
     # Abs Mag of SN Ia in required band at peak
-    # absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
-    absmag = -18.4  # in Y band # from Dhawan et al 2015
+    absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
+    #absmag = -18.4  # in Y band # from Dhawan et al 2015
+
+    kcorr = 
 
     dist_mod = snmag - absmag
     dl = 10 * np.power(10, dist_mod/5.0)  # in parsecs
