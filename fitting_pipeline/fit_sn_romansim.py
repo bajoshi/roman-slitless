@@ -381,8 +381,8 @@ def main():
                     ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * pylinear_flam_scale_fac
                     ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
-                    # Smooth with boxcar
-                    smoothing_width_pix = 3
+                    # ----- Smooth with boxcar
+                    smoothing_width_pix = 5
                     sf = convolve(flam, Box1DKernel(smoothing_width_pix))
 
                     # ----- Check SNR
@@ -394,18 +394,50 @@ def main():
                     # ----- Get noise level
                     ferr = (ferr_lo + ferr_hi)/2.0
 
+                    fitsmooth = False
                     if snr < 3.0:
                         if (smoothed_snr > 2 * snr) and (smoothed_snr > 3.0):
+                            fitsmooth = True
                             flam = sf
-                            ferr /= np.sqrt(5)
+                            ferr /= np.sqrt(smoothing_width_pix)
                             print(f'{bcolors.HEADER}', "------> Fitting smoothed spectrum.", f'{bcolors.ENDC}')
                         else:
                             continue
 
                     # ----- Get optimal starting position
+                    # Fix the crazy flam and ferr values before getting optimal pos
+                    #snr_array = flam / ferr
+                    #nan_idx = np.where(np.isnan(snr_array))[0]
+
                     z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
                     rsn_init = np.array([z_prior, phase_prior, av_prior])
                     # redshift, day relative to peak, and dust extinction
+
+                    #rsn_init = np.array([1.0, 0, 0.5])
+
+                    #z_smooth, phase_smooth, av_smooth = get_optimal_position(wav, sf, ferr/np.sqrt(smoothing_width_pix))
+
+                    """
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111)
+
+                    ax.plot(wav, flam, color='k', lw=1.5, zorder=1)
+                    ax.fill_between(wav, flam - ferr, flam + ferr, 
+                        color='gray', alpha=0.5, zorder=1)
+                    ax.plot(wav, sf, color='firebrick', lw=3.0, zorder=3.0)
+
+                    tm = model_sn(wav, template_inputs[0], template_inputs[1], template_inputs[2])
+                    ta = get_y_alpha(tm, flam, ferr)
+                    ax.plot(wav, ta, color='dodgerblue', lw=2.0, zorder=5)
+
+                    print('Start for unsmoothed spec:', z_prior, phase_prior, av_prior)
+                    print('Start for smoothed spec:', z_smooth, phase_smooth, av_smooth)
+
+                    ax.set_xlim(8000, 17500)
+                    ax.set_ylim(1e-19, 3e-18)
+
+                    plt.show()
+                    """
 
                     # generating ball of walkers about optimal position defined above
                     pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
@@ -422,17 +454,17 @@ def main():
                         pos_sn[i] = rsn
 
                     # ----- Clip data at the ends
-                    wav_idx = np.where((wav > 7600) & (wav < 18000))[0]
+                    wav_idx = np.where((wav > 7800) & (wav < 18000))[0]
 
-                    sn_wav = wav[wav_idx]
-                    sn_flam = flam[wav_idx]
-                    sn_ferr = ferr[wav_idx]
+                    wav = wav[wav_idx]
+                    flam = flam[wav_idx]
+                    ferr = ferr[wav_idx]
 
                     # ----- Set up args
-                    args_sn = [sn_wav, sn_flam, sn_ferr]
+                    args_sn = [wav, flam, ferr]
 
                     print("logpost at starting position for SN:")
-                    print(logpost_sn(rsn_init, sn_wav, sn_flam, sn_ferr))
+                    print(logpost_sn(rsn_init, wav, flam, ferr))
                     print("Starting position:", rsn_init)
 
                     # ----- Now run emcee on SN
@@ -460,8 +492,17 @@ def main():
                         truth_dict['phase'] = template_inputs[1]
                         truth_dict['Av']    = template_inputs[2]
 
-                        read_pickle_make_plots_sn('sn' + snstr, 
-                            ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
+                        if fitsmooth:
+                            read_pickle_make_plots_sn('sn' + snstr, 
+                                ndim_sn, args_sn, label_list_sn, truth_dict, results_dir, 
+                                fitsmooth=True, 
+                                orig_wav=ext_hdu[('SOURCE', segid)].data['wavelength'],
+                                orig_spec=ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac, 
+                                orig_ferr=(ferr_lo + ferr_hi)/2.0)
+
+                        else:
+                            read_pickle_make_plots_sn('sn' + snstr, 
+                                ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
 
                         print("Finished plotting results.")
 

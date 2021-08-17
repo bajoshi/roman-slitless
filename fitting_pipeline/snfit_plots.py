@@ -19,7 +19,9 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dict, savedir):
+def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dict, savedir, 
+    fitsmooth=False, orig_wav=None, orig_spec=None, orig_ferr=None, 
+    plot_xlim_min=None, plot_xlim_max=None, plot_ylim_min=None, plot_ylim_max=None):
 
     h5_path = savedir + 'emcee_sampler_' + object_type + '.h5'
     sampler = emcee.backends.HDFBackend(h5_path)
@@ -157,8 +159,16 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
 
             model_count += 1
 
-    ax3.plot(wav, flam, color='k', lw=1.0, zorder=1)
-    ax3.fill_between(wav, flam - ferr, flam + ferr, color='gray', alpha=0.5, zorder=1)
+    if fitsmooth:
+        ax3.plot(orig_wav, orig_spec, color='k', lw=1.0, zorder=1)
+        ax3.fill_between(orig_wav, orig_spec - orig_ferr, orig_spec + orig_ferr, 
+            color='gray', alpha=0.5, zorder=1)
+        ax3.set_xlim(plot_xlim_min, plot_xlim_max)
+        ax3.set_ylim(plot_ylim_min, plot_ylim_max)
+    else:
+        ax3.plot(wav, flam, color='k', lw=1.0, zorder=1)
+        ax3.fill_between(wav, flam - ferr, flam + ferr, 
+            color='gray', alpha=0.5, zorder=1)
 
     # ADD LEGEND
     ax3.text(x=0.65, y=0.92, s='--- Simulated data', 
