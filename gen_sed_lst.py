@@ -75,11 +75,11 @@ for t in range(tau_low, tau_high, 1):
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
 
 # Also load in lookup table for luminosity distance
-dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', dtype=None, names=True)
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table_Ksum.txt', dtype=None, names=True)
 # Get arrays 
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
-age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
+dl_K_sum_arr = np.asarray(dl_cat['dl_K_sum'], dtype=np.float64)
 
 del dl_cat
 
@@ -416,21 +416,16 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
 def get_sn_z(snmag, scatter=False):
 
-    # Neglecting K-corr for now. When needed, the code to compute K-corr
-    # is already written in massive-galaxies/grismz_pipeline/intg_lum_func.py
+    # This function assumes that the utility code kcorr.py
+    # has been run on its own. It will do a couple tests 
+    # and save a file that is used to lookup the sum
+    # 5log(dl) + K to provide a redshift.
 
     # Abs Mag of SN Ia in required band at peak
     absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
-    #absmag = -18.4  # in Y band # from Dhawan et al 2015
 
-    kcorr = 
-
-    dist_mod = snmag - absmag
-    dl = 10 * np.power(10, dist_mod/5.0)  # in parsecs
-    dl *= 3.086e18  # convert to cm # this is the unit in the lookup table
-
-    # Now reverse lookup z corresponding to dl in lookup table
-    z_idx = np.argmin(abs(dl_cm_arr - dl))
+    match_sum = snmag - absmag - 25.0
+    z_idx = np.argmin(abs(dl_K_sum_arr - match_sum))
 
     sn_z = dl_z_arr[z_idx]
 

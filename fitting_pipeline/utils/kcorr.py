@@ -5,28 +5,36 @@ speed_of_light_ang = 3e18  # angstroms per second
 
 def get_kcorr(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbose=False):
     """
-    Returns the K-correction due to redshift and for going between two filters. 
-    It needs to be supplied with the object SED (L_nu and nu; rest-frame), 
-    redshift, and with the rest frame and obs filter curves. 
+    Returns the K-correction given a redshift and observed and 
+    restframe bandpasses in which object magnitudes are measured. 
+    It needs to be supplied with the object SED (L_nu and nu), 
+    redshift, and with the rest frame and obs bandpasses. 
 
-    This function uses the K-correction formula given in eq 8 of Hogg et al. 2002.
+    This function uses the K-correction formula given in 
+    eq 8 of Hogg et al. 2002.
 
     Arguments:
-    sed_lnu: float array
-    sed_nu:  float array
+    sed_lnu: float array of luminosity density in erg/s/Hz
+    sed_nu:  float array of frequency in Hz
     redshift: float scalar
     filt_curve_Q: numpy record array with two columns -- wav and trans
                   i.e., an ascii file with these two columns read with 
-                  numpy genfromtxt
+                  numpy genfromtxt. 
+                  Wavelength in Angstroms.
+                  Trans is actually throughput.
+                  This is assumed to be the rest frame bandpass in 
+                  which abs mag is known.
     filt_curve_R: numpy record array similar to filt_curve_Q above
+                  This is assumed to be the observed frame bandpass in 
+                  which app mag will be measured.
     verbose (bool; optional): parameter controlling verbosity 
                               default=False
                               Will show a plot if set to True
 
     Returns:
     kcorr_qr: float scalar
-              K-correction to go between filters Q and R with the above 
-              given quantities
+              K-correction dependent on redshift and on the bandpasses 
+              Q and R with the above given quantities
     """
 
     # Redshift the spectrum
@@ -83,7 +91,7 @@ def get_kcorr(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbose=Fal
 
 if __name__ == '__main__':
     
-    # This runs a test on the above function
+    # This runs a couple tests on the above function
     # using a SN Ia spectrum at peak.
     import matplotlib.pyplot as plt
     import sys
