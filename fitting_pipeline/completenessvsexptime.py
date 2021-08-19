@@ -5,6 +5,22 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
+home = os.getenv('HOME')
+roman_slitless = home + '/Documents/GitHub/roman-slitless/'
+
+sys.path.append(roman_slitless)
+from gen_sed_lst import get_sn_z
+
+def get_z_for_mag(m):
+    # assuming the arg m passed here is an array
+    zarr = np.zeros(len(m))
+
+    for i in range(len(m)):
+        mag = m[i]
+        zarr[i] = get_sn_z(mag)
+
+    return zarr
+
 def main():
 
     # Read in results file
@@ -27,8 +43,8 @@ def main():
     z_tol2 = 0.001
 
     # Do this for each exposure time separately
-    exptime_labels = ['z3600', 'z900']  # ['z3600', 'z1800', 'z900']
-    colors = ['crimson', 'dodgerblue']  #, 'goldenrod']
+    exptime_labels = ['z3600', 'z900']
+    colors = ['crimson', 'dodgerblue']
 
     # Setup figure
     fig = plt.figure(figsize=(8,5))
@@ -86,22 +102,64 @@ def main():
 
     #ax.legend(loc=6, frameon=False, fontsize=14)
 
-    mag22_bin_idx = np.where((cat['Y106mag'] >= 22.0) & (cat['Y106mag'] < 22.5))[0]
-    snr_mag22_3600 = np.mean(cat['SNR3600'][mag22_bin_idx])
-    #snr_mag22_1800 = np.mean(cat['SNR1800'][mag22_bin_idx])
-    snr_mag22_900 = np.mean(cat['SNR900'][mag22_bin_idx])
+    mag23_bin_idx = np.where((cat['Y106mag'] >= 23.0) & (cat['Y106mag'] < 23.5))[0]
+    snr_mag23_3600 = np.mean(cat['SNR3600'][mag23_bin_idx])
+    snr_mag23_900 = np.mean(cat['SNR900'][mag23_bin_idx])
+
+    print('\nFor SNe at approx z=1:')
+    print('  IMG   SegID   Mag   z-true   z-wide   z-deep   SNR-wide   SNR-deep') 
+    for s in range(len(mag23_bin_idx)):
+        print(cat['img_suffix'][mag23_bin_idx][s], '  ', 
+              cat['SNSegID'][mag23_bin_idx][s], '  ',
+              cat['Y106mag'][mag23_bin_idx][s], '  ',
+              cat['z_true'][mag23_bin_idx][s], '  ',
+              cat['z900'][mag23_bin_idx][s], '  ',
+              cat['z3600'][mag23_bin_idx][s], '  ',
+              cat['SNR900'][mag23_bin_idx][s], '  ',
+              cat['SNR3600'][mag23_bin_idx][s])
+    print('\n')
+
+    #mag24_idx = np.where(cat['Y106mag'] >= 24.0)[0]
+    #print(mag24_idx)
+    #snr_mag24 = np.mean(cat['SNR3600'][mag24_idx])
+    #print(snr_mag24)
+
+    # ----------- Top redshift axis
+    # Don't need to plot anything
+    # just set the correct redshift 
+    # corresponding to bottom x-axis mag
+    ax2 = ax.twiny()
+    # --- Set mags and get corresponding redshift    
+    # Since we're not plotting anything the default ticks
+    # are at [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    # SO the on the bottom x-axis need to be transformed to [0,1]
+    # i.e., the range [18.0, 26.5] --> [0,1]
+    mt = np.array([18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 26.5])
+    mags_for_z_axis_transform = (mt - 18.0)/8.5
+    # the denominator here corresponds to the difference 
+    # on the bottom x-axis that is shown in the figure
+    # NOT the difference between final and init values in mags_for_z_axis
+    redshift_ticks = get_z_for_mag(mt)
+
+    ax2.set_xticks(mags_for_z_axis_transform)
+    ax2.set_xticklabels(['{:.2f}'.format(z) for z in redshift_ticks], rotation=30)
+    ax2.set_xlabel(r'$\mathrm{Redshift\ (assumed\ SN\ at\ peak)}$', fontsize=14)
+    ax2.minorticks_off()
+
+    print('Magnitudes:', mt)
+    print('Redshifts at above magnitudes:', redshift_ticks)
+
+    print('z at mag 23 and 23.5:', get_z_for_mag([23.0]), get_z_for_mag([23.5]))
 
     # Text info
-    ax.text(x=22.0, y=0.93, 
-        s=r'$18000\ \mathrm{seconds; \left<SNR\right>}_{F106\sim22.25}=$' + '{:.1f}'.format(snr_mag22_3600), 
+    ax.text(x=23.5, y=0.37, 
+        s=r'$18000\ \mathrm{seconds;}$' + '\n' + \
+        r'$\mathrm{\left<SNR\right>}^{z\sim1}_{F106\sim23.25}=$' + '{:.1f}'.format(snr_mag23_3600), 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='crimson', size=14)
-    #ax.text(x=22.0, y=0.65, 
-    #    s=r'$1800\ \mathrm{seconds; \left<SNR\right>}_{F106\sim22.25}=$' + '{:.1f}'.format(snr_mag22_1800), 
-    #    verticalalignment='top', horizontalalignment='left', 
-    #    transform=ax.transData, color='dodgerblue', size=14)
-    ax.text(x=22.0, y=0.87, 
-        s=r'$4500\ \mathrm{seconds; \left<SNR\right>}_{F106\sim22.25}=$' + '{:.1f}'.format(snr_mag22_900), 
+    ax.text(x=23.5, y=0.23, 
+        s=r'$4500\ \mathrm{seconds;}$' + '\n' + \
+        r'$\mathrm{\left<SNR\right>}^{z\sim1}_{F106\sim23.25}=$' + '{:.1f}'.format(snr_mag23_900), 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='dodgerblue', size=14)
 

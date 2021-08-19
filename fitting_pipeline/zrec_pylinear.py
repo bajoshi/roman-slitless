@@ -9,15 +9,15 @@ import matplotlib.pyplot as plt
 ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
 results_dir = ext_spectra_dir + 'fitting_results/'
 
-resfile = results_dir + 'zrecovery_pylinear_sims_pt2.txt'
+resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
 cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
 # Remove invalid measures
 z900 = cat['z900']
 z900[z900 == -9999.0] = np.nan
 
-z1800 = cat['z1800']
-z1800[z1800 == -9999.0] = np.nan
+#z1800 = cat['z1800']
+#z1800[z1800 == -9999.0] = np.nan
 
 z3600 = cat['z3600']
 z3600[z3600 == -9999.0] = np.nan
@@ -26,8 +26,8 @@ z3600[z3600 == -9999.0] = np.nan
 phase900 = cat['phase900']
 phase900[phase900 == -9999.0] = np.nan
 
-phase1800 = cat['phase1800']
-phase1800[phase1800 == -9999.0] = np.nan
+#phase1800 = cat['phase1800']
+#phase1800[phase1800 == -9999.0] = np.nan
 
 phase3600 = cat['phase3600']
 phase3600[phase3600 == -9999.0] = np.nan
@@ -36,13 +36,14 @@ phase3600[phase3600 == -9999.0] = np.nan
 av900 = cat['Av900']
 av900[av900 == -9999.0] = np.nan
 
-av1800 = cat['Av1800']
-av1800[av1800 == -9999.0] = np.nan
+#av1800 = cat['Av1800']
+#av1800[av1800 == -9999.0] = np.nan
 
 av3600 = cat['Av3600']
 av3600[av3600 == -9999.0] = np.nan
 
 ###########################################
+"""
 # --------------------
 fig = plt.figure(figsize=(7, 9))
 
@@ -150,7 +151,7 @@ for i in range(len(fail_idx3600)):
     print(cat['img_suffix'][fail_idx3600][i], '  ', cat['SNSegID'][fail_idx3600][i], '  ', \
         cat['z_true'][fail_idx3600][i], '  ', cat['z3600'][fail_idx3600][i])
 
-"""
+
 ###########################################
 # -------------------- phase recovery plt
 fig = plt.figure(figsize=(7, 9))
@@ -277,6 +278,10 @@ plt.close(fig)
 
 ###########################################
 # -------------------- Plot SNR vs % accuracy
+# get error and accuracy
+z3600err = np.vstack((cat['z3600_lowerr'], cat['z3600_uperr']))
+z3600acc = (z3600 - cat['z_true']) / (1 + cat['z_true'])
+
 fig = plt.figure(figsize=(9, 5))
 
 gs = fig.add_gridspec(nrows=12, ncols=1, left=0.15, right=0.95, wspace=0.1)
@@ -313,6 +318,7 @@ fig.savefig(results_dir + 'pylinearrecovery_snr.pdf',
 
 fig.clear()
 plt.close(fig)
+sys.exit(0)
 
 ###########################################
 # --------- For modifying FITRES file from Dan

@@ -220,17 +220,33 @@ def get_optimal_position(wav, flam, ferr):
 
     if verbose: print('\nGetting optimal starting position...')
 
+    # Get vertical scaling factor for all models
     model_a = np.sum(flam * sn_opt_arr / ferr**2, axis=1) / np.sum(sn_opt_arr**2 / ferr**2, axis=1)
 
+    # get model array to correct shape and compute chi2
     optmod_eff = sn_opt_arr.T * model_a
     optmod_eff = optmod_eff.T
 
     chi2_opt = ((flam - optmod_eff) / ferr )**2
     chi2_opt = np.sum(chi2_opt, axis=1)
 
+    # Find the global minimum and retrieve corresponding params
     big_index = np.argmin(chi2_opt)
-
     z_prior, phase_prior, av_prior = retrieve_sn_optpars(big_index)
+
+    # Also find other local minima which could potentially
+    # be very close to the global minimum (in chi2) but far
+    # in parameter space.
+
+    sort_idx = np.argsort(chi2_opt)
+    print(big_index)
+    print(z_prior, phase_prior, av_prior, '\n')
+
+    # Collect 
+
+    for i in range(30):
+        idx = sort_idx[i]
+        print(idx, retrieve_sn_optpars(idx), chi2_opt[idx])
 
     if verbose:
 
@@ -330,7 +346,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(2, 3, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -364,7 +380,9 @@ def main():
                 print("Read in extracted spectra from:", ext_spec_filename)
 
                 # Loop over each SN in x1d file
-                for segid in all_sn_segids:
+                for dummy in range(1):  #segid in all_sn_segids:
+                    segid = 1636
+                    replace = True
 
                     print("\n-----------------")
                     print("Fitting SegID:", segid, "with exposure time:", exptime)
@@ -382,7 +400,7 @@ def main():
                     ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
                     # ----- Smooth with boxcar
-                    smoothing_width_pix = 5
+                    smoothing_width_pix = 10
                     sf = convolve(flam, Box1DKernel(smoothing_width_pix))
 
                     # ----- Check SNR
@@ -409,16 +427,16 @@ def main():
                     #snr_array = flam / ferr
                     #nan_idx = np.where(np.isnan(snr_array))[0]
 
-                    z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
-                    rsn_init = np.array([z_prior, phase_prior, av_prior])
+                    #z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
+                    #rsn_init = np.array([z_prior, phase_prior, av_prior])
                     # redshift, day relative to peak, and dust extinction
 
-                    #rsn_init = np.array([1.0, 0, 0.5])
-
-                    #z_smooth, phase_smooth, av_smooth = get_optimal_position(wav, sf, ferr/np.sqrt(smoothing_width_pix))
+                    rsn_init = np.array([1.18, 0, 0.5])
 
                     """
-                    fig = plt.figure()
+                    #z_smooth, phase_smooth, av_smooth = get_optimal_position(wav, sf, ferr/np.sqrt(smoothing_width_pix))
+
+                    fig = plt.figure(figsize=(9,4))
                     ax = fig.add_subplot(111)
 
                     ax.plot(wav, flam, color='k', lw=1.5, zorder=1)
@@ -433,10 +451,11 @@ def main():
                     print('Start for unsmoothed spec:', z_prior, phase_prior, av_prior)
                     print('Start for smoothed spec:', z_smooth, phase_smooth, av_smooth)
 
-                    ax.set_xlim(8000, 17500)
-                    ax.set_ylim(1e-19, 3e-18)
+                    #ax.set_xlim(8000, 17500)
+                    #ax.set_ylim(1e-19, 3e-18)
 
                     plt.show()
+                    sys.exit(0)
                     """
 
                     # generating ball of walkers about optimal position defined above
@@ -469,8 +488,12 @@ def main():
 
                     # ----- Now run emcee on SN
                     snstr = str(segid) + '_' + img_suffix + exptime
-                    emcee_savefile = results_dir + \
-                                     'emcee_sampler_sn' + snstr + '.h5'
+                    emcee_savefile = results_dir + 'emcee_sampler_sn' + snstr + '.h5'
+
+                    if replace:
+                        if os.path.isfile(emcee_savefile):
+                            os.remove(emcee_savefile)
+
                     if not os.path.isfile(emcee_savefile):
 
                         backend = emcee.backends.HDFBackend(emcee_savefile)
@@ -505,6 +528,8 @@ def main():
                                 ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
 
                         print("Finished plotting results.")
+
+                    sys.exit(0)
 
                 # --------------- close all open fits files
                 ext_hdu.close()
