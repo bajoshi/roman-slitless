@@ -81,7 +81,7 @@ def main():
         percent_complete2 = ztol_counts2 / total_counts
 
         ax.plot(mags, percent_complete1, 'o-',  markersize=5, lw=2.0, color=colors[e])
-        ax.plot(mags, percent_complete2, 'o--', markersize=5, lw=2.0, color=colors[e])
+        #ax.plot(mags, percent_complete2, 'o--', markersize=5, lw=2.0, color=colors[e])
 
         # Cumulative completeness fraction
         # ONLY SHOWN FOR LONGEST EXPTIME
@@ -151,6 +151,8 @@ def main():
 
     print('z at mag 23 and 23.5:', get_z_for_mag([23.0]), get_z_for_mag([23.5]))
 
+    print('Total sample size:', len(cat))
+
     # Text info
     ax.text(x=23.5, y=0.37, 
         s=r'$18000\ \mathrm{seconds;}$' + '\n' + \
@@ -163,12 +165,12 @@ def main():
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='dodgerblue', size=14)
 
-    ax.text(x=low_maglim, y=0.2, s=r'$\mbox{---}\ \frac{\Delta z}{1+z} \leq 0.01$', 
+    ax.text(x=low_maglim, y=0.28, s=r'$\mbox{---}\ \frac{\Delta z}{1+z} \leq 0.01$', 
         verticalalignment='top', horizontalalignment='left', 
         transform=ax.transData, color='k', size=14)
-    ax.text(x=low_maglim, y=0.1, s=r'$-- \frac{\Delta z}{1+z} \leq 0.001$',
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax.transData, color='k', size=14)
+    #ax.text(x=low_maglim, y=0.1, s=r'$-- \frac{\Delta z}{1+z} \leq 0.001$',
+    #    verticalalignment='top', horizontalalignment='left', 
+    #    transform=ax.transData, color='k', size=14)
 
     # labels
     ax.set_ylabel(r'$\mathrm{Frac}.\ z\ \mathrm{completeness}$', fontsize=14)
@@ -180,7 +182,11 @@ def main():
 
     # save
     fig.savefig(results_dir + 'pylinearrecovery_completeness.pdf', 
-        dpi=200, bbox_inches='tight')
+                dpi=200, bbox_inches='tight')
+    # Also save in paper figures directory
+    fig.savefig('/Users/baj/Library/Mobile Documents/com~apple~CloudDocs/Papers/my_papers/romansims_sne/figures/' \
+                + 'pylinearrecovery_completeness.pdf', 
+                dpi=200, bbox_inches='tight')
 
     return None
 

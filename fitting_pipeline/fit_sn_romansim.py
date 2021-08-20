@@ -237,16 +237,13 @@ def get_optimal_position(wav, flam, ferr):
     # Also find other local minima which could potentially
     # be very close to the global minimum (in chi2) but far
     # in parameter space.
-
-    sort_idx = np.argsort(chi2_opt)
-    print(big_index)
-    print(z_prior, phase_prior, av_prior, '\n')
-
-    # Collect 
-
-    for i in range(30):
-        idx = sort_idx[i]
-        print(idx, retrieve_sn_optpars(idx), chi2_opt[idx])
+    # Finally collect global and other close local minima and return
+    #sort_idx = np.argsort(chi2_opt)
+    #print(big_index)
+    #print(z_prior, phase_prior, av_prior, '\n')
+    #for i in range(30):
+    #    idx = sort_idx[i]
+    #    print(idx, retrieve_sn_optpars(idx), chi2_opt[idx])
 
     if verbose:
 
@@ -346,7 +343,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(2, 3, 1)
+    detectors = np.arange(1, 3, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -380,9 +377,10 @@ def main():
                 print("Read in extracted spectra from:", ext_spec_filename)
 
                 # Loop over each SN in x1d file
-                for dummy in range(1):  #segid in all_sn_segids:
-                    segid = 1636
-                    replace = True
+                for segid in all_sn_segids:
+
+                    replace = False
+                    fitsmooth = False
 
                     print("\n-----------------")
                     print("Fitting SegID:", segid, "with exposure time:", exptime)
@@ -400,7 +398,7 @@ def main():
                     ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
                     # ----- Smooth with boxcar
-                    smoothing_width_pix = 10
+                    smoothing_width_pix = 5
                     sf = convolve(flam, Box1DKernel(smoothing_width_pix))
 
                     # ----- Check SNR
@@ -412,90 +410,95 @@ def main():
                     # ----- Get noise level
                     ferr = (ferr_lo + ferr_hi)/2.0
 
-                    fitsmooth = False
-                    if snr < 3.0:
-                        if (smoothed_snr > 2 * snr) and (smoothed_snr > 3.0):
-                            fitsmooth = True
-                            flam = sf
-                            ferr /= np.sqrt(smoothing_width_pix)
-                            print(f'{bcolors.HEADER}', "------> Fitting smoothed spectrum.", f'{bcolors.ENDC}')
-                        else:
-                            continue
-
-                    # ----- Get optimal starting position
-                    # Fix the crazy flam and ferr values before getting optimal pos
-                    #snr_array = flam / ferr
-                    #nan_idx = np.where(np.isnan(snr_array))[0]
-
-                    #z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
-                    #rsn_init = np.array([z_prior, phase_prior, av_prior])
-                    # redshift, day relative to peak, and dust extinction
-
-                    rsn_init = np.array([1.18, 0, 0.5])
-
-                    """
-                    #z_smooth, phase_smooth, av_smooth = get_optimal_position(wav, sf, ferr/np.sqrt(smoothing_width_pix))
-
-                    fig = plt.figure(figsize=(9,4))
-                    ax = fig.add_subplot(111)
-
-                    ax.plot(wav, flam, color='k', lw=1.5, zorder=1)
-                    ax.fill_between(wav, flam - ferr, flam + ferr, 
-                        color='gray', alpha=0.5, zorder=1)
-                    ax.plot(wav, sf, color='firebrick', lw=3.0, zorder=3.0)
-
-                    tm = model_sn(wav, template_inputs[0], template_inputs[1], template_inputs[2])
-                    ta = get_y_alpha(tm, flam, ferr)
-                    ax.plot(wav, ta, color='dodgerblue', lw=2.0, zorder=5)
-
-                    print('Start for unsmoothed spec:', z_prior, phase_prior, av_prior)
-                    print('Start for smoothed spec:', z_smooth, phase_smooth, av_smooth)
-
-                    #ax.set_xlim(8000, 17500)
-                    #ax.set_ylim(1e-19, 3e-18)
-
-                    plt.show()
-                    sys.exit(0)
-                    """
-
-                    # generating ball of walkers about optimal position defined above
-                    pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
-
-                    for i in range(nwalkers):
-
-                        # ---------- For SN
-                        rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
-                        rsn1 = int(rsn_init[1] + jump_size_day * np.random.normal(size=1))
-                        rsn2 = float(rsn_init[2] + jump_size_av * np.random.normal(size=1))
-
-                        rsn = np.array([rsn0, rsn1, rsn2])
-
-                        pos_sn[i] = rsn
-
-                    # ----- Clip data at the ends
-                    wav_idx = np.where((wav > 7800) & (wav < 18000))[0]
-
-                    wav = wav[wav_idx]
-                    flam = flam[wav_idx]
-                    ferr = ferr[wav_idx]
-
-                    # ----- Set up args
-                    args_sn = [wav, flam, ferr]
-
-                    print("logpost at starting position for SN:")
-                    print(logpost_sn(rsn_init, wav, flam, ferr))
-                    print("Starting position:", rsn_init)
-
-                    # ----- Now run emcee on SN
+                    # Check if file exists and continue if all okay
                     snstr = str(segid) + '_' + img_suffix + exptime
                     emcee_savefile = results_dir + 'emcee_sampler_sn' + snstr + '.h5'
 
-                    if replace:
+                    if snr < 3.0:
                         if os.path.isfile(emcee_savefile):
                             os.remove(emcee_savefile)
+                            print('Removed:', os.path.basename(emcee_savefile))
+                        continue
+                        #if (smoothed_snr > 2 * snr) and (smoothed_snr > 3.0):
+                        #    #fitsmooth = True
+                        #    #flam = sf
+                        #    #ferr /= np.sqrt(smoothing_width_pix)
+                        #    #print(f'{bcolors.HEADER}', "------> Fitting smoothed spectrum.", f'{bcolors.ENDC}')
+                        #    replace = True
+                        #else:
+                        #    continue
+
+                    #if replace:
+                    #    if os.path.isfile(emcee_savefile):
+                    #        os.remove(emcee_savefile)
 
                     if not os.path.isfile(emcee_savefile):
 
+                        # ----- Get optimal starting position
+                        # Fix the crazy flam and ferr values before getting optimal pos
+                        #snr_array = flam / ferr
+                        #nan_idx = np.where(np.isnan(snr_array))[0]
+
+                        z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
+                        rsn_init = np.array([z_prior, phase_prior, av_prior])
+                        # redshift, day relative to peak, and dust extinction
+
+                        #rsn_init = np.array([1.18, 0, 0.5])
+
+                        """
+                        #z_smooth, phase_smooth, av_smooth = get_optimal_position(wav, sf, ferr/np.sqrt(smoothing_width_pix))
+
+                        fig = plt.figure(figsize=(9,4))
+                        ax = fig.add_subplot(111)
+
+                        ax.plot(wav, flam, color='k', lw=1.5, zorder=1)
+                        ax.fill_between(wav, flam - ferr, flam + ferr, 
+                            color='gray', alpha=0.5, zorder=1)
+                        ax.plot(wav, sf, color='firebrick', lw=3.0, zorder=3.0)
+
+                        tm = model_sn(wav, template_inputs[0], template_inputs[1], template_inputs[2])
+                        ta = get_y_alpha(tm, flam, ferr)
+                        ax.plot(wav, ta, color='dodgerblue', lw=2.0, zorder=5)
+
+                        print('Start for unsmoothed spec:', z_prior, phase_prior, av_prior)
+                        print('Start for smoothed spec:', z_smooth, phase_smooth, av_smooth)
+
+                        #ax.set_xlim(8000, 17500)
+                        #ax.set_ylim(1e-19, 3e-18)
+
+                        plt.show()
+                        sys.exit(0)
+                        """
+
+                        # generating ball of walkers about optimal position defined above
+                        pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
+
+                        for i in range(nwalkers):
+
+                            # ---------- For SN
+                            rsn0 = float(rsn_init[0] + jump_size_z * np.random.normal(size=1))
+                            rsn1 = int(rsn_init[1] + jump_size_day * np.random.normal(size=1))
+                            rsn2 = float(rsn_init[2] + jump_size_av * np.random.normal(size=1))
+
+                            rsn = np.array([rsn0, rsn1, rsn2])
+
+                            pos_sn[i] = rsn
+
+                        # ----- Clip data at the ends
+                        wav_idx = np.where((wav > 7800) & (wav < 18000))[0]
+
+                        wav = wav[wav_idx]
+                        flam = flam[wav_idx]
+                        ferr = ferr[wav_idx]
+
+                        # ----- Set up args
+                        args_sn = [wav, flam, ferr]
+
+                        print("logpost at starting position for SN:")
+                        print(logpost_sn(rsn_init, wav, flam, ferr))
+                        print("Starting position:", rsn_init)
+
+                        # ----- Now run emcee on SN
                         backend = emcee.backends.HDFBackend(emcee_savefile)
                         backend.reset(nwalkers, ndim_sn)
                             
@@ -528,8 +531,6 @@ def main():
                                 ndim_sn, args_sn, label_list_sn, truth_dict, results_dir)
 
                         print("Finished plotting results.")
-
-                    sys.exit(0)
 
                 # --------------- close all open fits files
                 ext_hdu.close()

@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import default_rng
 from astropy.io import fits
 
 from astropy.cosmology import FlatLambdaCDM
@@ -142,8 +143,9 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     # Apply dust extinction
     # Apply Calzetti dust extinction depending on av value chosen
     if not chosen_av:
-        av_arr = np.arange(0.0, 2.0, 0.001)  # in mags
-        chosen_av = np.random.choice(av_arr)
+        rng = default_rng()
+        chosen_av = rng.exponential()
+        if chosen_av > 3.0: chosen_av = 3.0
 
     sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
 
@@ -151,10 +153,11 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     sn_wav_z, sn_flux = apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
 
     # Save individual spectrum file if it doesn't already exist
-    sn_spec_path = roman_sims_seds + "salt2_spec_day" + str(day_chosen) + \
-    "_z" + "{:.3f}".format(redshift).replace('.', 'p') + \
-    "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') + \
-    ".txt"
+    sn_spec_path = roman_sims_seds \
+                   + "salt2_spec_day" + str(day_chosen) \
+                   + "_z" + "{:.3f}".format(redshift).replace('.', 'p') \
+                   + "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') \
+                   + ".txt"
 
     if not os.path.isfile(sn_spec_path):
 
