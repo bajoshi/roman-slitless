@@ -59,7 +59,7 @@ def read_numsn(sedlst):
 
 total_sne1 = 0
 num_sn_list = []
-for i in range(3):
+for i in range(18):
     s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(i+1) + '.lst'
     n = read_numsn(s)
     print(s, ' has ', n, 'SNe.')
@@ -84,7 +84,7 @@ cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
 sextractor_mags = []
 inserted_mags = []
 
-for i in range(3):
+for i in range(18):
 
     # Read catalog
     cat_filename = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' + pt + '_' + str(i+1) + '_SNadded.cat'
@@ -175,7 +175,7 @@ if plot_filt:
 # spec thru filt
 mdiff = []
 
-for d in range(3):
+for d in range(18):
 
     # Read sedlst
     s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(d+1) + '.lst'
@@ -254,7 +254,7 @@ all_sn_z = []
 
 total_sne2 = 0
 
-for i in range(3):
+for i in range(18):
 
     # ------ Read the SED lst and the corresponding SExtractor catalog
     # Set filenames
@@ -298,8 +298,8 @@ ax.set_xlabel('Inserted SN z', fontsize=14)
 ax.set_ylabel('Distance modulus', fontsize=14)
 
 # Plot dist mod vs z
-absmag = -18.4  # in Y band # from Dhawan et al 2015
-dist_mod = np.asarray(all_sn_mags) - absmag
+absmag = -19.5  # in B band
+dist_mod = np.asarray(all_sn_mags) - absmag# + Kcor
 
 ax.scatter(all_sn_z, dist_mod, s=15, color='k')
 
@@ -309,6 +309,45 @@ axt.scatter(all_sn_z, all_sn_mags, s=3, color='r')
 axt.set_ylabel('Inserted SN AB mag in F106', fontsize=14)
 
 fig.savefig(extdir + 'test_sn_insert_mag_z.pdf', dpi=200, bbox_inches='tight')
+
+fig.clear()
+plt.close(fig)
+
+# ------------------------------------
+# TEST 5:
+all_sn_av = []
+
+for i in range(18):
+
+    # ------ Read the SED lst and the corresponding SExtractor catalog
+    # Set filenames
+    sed_filename = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(i+1) + '.lst'
+    cat_filename = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' + pt + '_' + str(i+1) + '_SNadded.cat'
+
+    # Read in the files
+    sed = np.genfromtxt(sed_filename, dtype=None, 
+        names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
+    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+
+    assert len(sed) == len(cat)
+
+    # ----- Now get each SN mag and z
+    for j in range(len(sed)):
+        pth = sed['sed_path'][j]
+        if 'salt' in pth:
+            salt_pth = pth.split('/')[-1].split('_')
+            av = salt_pth[4][2:].replace('.txt','')
+            av = float(av.replace('p', '.'))
+
+            all_sn_av.append(av)
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.hist(all_sn_av, 30, color='k', histtype='step')
+fig.savefig(extdir + 'test_sn_insert_av.pdf', dpi=200, bbox_inches='tight')
+
+fig.clear()
+plt.close(fig)
 
 print('Testing finished.')
 

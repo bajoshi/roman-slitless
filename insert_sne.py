@@ -79,6 +79,7 @@ def main():
     img_basename = '5deg_'
     ref_mag = 15.9180
     ref_flux = 13753.24  # read in mag and counts from SExtractor catalog on dir img
+    ref_segid = 630
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
 
@@ -89,7 +90,7 @@ def main():
     dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
 
     # Mag limits for choosing random SN mag
-    lowmag = 19.0
+    lowmag = 20.0
     highmag = 25.0
 
     # ---------------
@@ -105,7 +106,7 @@ def main():
     # ---------------
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 4, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):

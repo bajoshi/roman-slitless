@@ -144,7 +144,11 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     # Apply Calzetti dust extinction depending on av value chosen
     if not chosen_av:
         rng = default_rng()
-        chosen_av = rng.exponential()
+        chosen_av = rng.exponential(0.5)
+        # the argument above is the scaling factor for the exponential
+        # see: https://numpy.org/doc/stable/reference/random/generated/numpy.random.exponential.html
+        # higher beta values give "flatter" exponentials
+        # I want a fairly steep exponential decline toward high Av values
         if chosen_av > 3.0: chosen_av = 3.0
 
     sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
@@ -466,7 +470,7 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 4, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -489,14 +493,6 @@ def gen_sed_lst():
             'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
             tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + \
                 sed_filename + f"{bcolors.ENDC}")
-
-            # Check if the file exists 
-            #if os.path.isfile(sed_filename):
-            #    # Now check that it isn't empty
-            #    sed_filesize = os.stat(sed_filename).st_size / 1000  # KB
-            #    if sed_filesize > 30:  
-            #        # I chose this limit after looking at file sizes by eye
-            #        continue
 
             fh = open(sed_filename, 'w')
 
@@ -624,6 +620,7 @@ def gen_sed_lst():
 
             assigned_sne = []
             assigned_gal = []
+            assigned_z   = []
 
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
@@ -670,18 +667,18 @@ def gen_sed_lst():
                         fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
                         assigned_gal.append(current_sextractor_id)
+                        assigned_z.append(z_nomatch_gal)
                         continue
 
                     else:
-                        tqdm.write(f'{bcolors.CYAN}')
-                        tqdm.write("Assigning random redshift to added fake SN.")
-                        tqdm.write(f'{bcolors.ENDC}')
+                        tqdm.write(f'{bcolors.CYAN}' + 'Assigning random redshift to added fake SN.' + f'{bcolors.ENDC}')
                         # SN z must be consistent with cosmological dimming
                         z_nomatch_sn = get_sn_z(cat['MAG_AUTO'][i])
                         sn_spec_path = get_sn_spec_path(z_nomatch_sn)
                         fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
 
                         assigned_sne.append(current_sextractor_id)
+                        assigned_z.append(z_nomatch_sn)
                         continue
 
                 id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
@@ -714,6 +711,7 @@ def gen_sed_lst():
                         fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
                         assigned_gal.append(current_sextractor_id)
+                        assigned_z.append(z)
                         continue
 
                     snid = cat['NUMBER'][sn_idx]
@@ -728,6 +726,7 @@ def gen_sed_lst():
                         tqdm.write("SN mag: " + str(cat['MAG_AUTO'][sn_idx]))
 
                         assigned_sne.append(current_sextractor_id)
+                        assigned_z.append(z_sn)
                         
                     elif snid != current_sextractor_id:
                         sn_spec_path = get_sn_spec_path(z_sn)
@@ -738,6 +737,7 @@ def gen_sed_lst():
 
                         assigned_sne.append(snid)
                         assigned_gal.append(current_sextractor_id)
+                        assigned_z.append(z_sn)
 
                         tqdm.write("SN SExtractor ID: " + str(snid))
                         tqdm.write("HOST SExtractor ID: " + str(current_sextractor_id))
@@ -749,10 +749,11 @@ def gen_sed_lst():
                     fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
 
                     assigned_gal.append(current_sextractor_id)
+                    assigned_z.append(z)
 
             fh.close()
 
-            # Assert that each object got a spectrum
+            # ----- Assert that each object got a spectrum
             sedlst = np.genfromtxt(sed_filename, dtype=None, 
                 names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
             try:
@@ -768,6 +769,14 @@ def gen_sed_lst():
                 print(np.intersect1d(assigned_sne, assigned_gal))
 
                 tqdm.write(f'{bcolors.ENDC}')
+
+            # ----- Ensure that all inserted magnitudes and redshifts are 
+            # cosmologically consistent.
+            #fig = plt.figure()
+            #ax = fig.add_subplot(111)
+            #ax.scatter(assigned_z, cat['MAG_AUTO'], s=5, color='k')
+            #plt.show()
+            #sys.exit(0)
 
     return None
 
