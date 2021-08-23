@@ -90,7 +90,7 @@ def main():
     dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
 
     # Mag limits for choosing random SN mag
-    lowmag = 20.0
+    lowmag = 21.0
     highmag = 25.0
 
     # ---------------
@@ -158,7 +158,7 @@ def main():
                 # Hack because Sextractor for some reason assigns 
                 # fainter mags to these SNe # by about ~0.1 to 0.3 mag
                 # depending on the inserted magnitude.
-                snmag_eff = snmag - 0.15
+                snmag_eff = snmag - 0.3
                 # I think this problem is because when SExtractor is 
                 # run again on the SNadded images the flux is summed 
                 # within a smaller area NOT the whole cutout area (like

@@ -316,7 +316,7 @@ def gen_img_suffixes():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 4, 1)
+    detectors = np.arange(1, 19, 1)
 
     img_filt = 'Y106_'
 

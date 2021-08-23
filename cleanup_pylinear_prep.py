@@ -1,5 +1,7 @@
 import os
 import glob
+import socket
+import sys
 
 # -----------------
 if 'plffsn2' in socket.gethostname():
@@ -32,19 +34,26 @@ if __name__ == '__main__':
     # 2. Remove all sed txt files
     # 3. Remove all segmap, SNadded, npy, reg, and cat files
     # --- except the segmap and cat for the reference img: 5deg_Y106_0_6
-    
+
+    dir_img_part = 'part1'
+    img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+
     # ---- LST files
+    print('Working on deleting LST files.')
     for fl in glob.glob(pylinear_lst_dir + '*.lst'):
         os.remove(fl)
 
     # ---- SED txt files
+    print('Working on deleting sed txt files.')
     for fl in glob.glob(roman_sims_seds + '*.txt'):
         os.remove(fl)
 
     # ---- Files associated with SN insertion and SExtractor
     flext = ['_segmap.fits', '_SNadded.fits', '.npy', '.reg', '.cat']
-    for fl in glob.glob(roman_direct_dir + '*' + flext):
-        os.remove(fl)
+    for ext in flext:
+        print('Working on deleting:', ext)
+        for fl in glob.glob(img_sim_dir + '*' + ext):
+            os.remove(fl)
 
     print('Finished cleanup.')
 
