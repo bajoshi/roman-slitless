@@ -33,7 +33,8 @@ if __name__ == '__main__':
     # 1. Remove lst files
     # 2. Remove all sed txt files
     # 3. Remove all segmap, SNadded, npy, reg, and cat files
-    # --- except the segmap and cat for the reference img: 5deg_Y106_0_6
+    # --- the segmap and cat for the reference img: 5deg_Y106_0_6
+    # have been moved one level up to avoid deleting them.
 
     dir_img_part = 'part1'
     img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'

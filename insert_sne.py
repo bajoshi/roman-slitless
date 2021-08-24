@@ -45,7 +45,7 @@ def gen_reference_cutout():
     xloc = 2512
     yloc = 2268
 
-    dir_img_name = img_sim_dir + img_basename + img_suffix + '_forref.fits'
+    dir_img_name = roman_direct_dir + img_basename + img_suffix + '_forref.fits'
     dir_hdu = fits.open(dir_img_name)
     img_arr = dir_hdu[0].data
 
@@ -82,6 +82,13 @@ def main():
     ref_segid = 630
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
+
+    # Read the reference segmap and find the pixels 
+    # associated with reference point source
+    #ref_segmap_name = roman_direct_dir + '5deg_Y106_0_6_forref_segmap.fits'
+    #segmap = fits.open(ref_segmap_name)
+    #segmap_data = segmap[0].data
+    #ref_idx = np.where(segmap_data == ref_segid)
 
     # Scaling factor for direct images
     # The difference here that appears in the power of 10

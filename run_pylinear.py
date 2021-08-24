@@ -74,71 +74,31 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     return ra_list, dec_list
 
 def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
-    simroot, ra_cen, dec_cen, disp_elem, exptime_list, nobs_list, dithering=False):
+    simroot, ra_cen, dec_cen, disp_elem, exptime_list):
 
     # Format the ra dec
     ra_cen_fmt = "{:.7f}".format(ra_cen)
     dec_cen_fmt = "{:.7f}".format(dec_cen)
 
-    if dithering:
+    # Write list
+    wcs_filename = 'wcs_' + img_suffix + '.lst'
+        
+    with open(lst_dir + wcs_filename, 'w') as fh:
+        fh.write("# TELESCOPE = Roman" + "\n")
+        fh.write("# INSTRUMENT = WFI" + "\n")
+        fh.write("# DETECTOR = WFI" + "\n")
+        fh.write("# GRISM = " + disp_elem + "\n")
+        fh.write("# BLOCKING = " + "\n")
 
-        # Generate all dither positions based on exptime
-        for e in range(len(exptime_list)):
-            nobs = nobs_list[e]
-            #print("EXPTIME and NOBS:", exptime_list[e], nobs)
-            ra_list, dec_list = get_dithered_locations(ra_cen, dec_cen, nobs)
+        for r in range(len(roll_angle_list)):
 
-            #print("RA dithered list :", ra_list)
-            #print("DEC dithered list:", dec_list)
-            #print("--------")
+            roll_angle = "{:.1f}".format(roll_angle_list[r])
 
-            # Write list
-            wcs_filename = 'wcs_' + img_suffix + '_' + str(exptime_list[e]) + 's.lst'
-
-            with open(lst_dir + wcs_filename, 'w') as fh:
-                fh.write("# TELESCOPE = Roman" + "\n")
-                fh.write("# INSTRUMENT = WFI" + "\n")
-                fh.write("# DETECTOR = WFI" + "\n")
-                fh.write("# GRISM = " + disp_elem + "\n")
-                fh.write("# BLOCKING = " + "\n")
-
-                for r in range(len(roll_angle_list)):
-
-                    for d in range(nobs):
-
-                        roll_angle = "{:.1f}".format(roll_angle_list[r])
-                        ra = "{:.7f}".format(ra_list[d])
-                        dec = "{:.7f}".format(dec_list[d])
-
-                        ditherstr = 'd' + str(d)
-
-                        str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
-                        '_' + ditherstr + '  ' + \
-                        ra + '  ' + dec + '  ' + roll_angle + '  ' + disp_elem
-                    
-                        fh.write(str_to_write)
-
-    else:
-
-        # Write list
-        wcs_filename = 'wcs_' + img_suffix + '.lst'
+            str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
+            '  ' + ra_cen_fmt + '  ' + dec_cen_fmt + \
+            '  ' + roll_angle + '  ' + disp_elem
             
-        with open(lst_dir + wcs_filename, 'w') as fh:
-            fh.write("# TELESCOPE = Roman" + "\n")
-            fh.write("# INSTRUMENT = WFI" + "\n")
-            fh.write("# DETECTOR = WFI" + "\n")
-            fh.write("# GRISM = " + disp_elem + "\n")
-            fh.write("# BLOCKING = " + "\n")
-
-            for r in range(len(roll_angle_list)):
-
-                roll_angle = "{:.1f}".format(roll_angle_list[r])
-
-                str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
-                '  ' + ra_cen_fmt + '  ' + dec_cen_fmt + \
-                '  ' + roll_angle + '  ' + disp_elem
-                
-                fh.write(str_to_write)
+            fh.write(str_to_write)
 
     print("Written WCS LST:", wcs_filename)
 
@@ -202,51 +162,27 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
     return None
 
 def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
-    nobs_list, machine, roll_angle_list, dithering=False):
+    machine, roll_angle_list):
 
     # There is a unique flt lst for each exptime
     # Also unique to machine and direct image
     # Loop over all exptimes
-    if dithering:
 
-        for t in range(len(exptime_list)):
+    for t in range(len(exptime_list)):
 
-            e = exptime_list[t]
-            nobs = nobs_list[t]
+        e = exptime_list[t]
 
-            dithertime = int(e / nobs)
+        for num_coadds in range(3,8):
 
             # Assign name and write list
-            flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
+            flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's_' + \
+                           str(num_coadds) + 'coadds' + machine + '.lst'
 
             with open(lst_dir + flt_filename, 'w') as fh:
                 fh.write("# Path to each flt image" + "\n")
                 fh.write("# This has to be a simulated or observed dispersed image" + "\n")
 
-                for r in range(len(roll_angle_list)):
-
-                    for d in range(nobs):
-
-                        ditherstr = 'd' + str(d)
-
-                        str_to_write = "\n" + result_path + simroot + str(r+1) + '_' + \
-                        img_suffix + '_' + ditherstr + '_' + str(dithertime) + 's_flt.fits'
-
-                        fh.write(str_to_write)
-
-            print("Written FLT LST:", flt_filename)
-
-    else:
-
-        for t in range(len(exptime_list)):
-
-            e = exptime_list[t]
-            # Assign name and write list
-            flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
-
-            with open(lst_dir + flt_filename, 'w') as fh:
-                fh.write("# Path to each flt image" + "\n")
-                fh.write("# This has to be a simulated or observed dispersed image" + "\n")
+                roll_count = 0
 
                 for r in range(len(roll_angle_list)):
 
@@ -255,13 +191,17 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
                     fh.write(str_to_write)
 
+                    roll_count += 1
+
+                    if roll_count == num_coadds: break
+
             print("Written FLT LST:", flt_filename)
 
     return None
 
 def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
     dir_img_path, dir_img_filt, dir_img_name, seds_path, result_path, \
-    exptime_list, nobs_list, simroot, disp_elem):
+    exptime_list, simroot, disp_elem):
     """
     This function creates the lst files needed as pylinear inputs.
     It requires the following args --
@@ -301,11 +241,11 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, \
 
     # WCS LST
     create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
-        simroot, ra_cen, dec_cen, disp_elem, exptime_list, nobs_list)
+        simroot, ra_cen, dec_cen, disp_elem, exptime_list)
 
     # FLT LST
     create_flt_lst(lst_dir, result_path, simroot, img_suffix, 
-        exptime_list, nobs_list, machine, roll_angle_list)
+        exptime_list, machine, roll_angle_list)
 
     # SED LST
     create_sed_lst(lst_dir, seds_path, img_suffix, machine)
@@ -416,9 +356,8 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [1500, 6000]
-    nobs_list = [2, 3, 4]  # no of dithers
-    roll_angle_list = [0.0, 10.0, 20.0]
+    exptime_list = [1200, 3600, 900]
+    roll_angle_list = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
     disp_elem = 'P127'
@@ -448,10 +387,10 @@ def main():
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
-        #create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, \
-        #    img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
-        #    exptime_list, nobs_list, simroot, disp_elem)
-        #sys.exit(0)
+        create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, 
+            img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, 
+            exptime_list, simroot, disp_elem)
+        sys.exit(0)
 
         # ---------------------- 
         # Now check that there are SNe planted in this image since
@@ -460,14 +399,10 @@ def main():
         # SNe in them.
         num_truth_sn = get_truth_sn(roman_direct_dir, img_suffix)
         logger.info("Number of SN (from orig truth) in image: " + str(num_truth_sn))
-        #if num_truth_sn < 1:
-        #    logger.info("Skipping image due to no SNe.")
-        #    sim_count += 1
-        #    continue
 
-        create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, \
-            img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, \
-            exptime_list, nobs_list, simroot, disp_elem)
+        create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, 
+            img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, 
+            exptime_list, simroot, disp_elem)
 
         # Change directory to where the simulation results will go
         # This MUST be done after creating lst files otherwise
@@ -548,8 +483,6 @@ def main():
             read /= npix
     
             exptime = exptime_list[e]  # seconds
-            #nobs = nobs_list[e]
-            #dithertime = int(exptime / nobs)
             
             for i in range(len(roll_angle_list)):
 
@@ -626,42 +559,45 @@ def main():
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
 
             # ---------------------- Extraction
-            fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
-                     str(exptime) + 's' + obsstr + '.lst'
-            assert os.path.isfile(fltlst)
-            logger.info("FLT LST:" + fltlst)
-    
-            grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-            tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
-            tabnames = tabulate.run(grisms, sources, beam)
-    
-            extraction_parameters = grisms.get_default_extraction()
+            for num_coadds in range(3,8):
 
-            # Reset dlamb for the prism
-            # Hack for now. This should be hardcoded to 50 in the xml file.
-            if disp_elem == 'P127':
-                extraction_parameters['dlamb'] = 30.0
+                fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
+                         str(exptime) + 's_' + str(num_coadds) + 'coadds' + obsstr + '.lst'
+
+                assert os.path.isfile(fltlst)
+                logger.info("FLT LST:" + fltlst)
     
-            extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
-            logger.info(extpar_fmt.format(**extraction_parameters))
+                grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+                tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
+                tabnames = tabulate.run(grisms, sources, beam)
     
-            # Set extraction params
-            sources.update_extraction_parameters(**extraction_parameters)
-            method = 'golden'  # golden, grid, or single
-            extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
-            logdamp = [-6, -1, 0.1]
+                extraction_parameters = grisms.get_default_extraction()
+
+                # Reset dlamb for the prism
+                # Hack for now. This should be hardcoded to 50 in the xml file.
+                if disp_elem == 'P127':
+                    extraction_parameters['dlamb'] = 30.0
     
-            logger.info("Extracting...")
-            pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
-                method, extroot, tablespath, 
-                inverter='lsqr', ncpu=1, group=False)
+                extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
+                logger.info(extpar_fmt.format(**extraction_parameters))
     
-            logger.info("Simulation and extraction done.")
-            try:
-                te = time.time() - ts
-                logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
-            except NameError:
-                logger.info("Finished at: " + dt.datetime.now())
+                # Set extraction params
+                sources.update_extraction_parameters(**extraction_parameters)
+                method = 'golden'  # golden, grid, or single
+                extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
+                logdamp = [-6, -1, 0.1]
+    
+                logger.info("Extracting...")
+                pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
+                    method, extroot, tablespath, 
+                    inverter='lsqr', ncpu=1, group=False)
+
+                try:
+                    te = time.time() - ts
+                    logger.info("Finished extraction for " + str(num_coadds) + " coadds.")
+                    logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
+                except NameError:
+                    logger.info("Finished at: " + dt.datetime.now())
 
         # ---------------------- Remove matrices, tables, and *_res.fits.gz files to save space
         # MATRICES

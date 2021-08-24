@@ -158,8 +158,8 @@ def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
 # Read in the F105W filter throughput
 filt = np.genfromtxt(fitting_utils + 'F105W_IR_throughput.csv', \
                      delimiter=',', dtype=None, names=True, encoding='ascii', usecols=(1,2))
-plot_filt = True
-plot_magdiff = True
+plot_filt = False
+plot_magdiff = False
 if plot_filt:
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -175,7 +175,7 @@ if plot_filt:
 # spec thru filt
 mdiff = []
 
-for d in range(18):
+for d in range(7,18):
 
     # Read sedlst
     s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(d+1) + '.lst'
