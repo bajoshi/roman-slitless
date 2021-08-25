@@ -57,7 +57,7 @@ import proper_and_lum_dist as cosmo
 import dust_utils as du
 
 # Read in SALT2 SN IA file  from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
+salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", 
     dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
 
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')

@@ -8,7 +8,7 @@ import sys
 home = os.getenv('HOME')
 pylinear_config_roman_dir = home + '/Documents/pylinear_ref_files/pylinear_config/Roman/'
 
-def save_thru_curve_to_fits(wav, sens, err, disperser, order=1):
+def save_thru_curve_to_fits(wav, sens, err, disperser, savedir, order=1):
 
     col1 = fits.Column(name='Wavelength', format='E', array=wav)
     col2 = fits.Column(name='Sensitivity', format='E', array=sens)
@@ -21,7 +21,7 @@ def save_thru_curve_to_fits(wav, sens, err, disperser, order=1):
     hdul = fits.HDUList(p)
     hdul.append(thdu)
         
-    hdul.writeto(pylinear_config_roman_dir + 'Roman_' + disperser + '_' + str(order) + '_throughput_20190325.fits', overwrite=True)
+    hdul.writeto(savedir + 'Roman_' + disperser + '_' + str(order) + '_throughput_20190325.fits', overwrite=True)
 
     return None
 
@@ -40,7 +40,7 @@ def main():
     print("Prism trans:")
     print(tp)
 
-    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), 'p120')
+    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), pylinear_config_roman_dir, 'p120')
 
     sys.exit()
 
