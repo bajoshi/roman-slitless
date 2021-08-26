@@ -130,6 +130,7 @@ fig.clear()
 plt.close(fig)
 
 # ------------------------------------
+"""
 # TEST 3:
 # This test is for ALL objects (galaxies included).
 # This will test if the spectrum passed to pylinear when
@@ -175,7 +176,7 @@ if plot_filt:
 # spec thru filt
 mdiff = []
 
-for d in range(7,18):
+for d in range(18):
 
     # Read sedlst
     s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(d+1) + '.lst'
@@ -243,7 +244,7 @@ if plot_magdiff:
     fig.savefig(extdir + 'sextractor_and_pylinear_magdiff.pdf', dpi=200, bbox_inches='tight')
     fig.clear()
     plt.close(fig)
-
+"""
 # ------------------------------------
 # TEST 4:
 # Make sure that the inserted SNe follow cosmological dimming
