@@ -474,13 +474,12 @@ def main():
             # check Russell's notes in pylinear notebooks
             # also check WFIRST tech report TR1901
             # Also see file from Rick Kessler which came from Jeff Kruk
+            # in folder sensitivity_files in external drive
             sky  = 1.1     # e/s/pix  # zodi + thermal + sky
             npix = 4096 * 4096
-            #sky /= npix    # e/s/pix
     
             dark = 0.005   # e/s/pix
             read = 5.61    # electrons per pixel
-            #read /= npix
     
             exptime = exptime_list[e]  # seconds
             
@@ -593,8 +592,6 @@ def main():
                 logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
             except NameError:
                 logger.info("Finished.")
-
-            sys.exit(0)
 
         # ---------------------- Remove matrices, tables, and *_res.fits.gz files to save space
         # MATRICES

@@ -38,14 +38,14 @@ ax.set_ylabel('Sensitivity', fontsize=15)
 ax.plot(g102_wav, g102_sen, '--', color='blue', label='HST WFC3/G102, +1 order')
 ax.plot(g141_wav, g141_sen, '--', color='crimson', label='HST WFC3/G141, +1 order')
 
-ax.plot(g150_wav, g150_sen, color='purple', label='Roman grism, +1 order')
+#ax.plot(g150_wav, g150_sen, color='purple', label='Roman grism, +1 order')
 ax.plot(p127_wav, p127_sen, color='dodgerblue', label='Roman prism')
 
 ax.legend(loc=0, fontsize=12, frameon=False)
 
 ax.set_xlim(7000, 20500)
 ax.set_yscale('log')
-ax.set_ylim(7e14, 3e17)
+ax.set_ylim(7e14, 5e17)
 
 fig.savefig('figures/hst_roman_sensitivities.pdf', dpi=200, bbox_inches='tight')
 
