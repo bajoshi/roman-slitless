@@ -92,8 +92,8 @@ def drizzle(beamconf, xd, yd, wav, band, pixfrac=1.0):
     
     print('Grism image coords:')
     print(xg)
-    print(yg)
-    print(xg.shape, yg.shape)
+    #print(yg)
+    #print(xg.shape, yg.shape)
 
     # apply clipping
     xg = np.clip(xg, 0, beamconf.naxis[0])
@@ -130,8 +130,10 @@ def drizzle(beamconf, xd, yd, wav, band, pixfrac=1.0):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(np.arange(len(area)), area, lw=0.2)
+    ax.plot(np.arange(len(area)), area, lw=0.4)
     fig.savefig(testdir + 'pix_area_clip.pdf')
+
+    sys.exit(0)
 
     i0 = indices[0:-1]
     i1 = indices[1:]

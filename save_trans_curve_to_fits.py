@@ -21,7 +21,8 @@ def save_thru_curve_to_fits(wav, sens, err, disperser, savedir, order=1):
     hdul = fits.HDUList(p)
     hdul.append(thdu)
         
-    hdul.writeto(savedir + 'Roman_' + disperser + '_' + str(order) + '_throughput_20190325.fits', overwrite=True)
+    hdul.writeto(savedir + 'Roman_' + disperser + '_' + str(order) + '_throughput_20190325.fits', 
+        overwrite=True)
 
     return None
 
@@ -31,28 +32,28 @@ def main():
     dtype=None, names=True, skip_header=3)
 
     print("[Warning] Check conversion to sensitivity.")
-    senslimit = 1e16
+    senslimit = 2e17
     
     # ---------------- Prism ---------------- #
     wp = rt['Wave'] * 1e4  # convert to angstroms from microns
-    tp = rt['SNPrism'] * senslimit  # THIS CONVERSION TO SENSITIVITY NEEDS TO BE CHECKED
+    tp = rt['SNPrism'] * senslimit
 
     print("Prism trans:")
     print(tp)
 
-    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), pylinear_config_roman_dir, 'p120')
+    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), 'p127', pylinear_config_roman_dir)
 
     sys.exit()
 
     # ---------------- Grism 1st ---------------- #
     w1 = rt['Wave'] * 1e4  # convert to angstroms from microns
-    t1 = rt['BAOGrism_1st'] * senslimit  # THIS CONVERSION TO SENSITIVITY NEEDS TO BE CHECKED
+    t1 = rt['BAOGrism_1st'] * senslimit
 
     save_thru_curve_to_fits(w1, t1, np.zeros(len(t1)), 'g150', order=1)
 
     # ---------------- Grism 0th ---------------- #
     w0 = rt['Wave'] * 1e4  # convert to angstroms from microns
-    t0 = rt['BAOGrism_0th'] * senslimit  # THIS CONVERSION TO SENSITIVITY NEEDS TO BE CHECKED
+    t0 = rt['BAOGrism_0th'] * senslimit
 
     save_thru_curve_to_fits(w0, t0, np.zeros(len(t0)), 'g150', order=0)
     

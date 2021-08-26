@@ -195,7 +195,7 @@ if __name__ == '__main__':
         print('1  ' + sed_path, file=fs)
 
     # --------
-    sens_arr = 1e16 * np.array([1, 5, 10])
+    sens_arr = 1e16 * np.array([20, 1, 5, 10])
     print('\nWill test the following sensitivities:', sens_arr)
 
     # -------- Run the test for the above set of sensitivities
@@ -295,10 +295,9 @@ if __name__ == '__main__':
         ax = fig.add_subplot(111)
         ax.plot(wav, flam, color='k')
         ax.plot(sim_spec['wav'], sim_spec['flam'], color='r')
-        plt.show()
-
-        sys.exit(0)
-
+        ax.set_xlim(7400, 18200)
+        fig.savefig(savedir + 'spec_' + '{:.1e}'.format(senslimit) + '.pdf', 
+            dpi=200, bbox_inches='tight')
 
 
 

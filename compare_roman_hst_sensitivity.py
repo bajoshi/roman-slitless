@@ -44,6 +44,8 @@ ax.plot(p127_wav, p127_sen, color='dodgerblue', label='Roman prism')
 ax.legend(loc=0, fontsize=12, frameon=False)
 
 ax.set_xlim(7000, 20500)
+ax.set_yscale('log')
+ax.set_ylim(7e14, 3e17)
 
 fig.savefig('figures/hst_roman_sensitivities.pdf', dpi=200, bbox_inches='tight')
 
