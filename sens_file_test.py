@@ -35,6 +35,11 @@ for i, mag in enumerate(mags):
     ax.plot(wav, sens, label= 'AB = ' + str(mag))
 
 ax.legend(loc=0, fontsize=14)
+#plt.show()
 
-plt.show()
-
+# Ensure that every curve above is identical
+# Now save to a txt file
+with open(datadir + 'Roman_prism_sensitivity.txt', 'w') as fh:
+    fh.write('#  Wav  Sensitivity' + '\n')
+    for i in range(len(wav)):
+        fh.write('{:.3f}'.format(wav[i]) + '  ' + '{:.3e}'.format(sens[i]) + '\n')

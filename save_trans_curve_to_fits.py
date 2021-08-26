@@ -1,6 +1,7 @@
 from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import griddata
 
 import os
 import sys
@@ -31,14 +32,19 @@ def main():
     rt = np.genfromtxt(pylinear_config_roman_dir + 'roman_throughput_20190325.txt', \
     dtype=None, names=True, skip_header=3)
 
-    print("[Warning] Check conversion to sensitivity.")
-    senslimit = 2e17
+    # Read in sensitivity file
+    # See the code sens_file_test.py
+    sens = np.genfromtxt('/Volumes/Joshi_external_HDD/Roman/sensitivity_files/Roman_prism_sensitivity.txt', 
+        dtype=None, names=True, encoding='ascii')
     
     # ---------------- Prism ---------------- #
     wp = rt['Wave'] * 1e4  # convert to angstroms from microns
-    tp = rt['SNPrism'] * senslimit
 
-    print("Prism trans:")
+    sens_grid = griddata(points=sens['Wav'], values=sens['Sensitivity'], xi=wp, fill_value=0.0)
+
+    tp = rt['SNPrism'] * sens_grid
+
+    print("Prism sensitivity:")
     print(tp)
 
     save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), 'p127', pylinear_config_roman_dir)
