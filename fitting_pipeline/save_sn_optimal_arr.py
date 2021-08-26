@@ -45,7 +45,7 @@ print('Total models:', total_models)
 sn_lam = salt2_spec['lam'][salt2_spec['day'] == 0]
 
 # For clipping to prism wav grid
-x = np.arange(7500.0, 18030.0, 30.0)
+x = np.arange(7500.0, 18095.0, 65.0)
 
 # Empty array to write to
 allmods = []

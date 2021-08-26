@@ -391,6 +391,17 @@ def main():
                     template_name = os.path.basename(sedlst['sed_path'][segid_idx])
                     template_inputs = get_template_inputs(template_name)  # needed for plotting
 
+                    # This is get to faster results to show in 
+                    # the schematic figure, i.e., only fit the 
+                    # SNe in the redshift ranges you want.
+                    ztrue = template_inputs[0]
+                    proceed = False
+                    if (0.5 < ztrue < 0.6) or (0.9 < ztrue < 1.1) or (1.4 < ztrue < 1.6) or (1.9 < ztrue < 2.1):
+                        proceed = True
+
+                    if not proceed:
+                        continue
+
                     wav = ext_hdu[('SOURCE', segid)].data['wavelength']
                     flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
@@ -415,9 +426,9 @@ def main():
                     emcee_savefile = results_dir + 'emcee_sampler_sn' + snstr + '.h5'
 
                     if snr < 3.0:
-                        if os.path.isfile(emcee_savefile):
-                            os.remove(emcee_savefile)
-                            print('Removed:', os.path.basename(emcee_savefile))
+                        #if os.path.isfile(emcee_savefile):
+                        #    os.remove(emcee_savefile)
+                        #    print('Removed:', os.path.basename(emcee_savefile))
                         continue
                         #if (smoothed_snr > 2 * snr) and (smoothed_snr > 3.0):
                         #    #fitsmooth = True

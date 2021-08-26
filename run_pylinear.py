@@ -571,11 +571,6 @@ def main():
             tabnames = tabulate.run(grisms, sources, beam)
     
             extraction_parameters = grisms.get_default_extraction()
-
-            # Reset dlamb for the prism
-            # Hack for now. This should be hardcoded to 50 in the xml file.
-            #if disp_elem == 'P127':
-            #    extraction_parameters['dlamb'] = 30.0
     
             extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
             logger.info(extpar_fmt.format(**extraction_parameters))
