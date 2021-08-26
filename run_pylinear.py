@@ -473,13 +473,14 @@ def main():
             logger.info("Adding noise... ")
             # check Russell's notes in pylinear notebooks
             # also check WFIRST tech report TR1901
+            # Also see file from Rick Kessler which came from Jeff Kruk
             sky  = 1.1     # e/s/pix  # zodi + thermal + sky
             npix = 4096 * 4096
             #sky /= npix    # e/s/pix
     
-            dark = 0.015   # e/s/pix
-            read = 10.0    # electrons
-            read /= npix
+            dark = 0.005   # e/s/pix
+            read = 5.61    # electrons per pixel
+            #read /= npix
     
             exptime = exptime_list[e]  # seconds
             
