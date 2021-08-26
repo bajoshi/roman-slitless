@@ -172,30 +172,29 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
         e = exptime_list[t]
 
-        for num_coadds in range(3,8):
+        #for num_coadds in range(3,8):
 
-            # Assign name and write list
-            flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's_' + \
-                           str(num_coadds) + 'coadds' + machine + '.lst'
+        # Assign name and write list
+        flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
+                       #str(num_coadds) + 'coadds' + 
 
-            with open(lst_dir + flt_filename, 'w') as fh:
-                fh.write("# Path to each flt image" + "\n")
-                fh.write("# This has to be a simulated or observed dispersed image" + "\n")
+        with open(lst_dir + flt_filename, 'w') as fh:
+            fh.write("# Path to each flt image" + "\n")
+            fh.write("# This has to be a simulated or observed dispersed image" + "\n")
 
-                roll_count = 0
+            #roll_count = 0
 
-                for r in range(len(roll_angle_list)):
+            for r in range(len(roll_angle_list)):
 
-                    str_to_write = "\n" + result_path + simroot + str(r+1) + '_' + \
-                    img_suffix + '_' + str(e) + 's_flt.fits'
+                str_to_write = "\n" + result_path + simroot + str(r+1) + '_' + \
+                img_suffix + '_' + str(e) + 's_flt.fits'
 
-                    fh.write(str_to_write)
+                fh.write(str_to_write)
 
-                    roll_count += 1
+                #roll_count += 1
+                #if roll_count == num_coadds: break
 
-                    if roll_count == num_coadds: break
-
-            print("Written FLT LST:", flt_filename)
+        print("Written FLT LST:", flt_filename)
 
     return None
 
@@ -356,8 +355,8 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [3600, 900]
-    roll_angle_list = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
+    exptime_list = [6000, 1500]
+    roll_angle_list = [0.0, 5.0, 10.0] #, 15.0, 20.0, 25.0, 30.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
     disp_elem = 'P127'
@@ -387,10 +386,10 @@ def main():
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
-        create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, 
-            img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, 
-            exptime_list, simroot, disp_elem)
-        sys.exit(0)
+        #create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, roll_angle_list, 
+        #    img_sim_dir, dir_img_filt, dir_img_name, seds_path, result_path, 
+        #    exptime_list, simroot, disp_elem)
+        #sys.exit(0)
 
         # ---------------------- 
         # Now check that there are SNe planted in this image since
@@ -559,45 +558,45 @@ def main():
             logger.info("Time taken for simulation: " + "{:.2f}".format(ts - start) + " seconds.")
 
             # ---------------------- Extraction
-            for num_coadds in range(3,8):
+            #for num_coadds in range(3,8):
 
-                fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
-                         str(exptime) + 's_' + str(num_coadds) + 'coadds' + obsstr + '.lst'
+            fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
+                     str(exptime) + 's' + obsstr + '.lst' #+ str(num_coadds) + 'coadds' 
 
-                assert os.path.isfile(fltlst)
-                logger.info("FLT LST:" + fltlst)
+            assert os.path.isfile(fltlst)
+            logger.info("FLT LST:" + fltlst)
     
-                grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-                tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
-                tabnames = tabulate.run(grisms, sources, beam)
+            grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+            tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
+            tabnames = tabulate.run(grisms, sources, beam)
     
-                extraction_parameters = grisms.get_default_extraction()
+            extraction_parameters = grisms.get_default_extraction()
 
-                # Reset dlamb for the prism
-                # Hack for now. This should be hardcoded to 50 in the xml file.
-                if disp_elem == 'P127':
-                    extraction_parameters['dlamb'] = 30.0
+            # Reset dlamb for the prism
+            # Hack for now. This should be hardcoded to 50 in the xml file.
+            #if disp_elem == 'P127':
+            #    extraction_parameters['dlamb'] = 30.0
     
-                extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
-                logger.info(extpar_fmt.format(**extraction_parameters))
+            extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
+            logger.info(extpar_fmt.format(**extraction_parameters))
     
-                # Set extraction params
-                sources.update_extraction_parameters(**extraction_parameters)
-                method = 'golden'  # golden, grid, or single
-                extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
-                logdamp = [-6, -1, 0.1]
+            # Set extraction params
+            sources.update_extraction_parameters(**extraction_parameters)
+            method = 'golden'  # golden, grid, or single
+            extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
+            logdamp = [-6, -1, 0.1]
     
-                logger.info("Extracting...")
-                pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
-                    method, extroot, tablespath, 
-                    inverter='lsqr', ncpu=1, group=False)
+            logger.info("Extracting...")
+            pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
+                method, extroot, tablespath, 
+                inverter='lsqr', ncpu=1, group=False)
 
-                try:
-                    te = time.time() - ts
-                    logger.info("Finished extraction for " + str(num_coadds) + " coadds.")
-                    logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
-                except NameError:
-                    logger.info("Finished at: " + dt.datetime.now())
+            try:
+                te = time.time() - ts
+                logger.info("Finished extraction for " + str(num_coadds) + " coadds.")
+                logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
+            except NameError:
+                logger.info("Finished at: " + dt.datetime.now())
 
         # ---------------------- Remove matrices, tables, and *_res.fits.gz files to save space
         # MATRICES
