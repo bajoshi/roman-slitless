@@ -29,7 +29,8 @@ create_reqs_for_smalltest function
 
 # To run the script for a small number of sources
 # Change the following in here to the correct paths and names:
-# 1. basic_testdir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/small_num_sources_test'
+# 1. basic_testdir = 
+# '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/small_num_sources_test'
 # 2. segfile = basic_testdir + '5deg_Y106_0_1_cps_segmap_small.fits'
 # 3. sedlst = basic_testdir + 'sed_small.lst'
 # 4. obs, wcs, and flt lists can stay the same.
@@ -102,8 +103,8 @@ def create_sedlst():
 
     cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', \
     'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
-    cat = np.genfromtxt('/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/5deg_Y106_0_1_cps.cat', \
-    dtype=None, names=cat_header, encoding='ascii')
+    cat_fl = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/pylinear_basic_test/5deg_Y106_0_1_cps.cat'
+    cat = np.genfromtxt(cat_fl, dtype=None, names=cat_header, encoding='ascii')
     
     random_sne = np.random.randint(low=1, high=1005, size=20)
     

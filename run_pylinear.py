@@ -475,7 +475,7 @@ def main():
             # check Russell's notes in pylinear notebooks
             # also check WFIRST tech report TR1901
             sky  = 1.1     # e/s/pix  # zodi + thermal + sky
-            npix = 4088 * 4088
+            npix = 4096 * 4096
             #sky /= npix    # e/s/pix
     
             dark = 0.015   # e/s/pix

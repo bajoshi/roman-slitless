@@ -15,9 +15,11 @@ import shutil
 import matplotlib.pyplot as plt
 
 home = os.getenv('HOME')
-pylinear_config_roman_dir = home + '/Documents/pylinear_ref_files/pylinear_config/Roman/'
 pylinear_ref_dir = home + '/Documents/pylinear_ref_files/pylinear_config/Roman/'
 
+fitting_utils = home + '/Documents/GitHub/roman-slitless/fitting_pipeline/utils/'
+sys.path.append(fitting_utils)
+from get_snr import get_snr
 from save_trans_curve_to_fits import save_thru_curve_to_fits
 
 def gen_img_seg(crval, pixscl, size, segfile, imgfile):
@@ -28,18 +30,18 @@ def gen_img_seg(crval, pixscl, size, segfile, imgfile):
     # we only need a single source in this test
     # will use the reference star from Kevin's simulated 
     # images as our point source
-    refhdu = fits.open('sensitivity_test/ref_cutout.fits')
+    refhdu = fits.open('/Volumes/Joshi_external_HDD/Roman/sensitivity_test/ref_cutout.fits')
     ref = refhdu[0].data
 
     # create the output image
     # Add some small background
     # Measured from reference cutout in ds9
     # Take a region not including the star and check its stats
-    img = np.random.normal(loc=0.04, scale=0.01, size=size)
+    img = np.random.normal(loc=0.05, scale=0.03, size=size)
     
     # add the point source
     # at the center of the image
-    img[450:550, 450:550] += ref
+    img[2048-50:2048+50, 2048-50:2048+50] += ref
 
     # --------
     # Make sure the counts when multiplied by PHOTFLAM 
@@ -88,7 +90,8 @@ def gen_img_seg(crval, pixscl, size, segfile, imgfile):
     new_counts = np.sum(img[seg==1], axis=None)
     print('New counts:', new_counts)
     new_fnu = (new_counts * photflam) * lam_pivot**2 / speed_of_light_ang
-    print('New AB mag:', -2.5 * np.log10(new_fnu) - 48.6)  # This is what we want to be close to 23.0
+    print('New AB mag:', -2.5 * np.log10(new_fnu) - 48.6)  
+    # This is what we want to be close to 23.0
 
     # create a WCS for the image and segmentation
     w = wcs.WCS(naxis=2)                  # the WCS object
@@ -135,14 +138,14 @@ if __name__ == '__main__':
     # 2. Reinstall pylinear
 
     # Follows the procedure given in the pylinear notebooks.
-    savedir = '/Users/baj/Documents/GitHub/roman-slitless/sensitivity_test/'
+    savedir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_test/'
 
     segfile = savedir + 'seg.fits'
     imgfile = savedir + 'img.fits'
 
     crval = [53.0,-27.0]
     pixscl = 0.1  # arcseconds per pixel
-    size = (1000,1000)
+    size = (4096,4096)
 
     # Pylinear settings 
     maglim = 30.0
@@ -157,18 +160,25 @@ if __name__ == '__main__':
     # We want a total time of 1 hour
     # Since we have three roll angles this is just 3600/3
 
+    sky  = 1.1     # e/s/pix
+    npix = 4096 * 4096
+        
+    dark = 0.015   # e/s/pix
+    read = 10.0    # electrons
+    read /= npix
+
     # -------- Generate image and segmap
     #gen_img_seg(crval, pixscl, size, segfile, imgfile)
 
     # -------- Read in SN Ia spectrum
-    sed_path = '/Users/baj/Documents/GitHub/roman-slitless/sensitivity_test/salt2_day0.txt'
+    sed_path = savedir + 'salt2_day0.txt'
     #save_salt2_test_template(sed_path)
 
     # -------- Create LST files
-    with open('sensitivity_test/obs.lst', 'w') as fo:
+    with open(savedir + 'obs.lst', 'w') as fo:
         print('img.fits    hst_wfc3_f105w', file=fo)
 
-    with open('sensitivity_test/wcs.lst', 'w') as fw:
+    with open(savedir + 'wcs.lst', 'w') as fw:
         # obligatory header info:
         print('# TELESCOPE = Roman',file=fw)   # specify the telescope
         print('# INSTRUMENT = WFI',file=fw) # specify the instrument
@@ -181,18 +191,19 @@ if __name__ == '__main__':
                 '{:.6f}'.format(crval[0]) + '  ' + '{:.6f}'.format(crval[1]) + \
                     '  ' + '{:.1f}'.format(roll_angles[r]) + '  P127', file=fw)
 
-    with open('sensitivity_test/sed.lst', 'w') as fs:
+    with open(savedir + 'sed.lst', 'w') as fs:
         print('1  ' + sed_path, file=fs)
 
     # --------
-    sens_arr = 1e16 * np.arange(1, 8)
+    sens_arr = 1e16 * np.array([1, 5, 10])
     print('\nWill test the following sensitivities:', sens_arr)
 
     # -------- Run the test for the above set of sensitivities
-    rt = np.genfromtxt(pylinear_config_roman_dir + 'roman_throughput_20190325.txt', \
+    rt = np.genfromtxt(pylinear_ref_dir + 'roman_throughput_20190325.txt', 
     dtype=None, names=True, skip_header=3)
 
     for senslimit in sens_arr:
+        print('Working on sensitivity:', '{:.1e}'.format(senslimit))
 
         # First save the modified sensitivity curve
         wp = rt['Wave'] * 1e4  # convert to angstroms from microns
@@ -204,7 +215,8 @@ if __name__ == '__main__':
         os.chdir(savedir)
 
         # Load sources
-        sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
+        sources = pylinear.source.SourceCollection(segfile, obslst, 
+            detindex=0, maglim=maglim)
 
         # Load grisms
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
@@ -217,7 +229,73 @@ if __name__ == '__main__':
         simulate = pylinear.modules.Simulate(sedlst, gzip=False)
         fltnames = simulate.run(grisms, sources, beam)
 
+        # Add noise
+        for fl in glob.glob('*_flt.fits'):
+            print('Adding noise to:', os.path.basename(fl))
+            shutil.copy(fl, fl.replace('.fits','_noiseless.fits'))
 
+            with fits.open(fl) as hdul:
+                sci = hdul[('SCI',1)].data    # the science image
+                size = sci.shape              # dimensionality of the image
+
+                signal = (sci + sky + dark)
+                signal *= exptime
+
+                variance = signal + read**2
+
+                sigma = np.sqrt(variance)
+                new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
+
+                final_sig = (new_sig / exptime) - sky
+
+                hdul[('SCI',1)].data = final_sig
+                err = np.sqrt(signal) / exptime
+                hdul[('ERR',1)].data = err
+
+                hdul.writeto(fl, overwrite=True)
+                print('Noised FLT file saved for:', os.path.basename(fl))
+    
+        # Create FLT LST
+        with open(savedir + 'flt.lst', 'w') as ff:
+            for fl in glob.glob('*_flt.fits'):
+                print(os.path.basename(fl), file=ff)
+
+        # Extract
+        grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+
+        extraction_parameters = grisms.get_default_extraction()
+        extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
+        print(extpar_fmt.format(**extraction_parameters))
+
+        sources.update_extraction_parameters(**extraction_parameters)
+        method = 'golden'  # golden, grid, or single
+        extroot = 'sensitivity_test_' + '{:.1e}'.format(senslimit)
+        logdamp = [-6, -1, 0.1]
+
+        pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
+            method, extroot, path='tables/',
+            inverter='lsqr', ncpu=1, group=False)
+
+        # Now compute the SNR and plot figure
+        segid = 1
+        ext_fl = savedir + 'sensitivity_test_' + '{:.1e}'.format(senslimit) + '_x1d.fits'
+        x1d = fits.open(ext_fl)
+
+        wav = x1d[('SOURCE', segid)].data['wavelength']
+        flam = x1d[('SOURCE', segid)].data['flam'] * 1e-17
+
+        snr = get_snr(wav, flam)
+        print('SNR for spectrum:', snr)
+
+        # Also get simulated sed
+        sim_spec = np.genfromtxt(savedir + 'simulated_SEDs/' + str(segid) + '.sed', 
+            dtype=None, names=['wav', 'flam'], skip_header=3, encoding='ascii')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(wav, flam, color='k')
+        ax.plot(sim_spec['wav'], sim_spec['flam'], color='r')
+        plt.show()
 
         sys.exit(0)
 
