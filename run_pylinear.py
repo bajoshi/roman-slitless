@@ -598,6 +598,8 @@ def main():
             except NameError:
                 logger.info("Finished.")
 
+            sys.exit(0)
+
         # ---------------------- Remove matrices, tables, and *_res.fits.gz files to save space
         # MATRICES
         for e in range(len(exptime_list)):
