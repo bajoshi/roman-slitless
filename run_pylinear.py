@@ -593,10 +593,10 @@ def main():
 
             try:
                 te = time.time() - ts
-                logger.info("Finished extraction for " + str(num_coadds) + " coadds.")
+                #logger.info("Finished extraction for " + str(num_coadds) + " coadds.")
                 logger.info("Time taken for extraction: " + "{:.2f}".format(te) + " seconds.")
             except NameError:
-                logger.info("Finished at: " + dt.datetime.now())
+                logger.info("Finished.")
 
         # ---------------------- Remove matrices, tables, and *_res.fits.gz files to save space
         # MATRICES
