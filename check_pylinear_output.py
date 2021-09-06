@@ -1,5 +1,6 @@
 import numpy as np
 from astropy.io import fits
+from astropy.convolution import convolve, Box1DKernel
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -40,8 +41,11 @@ assert os.path.isdir(roman_direct_dir)
 assert os.path.isdir(ext_spectra_dir)
 
 # Custom imports
+sys.path.append(roman_slitless_dir + 'fitting_pipeline/')
 sys.path.append(fitting_utils)
 from get_snr import get_snr
+from get_template_inputs import get_template_inputs
+from fit_sn_romansim import model_sn
 
 # Set pylinear f_lambda scaling factor
 pylinear_flam_scale_fac = 1e-17
@@ -57,6 +61,8 @@ if __name__ == '__main__':
     exptime = '_6000s'
 
     img_suffix = 'Y106_0_1'
+
+    showplot = False
 
     # ---- Read x1d file
     ext_spec_filename = ext_spectra_dir + ext_root + img_suffix + exptime + '_x1d.fits'
@@ -78,6 +84,11 @@ if __name__ == '__main__':
     
     all_galaxy_mags = []
     all_galaxy_snr  = []
+
+    snr_per_pix_z1 = []
+    noise_per_pix_z1 = []
+
+    smooth_snr_list = []
     
     for i in tqdm(range(len(sedlst)), desc='Processing object'):
     
@@ -100,6 +111,88 @@ if __name__ == '__main__':
         else:
             all_galaxy_mags.append(mag)
             all_galaxy_snr.append(snr)
+
+        # Do the z~1 comparison
+        # ------- Get template inputs
+        template_name = os.path.basename(sedlst['sed_path'][i])
+        if 'salt' in template_name:
+            template_inputs = get_template_inputs(template_name)  # needed for plotting
+            ztrue = template_inputs[0]
+
+            if 0.9 <= ztrue <= 1.1:
+                # Get noise array
+                ferr_lo = ext_hdu[('SOURCE', current_segid)].data['flounc'] * pylinear_flam_scale_fac
+                ferr_hi = ext_hdu[('SOURCE', current_segid)].data['fhiunc'] * pylinear_flam_scale_fac
+
+                ferr = (ferr_lo + ferr_hi)/2.0
+                snr_per_pix = flam / ferr
+
+                snr_per_pix_z1.append(snr_per_pix)
+                noise_per_pix_z1.append(ferr)
+
+                wav_idx = np.where((wav > 8000.0) & (wav < 17800.0))[0]
+
+                wav = wav[wav_idx]
+                ferr = ferr[wav_idx]
+                snr_per_pix = snr_per_pix[wav_idx]
+                flam = flam[wav_idx]
+
+                # Plot smoothed spectrum to see how 
+                # close it is to truth
+                sf = convolve(flam, Box1DKernel(4))
+
+                # Now noise the smooth spectrum using the correct noise
+                # level and overplot
+                noise_correct = ferr * 5 #np.sqrt(5)
+                sf_noised = np.zeros(len(sf))
+                for w in range(len(wav)):
+                    sf_noised[w] = np.random.normal(loc=sf[w], scale=noise_correct[w], size=1)
+
+                smooth_snr = sf_noised/noise_correct
+                smooth_snr_list.append(np.mean(smooth_snr))
+
+                if showplot:
+
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111)
+                    ax.set_xlabel('Wavelength', fontsize=15)
+                    ax.set_ylabel('Noise [cgs]', fontsize=15)
+
+                    # Plot SNR as a func of wav
+                    axt = ax.twinx()
+                    axt.set_ylabel('SNR')
+                    #axt.plot(wav, snr_per_pix, color='green', zorder=1)
+                    
+                    # Plot noise as a func of wav
+                    #ax.plot(wav, ferr, color='crimson', zorder=1)
+
+                    # Plot extracted spectrum
+                    ax.plot(wav, flam, color='k', lw=0.5, zorder=2)
+                    ax.fill_between(wav, flam-ferr, flam+ferr, color='gray', alpha=0.5)
+
+                    ax.plot(wav, sf, lw=4.0, color='cyan', zorder=3)  # smoothed spec
+                    ax.plot(wav, sf_noised, color='b')  # Noised smooth spec
+
+                    # Plot SNR for smoothed spec
+                    axt.plot(wav, smooth_snr, color='seagreen', lw=1.0)
+                    print('Avg SNR per pix in 5 hour exptime:', np.mean(smooth_snr))
+                    
+                    # Also plot noise
+
+                    # Plot true spectrum
+                    ax.plot(wav, model_sn(wav, ztrue, template_inputs[1], template_inputs[2]), 
+                        color='deeppink', lw=2.5, zorder=4)
+
+                    # Set limits and show
+                    ax.set_xlim(8000, 17800)
+
+                    #plt.show()
+
+                    fig.clear()
+                    plt.close(fig)
+
+    print('Average smoothed SNR list:', smooth_snr_list, len(smooth_snr_list))
+    print('Mean smooth SNR:', np.mean(np.array(smooth_snr_list)))
 
     # ---------------------------- SNR vs mag plot
     # Manual entries from running HST/WFC3 spectroscopic ETC

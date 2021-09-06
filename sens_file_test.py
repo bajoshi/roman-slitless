@@ -34,6 +34,10 @@ for i, mag in enumerate(mags):
     wav, sens = get_sens(mag, flam_fac[i])
     ax.plot(wav, sens, label= 'AB = ' + str(mag))
 
+print(wav, len(wav))
+wav_idx = np.where((wav >= 7800) & (wav <= 18000))[0]
+print(wav[wav_idx], len(wav_idx))
+
 ax.legend(loc=0, fontsize=14)
 #plt.show()
 

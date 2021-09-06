@@ -394,13 +394,12 @@ def main():
                     # This is get to faster results to show in 
                     # the schematic figure, i.e., only fit the 
                     # SNe in the redshift ranges you want.
-                    ztrue = template_inputs[0]
-                    proceed = False
-                    if (0.5 < ztrue < 0.6) or (0.9 < ztrue < 1.1) or (1.4 < ztrue < 1.6) or (1.9 < ztrue < 2.1):
-                        proceed = True
-
-                    if not proceed:
-                        continue
+                    #ztrue = template_inputs[0]
+                    #proceed = False
+                    #if (0.5 < ztrue < 0.6) or (0.9 < ztrue < 1.1) or (1.4 < ztrue < 1.6) or (1.9 < ztrue < 2.1):
+                    #    proceed = True
+                    #if not proceed:
+                    #    continue
 
                     wav = ext_hdu[('SOURCE', segid)].data['wavelength']
                     flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
@@ -409,17 +408,24 @@ def main():
                     ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
                     # ----- Smooth with boxcar
-                    smoothing_width_pix = 5
+                    smoothing_width_pix = 4
                     sf = convolve(flam, Box1DKernel(smoothing_width_pix))
-
-                    # ----- Check SNR
-                    snr = get_snr(wav, flam)
-                    smoothed_snr = get_snr(wav, sf)
-
-                    print("SNR for this spectrum:", "{:.2f}".format(snr), "{:.2f}".format(smoothed_snr))
 
                     # ----- Get noise level
                     ferr = (ferr_lo + ferr_hi)/2.0
+                    noise_correct = ferr * 5
+                    sf_noised = np.zeros(len(sf))
+                    for w in range(len(wav)):
+                        sf_noised[w] = np.random.normal(loc=sf[w], scale=noise_correct[w], size=1)
+
+                    flam = sf_noised
+                    ferr = noise_correct
+
+                    # ----- Check SNR
+                    #snr = get_snr(wav, flam)
+                    #smoothed_snr = get_snr(wav, sf)
+                    snr = np.nanmean(flam/ferr)
+                    print("Avg SNR per pix for this spectrum:", "{:.2f}".format(snr)) #, "{:.2f}".format(smoothed_snr))
 
                     # Check if file exists and continue if all okay
                     snstr = str(segid) + '_' + img_suffix + exptime

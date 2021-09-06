@@ -2,6 +2,7 @@ import numpy as np
 import emcee
 import corner
 from astropy.io import fits
+from astropy.convolution import convolve, Box1DKernel
 
 import os
 import sys
@@ -18,7 +19,7 @@ fitting_utils = cwd + '/utils/'
 roman_slitless_dir = os.path.dirname(cwd)
 
 sys.path.append(fitting_utils)
-from get_snr import get_snr
+#from get_snr import get_snr
 from get_template_inputs import get_template_inputs
 
 # Set pylinear f_lambda scaling factor
@@ -39,6 +40,29 @@ def get_burn_thin(sampler):
 
     return burn_in, thinning_steps
 
+def get_correct_snr(ext_hdu, segid, wav, old_flam):
+
+    ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * pylinear_flam_scale_fac
+    ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
+
+    # ----- Smooth with boxcar
+    smoothing_width_pix = 4
+    sf = convolve(old_flam, Box1DKernel(smoothing_width_pix))
+
+    # ----- Get noise level
+    ferr = (ferr_lo + ferr_hi)/2.0
+    noise_correct = ferr * 5
+    sf_noised = np.zeros(len(sf))
+    for w in range(len(wav)):
+        sf_noised[w] = np.random.normal(loc=sf[w], scale=noise_correct[w], size=1)
+
+    flam = sf_noised
+    ferr = noise_correct
+
+    # ----- Check SNR
+    snr = np.nanmean(flam/ferr)
+
+    return snr
 
 # ---------------------------------------
 exptime1 = '_1500s'
@@ -119,8 +143,8 @@ for pt in pointings:
                 wav2 = ext_hdu2[('SOURCE', segid)].data['wavelength']
                 flam2 = ext_hdu2[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-                snr1 = get_snr(wav1, flam1)
-                snr2 = get_snr(wav2, flam2)
+                snr1 = get_correct_snr(ext_hdu1, segid, wav1, flam1)
+                snr2 = get_correct_snr(ext_hdu2, segid, wav2, flam2)
 
                 # ----- Get magnitude in Y106
                 mag_idx = int(np.where(cat['NUMBER'] == segid)[0])
