@@ -243,21 +243,29 @@ def roman_prism_dispersion():
     # Differentiating DISPL gives a constant, i.e., a1,0
     a10 = 10500.0  # for Roman prism
 
-    for n in range(1,3):
-        for m in range(3):
+    #for n in range(1,3):
+    #    for m in range(3):
 
-            dx = np.zeros(len(tarr))
-            prism_disp = np.zeros(len(tarr))
+    n = 1
+    m = 1
 
-            for tcount, t in enumerate(tarr):
+    coeffs = solve_coeffs(n, m)
 
-                # Differentiate DISPX
-                dxdt[tcount] = grismconf_differentiate_polynomial(n, m, coeffs, x0, y0, t)
 
-                prism_disp[tcount] = a10 / dxdt[tcount]
 
-                # Using GRISMCONF # From the docs
-                C.DDISPL('+1',x0,y0,t)/C.DDISPX('+1',x0,y0,t)
+
+    dx = np.zeros(len(tarr))
+    prism_disp = np.zeros(len(tarr))
+
+    for tcount, t in enumerate(tarr):
+
+        # Differentiate DISPX
+        dxdt[tcount] = grismconf_differentiate_polynomial(n, m, coeffs, x0, y0, t)
+
+        prism_disp[tcount] = a10 / dxdt[tcount]
+
+        # Using GRISMCONF # From the docs
+        C.DDISPL('+1',x0,y0,t)/C.DDISPX('+1',x0,y0,t)
 
     return None
 
