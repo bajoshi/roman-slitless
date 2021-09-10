@@ -175,12 +175,89 @@ def check_with_grismconf():
                 # Evaluate using the GRISMCONF function
                 x0 = x
                 y0 = y
-                dx = C.DISPY('+1', x0, y0, t)
+                d = C.DISPY('+1', x0, y0, t)
 
                 # Evaluate using the closed form function written above
                 pnm = grismconf_polynomial(n, m, coeff_arr, x0, y0, t)
 
-                assert np.isclose(dx, pnm)
+                assert np.isclose(d, pnm)
+
+    return None
+
+def roman_prism_dispersion():
+    """
+    This function will solve for the DISPX coefficients 
+    that correctly match the strong wavelength dependence 
+    of dispersion in the Roman prism by comparing to the 
+    wavelength sampling in the spectra from Jeff Kruk.
+
+    For the Roman prism conf I'm assuming all DISPY 
+    coefficients to be zero.
+
+    DISPL coeffs are set manually (see notes) since
+    those coeffs are simply a (2,1) array usually so
+    n=1,m=0 and therefore the polynomial is a straight
+    line ---  lambda = a00 + t*a10.
+    So we just need to set the coeffs such that the 
+    wavelength range is returned back, i.e., at t=0
+    lambda = lambda_min so a00 is lambda_min, and at t=1
+    lambda = lambda_max so a10 is lambda_max - a00.
+
+    """
+
+    genplot = True
+
+    # Read in manually copy pasted parts from Jeff Kruk's file
+    mag = 23.0
+    datadir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_files/'
+    s = np.genfromtxt(datadir + 'abmag' + str(int(mag)) + '_prism_sens_kruk.txt', 
+        dtype=None, names=['wav'], 
+        usecols=(0), skip_header=3, encoding='ascii')
+    
+    wav = s['wav'] * 1e4  # convert microns to angstroms
+
+    if genplot:
+        disp = wav[1:] - wav[:-1]
+        wavmean = (wav[1:] + wav[:-1])/2
+
+        import matplotlib.pyplot as plt
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlabel('Wavelength [Angstoms]', fontsize=13)
+        ax.set_ylabel('Dispersion [Angstoms per pixel]', fontsize=13)
+        ax.plot(wavmean, disp, color='k', lw=1.5)
+        plt.show()
+
+    # ---------
+    # Try a bunch of polynomials and solve for their coeffs
+    # With a given polynomial in hand figure out how close it 
+    # gets to the expected dispersion.
+    # first try evaluating at the center of the detector:
+    x0 = 2048.0
+    y0 = 2048.0
+    # Although you should be able to get back the same dispersion
+    # anywhere on the detector.
+    tarr = np.arange(0.0, 1.01, 0.002)
+
+    # Differentiating DISPL gives a constant, i.e., a1,0
+    a10 = 10500.0  # for Roman prism
+
+    for n in range(1,3):
+        for m in range(3):
+
+            dx = np.zeros(len(tarr))
+            prism_disp = np.zeros(len(tarr))
+
+            for tcount, t in enumerate(tarr):
+
+                # Differentiate DISPX
+                dxdt[tcount] = grismconf_differentiate_polynomial(n, m, coeffs, x0, y0, t)
+
+                prism_disp[tcount] = a10 / dxdt[tcount]
+
+                # Using GRISMCONF # From the docs
+                C.DDISPL('+1',x0,y0,t)/C.DDISPX('+1',x0,y0,t)
 
     return None
 
@@ -199,6 +276,7 @@ if __name__ == '__main__':
     y0 = 1000.0
     t = 0
 
+    # From DISPX, DISPY, or DISPL
     coeff_arr = np.array([[2.78644810e+01, -1.05405727e-02, -9.67048003e-04,  6.93139575e-06,  4.04962658e-06, -6.87672404e-07], 
                           [2.08466649e+02,  8.53323515e-03, -1.29802612e-02, -4.92687932e-06, -5.11233288e-06,  8.59590592e-07]])
 
@@ -213,7 +291,11 @@ if __name__ == '__main__':
 
     # Evaluate polynomial
     pnm = grismconf_polynomial(n, m, coeff_arr, x0, y0, t)
-    print('Polynomial evaluation:', pnm)
+    #print('Polynomial evaluation:', pnm)
 
-    check_with_grismconf()
+    # Check closed form eval against grismconf eval
+    #check_with_grismconf()
+
+    # Now figure out the coefficients you need for Roman
+    roman_prism_dispersion()
 
