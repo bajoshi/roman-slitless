@@ -186,7 +186,7 @@ def check_with_grismconf():
 
 def roman_prism_dispersion():
     """
-    This function will solve for the DISPX coefficients 
+    This function will solve for the DISPX and DISPL coefficients 
     that correctly match the strong wavelength dependence 
     of dispersion in the Roman prism by comparing to the 
     wavelength sampling in the spectra from Jeff Kruk.
@@ -194,6 +194,7 @@ def roman_prism_dispersion():
     For the Roman prism conf I'm assuming all DISPY 
     coefficients to be zero.
 
+    Typically, i.e., for HST WFC3/IR grisms,
     DISPL coeffs are set manually (see notes) since
     those coeffs are simply a (2,1) array usually so
     n=1,m=0 and therefore the polynomial is a straight
@@ -203,6 +204,35 @@ def roman_prism_dispersion():
     lambda = lambda_min so a00 is lambda_min, and at t=1
     lambda = lambda_max so a10 is lambda_max - a00.
 
+    However, this isn't the case for the Roman prism.
+
+    # ------------ DISPX form:
+    p10 = a00_x + a10_x * t 
+    NOT possible to get a variable dispersion with this form 
+    IF DISPL is also linear with t, which it isn't (see below).
+    Although, DISPL is linear with t for HST grisms this CANNOT
+    be the case for the Roman prism.
+
+    For the Roman prism,
+    DISPL cannot be linear in t because looking at the dispersion
+    from Jeff Kruk's spectrum it looks like a third deg polynomial.
+    The dispersion (dl/dx) is proportional to (dl/dt)/(dx/dt) and 
+    therefore if dl/dx is a third deg polynomial then the most 
+    straightforward way to arrive at this is to have lambda~t^4 
+    and x~t.
+
+    # ------------ DISPL form:
+    Assuming DISPL form to be:
+    lambda =   a00_lam 
+             + a10_lam * t 
+             + a20_lam * t^2 
+             + a30_lam * t^3
+             + a40_lam * t^4 
+    
+    and a00_lam is fixed at 7500.0
+    a00_lam is the same regardless of what the rest of the expression
+    because at t=0 i.e., start of spectrum, the wavelength should be
+    lambda_min which is 7500.0 for the Roman prism.
     """
 
     genplot = True
@@ -216,9 +246,29 @@ def roman_prism_dispersion():
     
     wav = s['wav'] * 1e4  # convert microns to angstroms
 
+    # ---------
+    tarr = np.arange(0.0, 1.01, 0.002)
+
+    # First fit a polynomial directly to the dispersion
+    disp = wav[1:] - wav[:-1]
+    wavmean = (wav[1:] + wav[:-1])/2
+    pp = np.polyfit(x=wavmean, y=disp, deg=3)
+    pol = np.poly1d(pp)
+
+    # ------ Now confirm that you get the correct dispersion back
+    # by reading in the new updated Roman prism conf file through
+    # GRISMCONF
+    import grismconf as gc
+    roman_prism_conf_path = '/Users/baj/Documents/pylinear_ref_files/pylinear_config/Roman/Roman_WFI_P127_grismconf.v1.0.conf'
+    C = gc.Config(roman_prism_conf_path)
+
+    prism_disp = np.zeros(len(tarr))
+
+    # Using GRISMCONF # From the docs
+    for t, tcount in enumerate(tarr):
+        prism_disp[tcount] = C.DDISPL('+1',0,0,t)/C.DDISPX('+1',0,0,t)
+
     if genplot:
-        disp = wav[1:] - wav[:-1]
-        wavmean = (wav[1:] + wav[:-1])/2
 
         import matplotlib.pyplot as plt
         
@@ -226,46 +276,14 @@ def roman_prism_dispersion():
         ax = fig.add_subplot(111)
         ax.set_xlabel('Wavelength [Angstoms]', fontsize=13)
         ax.set_ylabel('Dispersion [Angstoms per pixel]', fontsize=13)
-        ax.plot(wavmean, disp, color='k', lw=1.5)
+
+        ax.plot(wavmean, disp, color='k', lw=1.5, label='Orig prism disp')
+        ax.plot(wavmean, pol(wavmean), color='seagreen', lw=1.5, label='np polyfit to orig disp')
+        ax.plot(new_wav, prism_disp, color='crimson', lw=2.0, label='From GRISMCONF disp for new coeffs')
+
+        ax.legend(fontsize=12)
+
         plt.show()
-
-    # ---------
-    # Try a bunch of polynomials and solve for their coeffs
-    # With a given polynomial in hand figure out how close it 
-    # gets to the expected dispersion.
-    # first try evaluating at the center of the detector:
-    x0 = 2048.0
-    y0 = 2048.0
-    # Although you should be able to get back the same dispersion
-    # anywhere on the detector.
-    tarr = np.arange(0.0, 1.01, 0.002)
-
-    # Differentiating DISPL gives a constant, i.e., a1,0
-    a10 = 10500.0  # for Roman prism
-
-    #for n in range(1,3):
-    #    for m in range(3):
-
-    n = 1
-    m = 1
-
-    coeffs = solve_coeffs(n, m)
-
-
-
-
-    dx = np.zeros(len(tarr))
-    prism_disp = np.zeros(len(tarr))
-
-    for tcount, t in enumerate(tarr):
-
-        # Differentiate DISPX
-        dxdt[tcount] = grismconf_differentiate_polynomial(n, m, coeffs, x0, y0, t)
-
-        prism_disp[tcount] = a10 / dxdt[tcount]
-
-        # Using GRISMCONF # From the docs
-        C.DDISPL('+1',x0,y0,t)/C.DDISPX('+1',x0,y0,t)
 
     return None
 
