@@ -245,28 +245,94 @@ def roman_prism_dispersion():
         usecols=(0), skip_header=3, encoding='ascii')
     
     wav = s['wav'] * 1e4  # convert microns to angstroms
+    print('Number of x pix for whole wav arrray:', len(wav))
+    wav_idx = np.where((wav >= 7500) & (wav <= 18000))[0]
+    print('Number of x pix for 7500 <= wav <= 18000:', len(wav_idx))
 
     # ---------
     tarr = np.arange(0.0, 1.01, 0.002)
 
+    lam_min = wav[0]
+    a00_lam = lam_min
+    lam_max = wav[-1]
+    dlam = lam_max - lam_min
+    print('Wav range:', lam_min, lam_max)
+
     # First fit a polynomial directly to the dispersion
+    # We will assume that this is a good fit and then
+    # solve for coeffs that can reproduce the dispersion
+    # given by the numpy polynomial.
     disp = wav[1:] - wav[:-1]
     wavmean = (wav[1:] + wav[:-1])/2
-    pp = np.polyfit(x=wavmean, y=disp, deg=3)
+    pp = np.polyfit(x=wavmean, y=disp, deg=2)
     pol = np.poly1d(pp)
+
+    # Numpy polyfit returns polynomial coeffs with highest power first
+    print(pol)
+    pol_0 = pp[0]  # goes with highest power of x variable in fit
+    pol_1 = pp[1]
+    pol_2 = pp[2]
+
+    print('Polynomial coeffs:')
+    print(pol_0)
+    print(pol_1)
+    print(pol_2)
+    print('--------------')
+
+    A = pol_1
+    B = pol_0
+
+    # Now solve for coeffs that go in the CONF file
+    a10_x = (lam_max - a00_lam) / (A + B/2) # (A + B/2 + C/3 + D/4)
+    print('Copy-paste the following into the conf file:')
+    print('-----')
+    print('DISPX_+1_1', '{:.5f}'.format(a10_x))
+    print('-----')
+    
+    a10_lam = A * a10_x
+    a20_lam = B * a10_x / 2
+    #a30_lam = C * a10_x / 3
+    #a40_lam = D * a10_x / 4
+
+    print('DISPL_+1_0', '{:.5f}'.format(a00_lam))
+    print('DISPL_+1_1', '{:.5f}'.format(a10_lam))
+    print('DISPL_+1_2', '{:.5f}'.format(a20_lam))
+    #print('DISPL_+1_3', '{:.5f}'.format(a30_lam))
+    #print('DISPL_+1_4', '{:.5f}'.format(a40_lam))
+    print('-----')
 
     # ------ Now confirm that you get the correct dispersion back
     # by reading in the new updated Roman prism conf file through
     # GRISMCONF
     import grismconf as gc
     roman_prism_conf_path = '/Users/baj/Documents/pylinear_ref_files/pylinear_config/Roman/Roman_WFI_P127_grismconf.v1.0.conf'
-    C = gc.Config(roman_prism_conf_path)
+    conf = gc.Config(roman_prism_conf_path)
 
     prism_disp = np.zeros(len(tarr))
+    prism_disp_trans = np.zeros(len(tarr))
+    new_wav = np.zeros(len(tarr))
 
     # Using GRISMCONF # From the docs
-    for t, tcount in enumerate(tarr):
-        prism_disp[tcount] = C.DDISPL('+1',0,0,t)/C.DDISPX('+1',0,0,t)
+    for tcount, t in enumerate(tarr):
+
+        # Compute dispersion
+        prism_disp[tcount] = conf.DDISPL('+1',0,0,t)/conf.DDISPX('+1',0,0,t)
+
+        # Also compute new wavelengths at t according to DISPL
+        new_wav[tcount] = conf.DISPL('+1',0,0,t)
+
+        # Transform again to wav space
+        prism_disp_trans[tcount] = A + (B/dlam)*(new_wav[tcount] - lam_min)
+
+        # Manually computing derivative
+        manual_deriv = a10_lam + 2*a20_lam*t# + 3*a30_lam*t**2 + 4*a40_lam*t**3
+
+        print(tcount, '{:.3f}'.format(t), ' ',
+            '{:.3f}'.format(prism_disp[tcount]), ' ',
+            '{:.3f}'.format(new_wav[tcount]))#, '      ',
+        #    '{:.3f}'.format(conf.DDISPL('+1',0,0,t)), ' ',
+        #    '{:.3f}'.format(conf.DDISPX('+1',0,0,t)), ' ',
+        #    '{:.3f}'.format(manual_deriv))
 
     if genplot:
 
@@ -279,7 +345,7 @@ def roman_prism_dispersion():
 
         ax.plot(wavmean, disp, color='k', lw=1.5, label='Orig prism disp')
         ax.plot(wavmean, pol(wavmean), color='seagreen', lw=1.5, label='np polyfit to orig disp')
-        ax.plot(new_wav, prism_disp, color='crimson', lw=2.0, label='From GRISMCONF disp for new coeffs')
+        ax.plot(new_wav, prism_disp, color='crimson', lw=2.0, label='GRISMCONF disp from new conf file')
 
         ax.legend(fontsize=12)
 
