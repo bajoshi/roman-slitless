@@ -39,18 +39,20 @@ def get_kcorr(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbose=Fal
 
     # Redshift the spectrum
     nu_obs = sed_nu / (1+redshift)
-    lnu_obs = sed_lnu * (1+redshift)
+    lnu_obs = sed_lnu  # this does NOT need a (1+z)
+    # See eq 9 in Hogg+2002, it includes L_nu((1+z)*nu_obs)
+    # This is just L_nu(nu_em). However the integral is still
+    # performed in observed frequency space.
 
     # Convert filter wavlengths to frequency
     filt_curve_R_nu = np.divide(speed_of_light_ang, filt_curve_R['wav'])
     filt_curve_Q_nu = np.divide(speed_of_light_ang, filt_curve_Q['wav'])
 
     # Find indices where filter and spectra frequencies match
-    R_nu_filt_idx = np.where((nu_obs <= filt_curve_R_nu[0]) & (nu_obs >= filt_curve_R_nu[-1]))
-    Q_nu_filt_idx = np.where((sed_nu <= filt_curve_Q_nu[0]) & (sed_nu >= filt_curve_Q_nu[-1]))
+    R_nu_filt_idx = np.where((nu_obs <= filt_curve_R_nu[0]) & (nu_obs >= filt_curve_R_nu[-1]))[0]
+    Q_nu_filt_idx = np.where((sed_nu <= filt_curve_Q_nu[0]) & (sed_nu >= filt_curve_Q_nu[-1]))[0]
 
-    # Make sure the filter curve and the SED are 
-    # on the same wavelength grid.
+    # Make sure the filter curve and the SED are on the same wavelength grid.
     # Filter R is in obs frame
     # Filter Q is in rest frame
     filt_curve_R_interp_obs = griddata(points=filt_curve_R_nu, values=filt_curve_R['trans'],
@@ -76,16 +78,60 @@ def get_kcorr(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbose=Fal
 
     # Compute K-correction
     kcorr_qr = -2.5 * np.log10((1+redshift) * integral1 * integral2 / (integral3 * integral4))
-    
+
     if verbose:
         import matplotlib.pyplot as plt
 
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.plot(filt_curve['wav'], filt_curve['trans'], color='k')
-        ax.plot(lam_obs[wav_filt_idx], filt_curve_interp_obs, color='b')
-        ax.plot(sed_lam[wav_filt_idx], filt_curve_interp_rf, color='r')
-        plt.show()
+        fig, (ax1, ax2) = plt.subplots(figsize=(12,4.5), nrows=1, ncols=2)
+
+        # ------------- Frequency space
+        ax1t = ax1.twinx()
+        
+        # plot spectra
+        ax1.plot(sed_nu, sed_lnu, color='k', label='Original spectrum')
+        ax1.plot(nu_obs, lnu_obs, color='tab:red', label='Redshifted spectrum')
+
+        # plot bandpasses
+        ax1t.plot(nu_obs[R_nu_filt_idx], filt_curve_R_interp_obs, color='tab:olive', label='WFC3/IR/F105W')
+        ax1t.plot(sed_nu[Q_nu_filt_idx], filt_curve_Q_interp_rf, color='royalblue', label='ACS/WFC/F435W')
+
+        # Labels, limits, and legend
+        ax1.legend(loc='upper left', frameon=False, fontsize=12)
+        ax1t.legend(loc='upper right', frameon=False, fontsize=12)
+
+        ax1.set_xscale('log')
+        ax1.set_xlim(1e14, 2e15)
+
+        ax1.set_xlabel('Frequency (Hz)', fontsize=13)
+        ax1.set_ylabel('Flux density (erg/s/cm2/Hz)', fontsize=13)
+
+        # ------------- Wavelength space
+        ax2t = ax2.twinx()
+
+        sed_lam = speed_of_light_ang / sed_nu
+        sed_llam = speed_of_light_ang * sed_lnu / sed_lam**2
+        
+        # plot spectra
+        ax2.plot(sed_lam, sed_llam, color='k', label='Original spectrum')
+        ax2.plot(sed_lam*(1+redshift), sed_llam/(1+redshift), color='tab:red', label='Redshifted spectrum')
+
+        # plot bandpasses
+        ax2t.plot(filt_curve_R['wav'], filt_curve_R['trans'], color='tab:olive', label='WFC3/IR/F105W')
+        ax2t.plot(filt_curve_Q['wav'], filt_curve_Q['trans'], color='royalblue', label='ACS/WFC/F435W')
+
+        # Labels, limits, and legend
+        ax2.legend(loc='upper center', frameon=False, fontsize=12)
+        ax2t.legend(loc='center right', frameon=False, fontsize=12)
+        ax2.set_xlim(2500, 15000)
+
+        ax2.set_xlabel('Wavelength (Angstroms)', fontsize=13)
+        ax2.set_ylabel('Flux density (erg/s/cm2/A)', fontsize=13)
+        ax2t.set_ylabel('Throughput', fontsize=13)
+
+        plt.pause(0.1)
+
+        fig.clear()
+        plt.close(fig)
 
     return kcorr_qr
 
@@ -166,9 +212,6 @@ if __name__ == '__main__':
 
     axt.set_ylabel('DM = 5log[dl(z)] + 25 + K(z)', fontsize=14)
 
-    plt.show()
-    sys.exit(0)
-
     # ----------------------
     # Another test: 
     # We have to make sure that given a SN apparent mag
@@ -207,7 +250,7 @@ if __name__ == '__main__':
             # Now compute the sum of 5log(dl) at the z and K-correction
             kcor = get_kcorr(day0_lnu, day0_nu, z, f435, f105)
             dl_mpc = dl_cm / 3.086e24
-            s = 5 * np.log10(dl_mpc) + kcor
+            s = 5 * np.log10(dl_mpc) + 25 + kcor
 
             dl_K_sum_lookup[k] = s
 
