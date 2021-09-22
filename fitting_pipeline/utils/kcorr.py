@@ -11,7 +11,7 @@ def get_kcorr(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbose=Fal
     redshift, and with the rest frame and obs bandpasses. 
 
     This function uses the K-correction formula given in 
-    eq 8 of Hogg et al. 2002.
+    eq 9 of Hogg et al. 2002.
 
     Arguments:
     sed_lnu: float array of luminosity density in erg/s/Hz
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     import os
 
     # SN Ia spectrum from Lou
-    salt2_spec = np.genfromtxt("salt2_template_0.txt", 
+    salt2_spec = np.genfromtxt("templates/salt2_template_0.txt", 
         dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
 
     # Also load in lookup table for luminosity distance
@@ -126,11 +126,11 @@ if __name__ == '__main__':
     # While the column label says transmission
     # it is actually the throughput that we want.
     # G and Y band in this case
-    f105 = np.genfromtxt('F105W_IR_throughput.csv', 
+    f105 = np.genfromtxt('throughputs/F105W_IR_throughput.csv', 
                          delimiter=',', dtype=None, names=['wav','trans'], 
                          encoding='ascii', usecols=(1,2), skip_header=1)
 
-    f435 = np.genfromtxt('f435w_filt_curve.txt', 
+    f435 = np.genfromtxt('throughputs/f435w_filt_curve.txt', 
                          dtype=None, names=['wav','trans'], 
                          encoding='ascii')
 
@@ -148,7 +148,7 @@ if __name__ == '__main__':
         dl_cm = dl_cm_arr[z_idx]
         dl_mpc = dl_cm / 3.086e24
 
-        s = 5 * np.log10(dl_mpc) + kcor
+        s = 5 * np.log10(dl_mpc) + kcor + 25.0
 
         dl_K_sum_arr[i] = s
 
@@ -164,7 +164,10 @@ if __name__ == '__main__':
     axt = ax.twinx()
     axt.scatter(zarr, dl_K_sum_arr, s=5, color='k')
 
-    axt.set_ylabel('5log[dl(z)] + K(z)', fontsize=14)
+    axt.set_ylabel('DM = 5log[dl(z)] + 25 + K(z)', fontsize=14)
+
+    plt.show()
+    sys.exit(0)
 
     # ----------------------
     # Another test: 
@@ -224,7 +227,7 @@ if __name__ == '__main__':
 
     for j in range(len(app_mag_arr)):
         mag = app_mag_arr[j]
-        match_sum = mag - absmag - 25.0
+        match_sum = mag - absmag
         z_idx = np.argmin(abs(dl_K_sum_lookup - match_sum))
 
         matched_redshifts[j] = dl_z_arr[z_idx]
