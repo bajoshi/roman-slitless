@@ -424,14 +424,15 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 def get_sn_z(snmag, scatter=False):
 
     # This function assumes that the utility code kcorr.py
-    # has been run on its own. It will do a couple tests 
-    # and save a file that is used to lookup the sum
-    # 5log(dl) + K to provide a redshift.
+    # has been run on its own. kcorr.py will do a couple 
+    # tests and save a file that is used to lookup the 
+    # sum 5log(dl) + 25 + K (i.e., the distance modulus) 
+    # to provide a redshift here.
 
     # Abs Mag of SN Ia in required band at peak
     absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
 
-    match_sum = snmag - absmag - 25.0
+    match_sum = snmag - absmag
     z_idx = np.argmin(abs(dl_K_sum_arr - match_sum))
 
     sn_z = dl_z_arr[z_idx]
@@ -770,24 +771,118 @@ def gen_sed_lst():
 
                 tqdm.write(f'{bcolors.ENDC}')
 
-            # ----- Ensure that all inserted magnitudes and redshifts are 
-            # cosmologically consistent.
-            #fig = plt.figure()
-            #ax = fig.add_subplot(111)
-            #ax.scatter(assigned_z, cat['MAG_AUTO'], s=5, color='k')
-            #plt.show()
-            #sys.exit(0)
+    return None
+
+def add_faint_sne_sedlst():
+
+    # Read in segmentation map
+
+    # Read in SExtractor catalog
+
+    # Read in current sedlst
+
+    # Read in list of artificially inserted SNe
+
+    # Find all SNe fainter than 24.5
+    # Loop over all faint SNe and manually add them
+    # 1. Get the x and y pos of the inserted SN
+    # 2. Within the segmap, now add a Gaussian 
+    # at the position whose pix sum up to the 
+    # required flux. I'm ignoring that the other SNe
+    # added in have a different "PSF" but this 
+    # should be okay for now.
+    # 3. Give this new segmap object a new ID and
+    # also assign a SN spectrum to it with a redshift
+    # that is consistent with the inserted mag.
+
 
     return None
 
-def main():
-    
-    gen_sed_lst()
+def remove_duplicates():
+
+    # Set image and truth params
+    dir_img_part = 'part1'
+
+    img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+    img_basename = '5deg_'
+    img_filt = 'Y106_'
+
+    # Arrays to loop over
+    pointings = np.arange(0, 1)
+    detectors = np.arange(1, 19, 1)
+
+    for pt in pointings:
+        for det in tqdm(detectors, desc="Removing duplicates"):
+
+            sed_filename = (pylinear_lst_dir + 
+                           'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst')
+
+            # Get all lines
+            alllines = open(sed_filename, 'r').readlines()
+
+            # First check for duplicates and then rewrite the 
+            # file without duplicates if there are any.
+
+            # Gather all IDs and check for uniques
+            all_ids = []
+            all_spectra = []
+            linecount = 0
+            for line in alllines:
+                if linecount > 1:  # skip first two lines of header
+                    lsp = line.split()
+                    all_ids.append(int(lsp[0]))
+                    all_spectra.append(lsp[1])
+                linecount += 1
+
+            all_ids = np.array(all_ids)
+            all_spectra = np.array(all_spectra)
+
+            all_unique_ids, counts = np.unique(all_ids, return_counts=True)
+
+            # Now if there are more total IDS than unique IDs 
+            # then we have duplicates. Otherwise skip to hte next file.
+            if len(all_unique_ids) != len(all_ids):
+
+                assert len(all_unique_ids) < len(all_ids)
+
+                duplicate_idx = np.where(counts>1)[0]
+                # This could be either the SN or the galaxy spectrum that numpy counted (with counts>1)
+                # i.e, this corresponds to the index of the second appearance of the ID
+                # Therefore, we'll look for both IDs that match and then decide to keep the SN spectrum
+                assert len(duplicate_idx) == 1  
+                # typically only one duplicate # we could turn code below into a for loop if needed
+                
+                duplicate_id_idx = np.where(all_ids == all_ids[duplicate_idx[0]])[0]
+
+                # Find duplicate spectra and choose the SN spectra
+                duplicate_IDs = all_ids[duplicate_id_idx]
+                duplicate_spectra = all_spectra[duplicate_id_idx]
+                for s, spec in enumerate(duplicate_spectra):
+                    if 'bc03' in spec:
+                        idx_to_delete = duplicate_id_idx[s]
+                        break
+
+                ids_to_write = np.delete(all_ids, idx_to_delete)
+                spectra_to_write = np.delete(all_spectra, idx_to_delete)
+
+                with open(sed_filename, 'w') as fh:
+                    fh.write(alllines[0])
+                    fh.write(alllines[1])
+
+                    for i in range(len(ids_to_write)):
+                        fh.write(str(ids_to_write[i]) + ' ' + spectra_to_write[i] + '\n')
+
+            else:
+                continue
 
     return None
 
 if __name__ == '__main__':
-    main()
+
+    gen_sed_lst()
+    remove_duplicates()
+    add_faint_sne_sedlst()
+
     sys.exit(0)
 
 

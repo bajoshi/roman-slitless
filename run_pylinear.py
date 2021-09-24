@@ -355,7 +355,7 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [1500, 6000]
+    exptime_list = [300, 1200, 3600, 6000]
     roll_angle_list = [0.0, 5.0, 10.0] #, 15.0, 20.0, 25.0, 30.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
@@ -478,8 +478,8 @@ def main():
             sky  = 1.1     # e/s/pix  # zodi + thermal + sky
             npix = 4096 * 4096
     
-            dark = 0.005   # e/s/pix
-            read = 5.61    # electrons per pixel
+            dark = 0.1   # e/s/pix
+            read = 10.0    # electrons per pixel
     
             exptime = exptime_list[e]  # seconds
             
