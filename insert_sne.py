@@ -98,7 +98,7 @@ def main():
 
     # Mag limits for choosing random SN mag
     lowmag = 21.0
-    highmag = 26.0
+    highmag = 27.5
 
     # ---------------
     # Read in the reference image of the star from 

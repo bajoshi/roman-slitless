@@ -267,7 +267,7 @@ for i in range(18):
         names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
     cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
-    assert len(sed) == len(cat)
+    #assert len(sed) == len(cat)
 
     # ----- Now get each SN mag and z
     for j in range(len(sed)):
@@ -280,14 +280,15 @@ for i in range(18):
             segid = sed['SegID'][j]
             segid_idx = np.where(cat['NUMBER'] == segid)[0]
 
-            mag = float(cat['MAG_AUTO'][segid_idx])
+            if segid_idx.size:
+                mag = float(cat['MAG_AUTO'][segid_idx])
 
-            # append
-            all_sn_mags.append(mag)
-            all_sn_z.append(z)
+                # append
+                all_sn_mags.append(mag)
+                all_sn_z.append(z)
 
-            #print(segid, '  ', z, '  ', mag)
-
+                #print(segid, '  ', z, '  ', mag)
+                
             total_sne2 += 1
 
 print('Total SNe in pointing: ', total_sne2)
@@ -323,14 +324,10 @@ for i in range(18):
     # ------ Read the SED lst and the corresponding SExtractor catalog
     # Set filenames
     sed_filename = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(i+1) + '.lst'
-    cat_filename = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' + pt + '_' + str(i+1) + '_SNadded.cat'
 
     # Read in the files
     sed = np.genfromtxt(sed_filename, dtype=None, 
         names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
-    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
-
-    assert len(sed) == len(cat)
 
     # ----- Now get each SN mag and z
     for j in range(len(sed)):
