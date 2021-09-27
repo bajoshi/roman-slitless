@@ -55,9 +55,10 @@ assert os.path.isdir(roman_direct_dir)
 sys.path.append(fitting_utils)
 import proper_and_lum_dist as cosmo
 import dust_utils as du
+from get_obj_pix import get_obj_pix
 
 # Read in SALT2 SN IA file  from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", 
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", 
     dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
 
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
@@ -773,38 +774,8 @@ def gen_sed_lst():
 
     return None
 
-def add_faint_sne_sedlst():
-
-    # Read in segmentation map
-
-    # Read in SExtractor catalog
-
-    # Read in current sedlst
-
-    # Read in list of artificially inserted SNe
-
-    # Find all SNe fainter than 24.5
-    # Loop over all faint SNe and manually add them
-    # 1. Get the x and y pos of the inserted SN
-    # 2. Within the segmap, now add a Gaussian 
-    # at the position whose pix sum up to the 
-    # required flux. I'm ignoring that the other SNe
-    # added in have a different "PSF" but this 
-    # should be okay for now.
-    # 3. Give this new segmap object a new ID and
-    # also assign a SN spectrum to it with a redshift
-    # that is consistent with the inserted mag.
-
-
-    return None
-
 def remove_duplicates():
 
-    # Set image and truth params
-    dir_img_part = 'part1'
-
-    img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
-    img_basename = '5deg_'
     img_filt = 'Y106_'
 
     # Arrays to loop over
@@ -877,10 +848,97 @@ def remove_duplicates():
 
     return None
 
+def add_faint_sne_sedlst():
+
+    # Set image and truth params
+    dir_img_part = 'part1'
+
+    img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+    img_basename = '5deg_'
+    img_filt = 'Y106_'
+
+    faint_mag_lim = 24.5
+
+    # Arrays to loop over
+    pointings = np.arange(0, 1)
+    detectors = np.arange(1, 19, 1)
+
+    for pt in pointings:
+        for det in tqdm(detectors, desc="Adding faint SNe manually"):
+
+            # Read in segmentation map
+            segmap = img_sim_dir + img_basename + img_filt + str(pt) + '_' + str(det) + '_segmap.fits'
+            segdata, seghdr = fits.getdata(segmap, header=True)
+
+            # Name of direct image
+            dir_img_name = segmap.replace('_segmap.fits', '_SNadded.fits')
+
+            # Read in current sedlst
+            sed_filename = (pylinear_lst_dir + 
+                           'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst')
+            sedlst = np.genfromtxt(sed_filename, dtype=None, 
+                names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
+
+            # Read in list of artificially inserted SNe
+            snadd_cat = np.load(segmap.replace('_segmap.fits', '_SNadded.npy'))
+            xi = snadd_cat[:, 0]
+            yi = snadd_cat[:, 1]
+            ins_mag = snadd_cat[:, 2]
+
+            # Find all SNe fainter than 24.5
+            # Loop over all faint SNe and manually add them
+            # 1. Get the x and y pos of the inserted SN
+            # 2. Within the segmap, now add a Gaussian 
+            # at the position whose pix sum up to the 
+            # required flux. I'm ignoring that the other SNe
+            # added in have a different "PSF" but this 
+            # should be okay for now.
+            # 3. Give this new segmap object a new ID and
+            # also assign a SN spectrum to it with a redshift
+            # that is consistent with the inserted mag.
+            faint_mag_idx = np.where(ins_mag >= faint_mag_lim)[0]
+
+            max_id_in_sedlst = np.max(sedlst['SegID'])
+
+            # Now loop
+            for i in range(len(faint_mag_idx)):
+                # Put the object in the SED LST
+                faint_mag = ins_mag[faint_mag_idx][i]
+                faint_z = get_sn_z(faint_mag)
+
+                new_spectrum = get_sn_spec_path(faint_z)
+                new_id = max_id_in_sedlst + i + 1
+
+                #with open(sed_filename, 'a') as fh:
+                #    fh.write(str(int(new_id)) + ' ' + new_spectrum + '\n')
+                
+                # Now put the object in the segmap
+                # Get the x and y position first
+                xpos = xi[faint_mag_idx][i]
+                ypos = yi[faint_mag_idx][i]
+
+                print(faint_mag, faint_z, new_id, os.path.basename(new_spectrum), xpos, ypos)
+
+                # Get all pix to associate with the SN
+                faint_sn_pix = get_obj_pix(xpos, ypos, dir_img_name)
+
+                # Add it to the segmap
+                segdata[faint_sn_pix[0], faint_sn_pix[1]] = new_id
+
+            # Save new segmap
+            phdu = fits.PrimaryHDU(header=seghdr, data=segdata)
+            phdu.writeto(segmap.replace('.fits', '_modtest.fits'), overwrite=True)
+
+            print('Written new segmap:', segmap.replace('.fits', '_modtest.fits'))
+
+            sys.exit(0)
+
+    return None
+
 if __name__ == '__main__':
 
-    gen_sed_lst()
-    remove_duplicates()
+    #gen_sed_lst()
+    #remove_duplicates()
     add_faint_sne_sedlst()
 
     sys.exit(0)

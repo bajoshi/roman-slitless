@@ -98,7 +98,7 @@ def main():
 
     # Mag limits for choosing random SN mag
     lowmag = 21.0
-    highmag = 25.0
+    highmag = 26.0
 
     # ---------------
     # Read in the reference image of the star from 
@@ -118,7 +118,7 @@ def main():
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
 
-            num_to_insert = np.random.randint(low=150, high=250)
+            num_to_insert = np.random.randint(low=200, high=300)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
 
