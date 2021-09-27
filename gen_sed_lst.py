@@ -909,15 +909,15 @@ def add_faint_sne_sedlst():
                 new_spectrum = get_sn_spec_path(faint_z)
                 new_id = max_id_in_sedlst + i + 1
 
-                #with open(sed_filename, 'a') as fh:
-                #    fh.write(str(int(new_id)) + ' ' + new_spectrum + '\n')
-                
+                with open(sed_filename, 'a') as fh:
+                    fh.write(str(int(new_id)) + ' ' + new_spectrum + '\n')
+
                 # Now put the object in the segmap
                 # Get the x and y position first
                 xpos = xi[faint_mag_idx][i]
                 ypos = yi[faint_mag_idx][i]
 
-                print(faint_mag, faint_z, new_id, os.path.basename(new_spectrum), xpos, ypos)
+                #print(faint_mag, faint_z, new_id, os.path.basename(new_spectrum), xpos, ypos)
 
                 # Get all pix to associate with the SN
                 faint_sn_pix = get_obj_pix(xpos, ypos, dir_img_name)
@@ -927,18 +927,14 @@ def add_faint_sne_sedlst():
 
             # Save new segmap
             phdu = fits.PrimaryHDU(header=seghdr, data=segdata)
-            phdu.writeto(segmap.replace('.fits', '_modtest.fits'), overwrite=True)
-
-            print('Written new segmap:', segmap.replace('.fits', '_modtest.fits'))
-
-            sys.exit(0)
+            phdu.writeto(segmap, overwrite=True)
 
     return None
 
 if __name__ == '__main__':
 
-    #gen_sed_lst()
-    #remove_duplicates()
+    gen_sed_lst()
+    remove_duplicates()
     add_faint_sne_sedlst()
 
     sys.exit(0)
