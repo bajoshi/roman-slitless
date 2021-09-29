@@ -16,7 +16,7 @@ import proper_and_lum_dist as cosmo
 sn_day_arr = np.arange(-20,51,1)
 
 # Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 def model_sn(x, z, day, sn_av):

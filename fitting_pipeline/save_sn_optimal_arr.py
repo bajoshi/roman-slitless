@@ -17,7 +17,7 @@ sn_scalefac = 1.734e40  # see sn_scaling.py
 sn_day_arr = np.arange(-19,51,1)
 
 # Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 # Also load in lookup table for luminosity distance
@@ -45,7 +45,7 @@ print('Total models:', total_models)
 sn_lam = salt2_spec['lam'][salt2_spec['day'] == 0]
 
 # For clipping to prism wav grid
-x = np.arange(7700.0, 18260.0, 55.0)
+x = np.arange(12010.0, 15970.0 + 55.0, 55.0)
 
 # Empty array to write to
 allmods = []

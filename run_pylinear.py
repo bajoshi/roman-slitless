@@ -478,7 +478,7 @@ def main():
             sky  = 1.1     # e/s/pix  # zodi + thermal + sky
             npix = 4096 * 4096
     
-            dark = 0.1   # e/s/pix
+            dark = 0.1     # e/s/pix
             read = 10.0    # electrons per pixel
     
             exptime = exptime_list[e]  # seconds

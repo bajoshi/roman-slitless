@@ -50,7 +50,7 @@ redshift_optfindarr = np.arange(0.01, 3.01, 0.01)
 # ------ THIS HAS TO BE GLOBAL!
 
 # Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "salt2_template_0.txt", \
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", \
     dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
 
 # Also load in lookup table for luminosity distance
@@ -63,7 +63,13 @@ del dl_cat
 
 sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
 print("Done loading all models. Time taken:", "{:.3f}".format(time.time()-start), "seconds.")
+# --------------------------------------
 
+# Check directories
+if not os.path.isdir(results_dir):
+    os.mkdir(results_dir)
+
+# --------------------------------------
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
@@ -214,12 +220,32 @@ def retrieve_sn_optpars_inverse(z, phase, av):
 
     return big_index
 
-def get_optimal_position(wav, flam, ferr):
+def get_optimal_position(wav, flam, ferr, opt_args=None):
 
-    verbose = False
+    if opt_args is not None:
+        verbose = opt_args['verbose']
+        ztrue = opt_args['ztrue']
+        phasetrue = opt_args['phasetrue']
+        avtrue = opt_args['avtrue']
+        ferr_lo = opt_args['ferr_lo']
+        ferr_hi = opt_args['ferr_hi']
+    else:
+        verbose=False
 
     if verbose: print('\nGetting optimal starting position...')
 
+    # -------
+    # Clip and only fit for optimal position in the central part of the data
+    # I think because the sensitivity of the prism is lower in the blue end
+    # compared to the red end, the blue end needs to be brought in more than
+    # the red.
+    # These MUST be the same as the limits in save_sn_optimal_arr.py
+    clip_idx = np.where((wav >= 12000) & (wav <= 16000))[0]
+    wav = wav[clip_idx]
+    flam = flam[clip_idx]
+    ferr = ferr[clip_idx]
+
+    # -------
     # Get vertical scaling factor for all models
     model_a = np.sum(flam * sn_opt_arr / ferr**2, axis=1) / np.sum(sn_opt_arr**2 / ferr**2, axis=1)
 
@@ -230,6 +256,7 @@ def get_optimal_position(wav, flam, ferr):
     chi2_opt = ((flam - optmod_eff) / ferr )**2
     chi2_opt = np.sum(chi2_opt, axis=1)
 
+    # -------
     # Find the global minimum and retrieve corresponding params
     big_index = np.argmin(chi2_opt)
     z_prior, phase_prior, av_prior = retrieve_sn_optpars(big_index)
@@ -247,24 +274,32 @@ def get_optimal_position(wav, flam, ferr):
 
     if verbose:
 
-        print('Data shape:', flam.shape)
-        print('Opt find array shape:', sn_opt_arr.shape)
-        print('A shape:', model_a.shape)
-        print('Effective model shape:', optmod_eff.shape)
-        print('Chi2 array shape:', chi2_opt.shape)
+        print('\n---------------------------')
+        #print('Data shape:', flam.shape)
+        #print('Opt find array shape:', sn_opt_arr.shape)
+        #print('A shape:', model_a.shape)
+        #print('Effective model shape:', optmod_eff.shape)
+        #print('Chi2 array shape:', chi2_opt.shape)
         print('Chi2 array:', chi2_opt)
         print('Min chi2:', chi2_opt[big_index], np.min(chi2_opt))
         print('Big index:', big_index)
         print('Retrieved priors:', z_prior, phase_prior, av_prior)
+
+        # True index
+        true_big_index = retrieve_sn_optpars_inverse(ztrue, phasetrue, avtrue)
+        print('True big index:', true_big_index)
         print('---------------------------\n')
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
         
         ax.plot(wav, flam, color='k')
-        ax.plot(wav, model_a[big_index] * sn_opt_arr[big_index], color='crimson')
-        ax.plot(wav, model_a[true_big_index] * sn_opt_arr[true_big_index], color='orchid')
+        ax.plot(wav, model_a[big_index] * sn_opt_arr[big_index], color='crimson', label='Model at optimal pos')
+        ax.plot(wav, model_a[true_big_index] * sn_opt_arr[true_big_index], color='orchid', label='Model at true pos')
 
+        # Clipping ferr. Wont be done before because ferr(lo/hi) is optional
+        ferr_lo = ferr_lo[clip_idx]
+        ferr_hi = ferr_hi[clip_idx]
         ax.fill_between(wav, flam-ferr_lo,flam+ferr_hi, color='gray', alpha=0.5)
 
         ax.axhline(y=0.0, ls='--', color='navy')
@@ -295,15 +330,17 @@ def get_optimal_position(wav, flam, ferr):
         print(model_a[big_index], model_a[true_big_index])
         print(odiff, tdiff)
         
-        ax.text(x=0.75, y=0.2,  s='z = ' + '{:.3f}'.format(z_prior),
+        ax.text(x=0.75, y=0.25,  s='z = ' + '{:.3f}'.format(z_prior),
             verticalalignment='top', horizontalalignment='left',
-            transform=ax.transAxes, color='royalblue', size=12)
-        ax.text(x=0.75, y=0.15, s='Phase = ' + '{:d}'.format(phase_prior),
+            transform=ax.transAxes, color='royalblue', size=14)
+        ax.text(x=0.75, y=0.2, s='Phase = ' + '{:d}'.format(phase_prior),
             verticalalignment='top', horizontalalignment='left',
-            transform=ax.transAxes, color='royalblue', size=12)
-        ax.text(x=0.75, y=0.1,  s='Av = ' + '{:.3f}'.format(av_prior),
+            transform=ax.transAxes, color='royalblue', size=14)
+        ax.text(x=0.75, y=0.15,  s='Av = ' + '{:.3f}'.format(av_prior),
             verticalalignment='top', horizontalalignment='left',
-            transform=ax.transAxes, color='royalblue', size=12)
+            transform=ax.transAxes, color='royalblue', size=14)
+
+        ax.legend(loc=0, fontsize=14, frameon=False)
 
         plt.show()
         fig.clear()
@@ -322,9 +359,11 @@ def main():
     img_filt = 'Y106_'
 
     exptime1 = '_6000s'
-    exptime2 = '_1500s'
+    exptime2 = '_3600s'
+    exptime3 = '_1200s'
+    exptime4 = '_300s'
 
-    all_exptimes = [exptime1, exptime2]
+    all_exptimes = [exptime1, exptime2, exptime3, exptime4]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -382,7 +421,7 @@ def main():
                     replace = False
                     fitsmooth = False
 
-                    print("\n-----------------")
+                    print("\n#####################################")
                     print("Fitting SegID:", segid, "with exposure time:", exptime)
  
                     # ----- Get spectrum
@@ -408,7 +447,7 @@ def main():
                     ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
 
                     # ----- Smooth with boxcar
-                    smoothing_width_pix = 4
+                    smoothing_width_pix = 3
                     sf = convolve(flam, Box1DKernel(smoothing_width_pix))
 
                     # ----- Get noise level
@@ -418,8 +457,8 @@ def main():
                     for w in range(len(wav)):
                         sf_noised[w] = np.random.normal(loc=sf[w], scale=noise_correct[w], size=1)
 
-                    flam = sf_noised
-                    ferr = noise_correct
+                    #flam = sf_noised
+                    #ferr = noise_correct
 
                     # ----- Check SNR
                     #snr = get_snr(wav, flam)
@@ -456,11 +495,22 @@ def main():
                         #snr_array = flam / ferr
                         #nan_idx = np.where(np.isnan(snr_array))[0]
 
+                        opt_dict = {'verbose': True, 
+                                    'ztrue': template_inputs[0],
+                                    'phasetrue': template_inputs[1],
+                                    'avtrue': template_inputs[2],
+                                    'ferr_lo': ferr_lo,
+                                    'ferr_hi': ferr_hi}
+
                         z_prior, phase_prior, av_prior = get_optimal_position(wav, flam, ferr)
                         rsn_init = np.array([z_prior, phase_prior, av_prior])
                         # redshift, day relative to peak, and dust extinction
 
                         #rsn_init = np.array([1.18, 0, 0.5])
+
+                        print("logpost at starting position for SN:")
+                        print(logpost_sn(rsn_init, wav, flam, ferr))
+                        print("Starting position:", rsn_init)
 
                         """
                         #z_smooth, phase_smooth, av_smooth = get_optimal_position(wav, sf, ferr/np.sqrt(smoothing_width_pix))
@@ -477,10 +527,10 @@ def main():
                         ta = get_y_alpha(tm, flam, ferr)
                         ax.plot(wav, ta, color='dodgerblue', lw=2.0, zorder=5)
 
-                        print('Start for unsmoothed spec:', z_prior, phase_prior, av_prior)
-                        print('Start for smoothed spec:', z_smooth, phase_smooth, av_smooth)
+                        #print('Start for unsmoothed spec:', z_prior, phase_prior, av_prior)
+                        #print('Start for smoothed spec:', z_smooth, phase_smooth, av_smooth)
 
-                        #ax.set_xlim(8000, 17500)
+                        ax.set_xlim(7400, 18500)
                         #ax.set_ylim(1e-19, 3e-18)
 
                         plt.show()
@@ -510,10 +560,6 @@ def main():
 
                         # ----- Set up args
                         args_sn = [wav, flam, ferr]
-
-                        print("logpost at starting position for SN:")
-                        print(logpost_sn(rsn_init, wav, flam, ferr))
-                        print("Starting position:", rsn_init)
 
                         # ----- Now run emcee on SN
                         backend = emcee.backends.HDFBackend(emcee_savefile)
