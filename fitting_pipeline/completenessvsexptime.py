@@ -34,7 +34,7 @@ def main():
     # Create arrays for plotting
     deltamag = 0.5
     low_maglim = 21.0
-    high_maglim = 26.0
+    high_maglim = 27.5
 
     mag_bins = np.arange(low_maglim, high_maglim, deltamag)  # left edges of mag bins
     mags = [(mag_bins[m] + mag_bins[m+1])/2 for m in range(len(mag_bins) - 1)]
@@ -43,8 +43,8 @@ def main():
     z_tol2 = 0.001
 
     # Do this for each exposure time separately
-    exptime_labels = ['z3600', 'z900']
-    colors = ['crimson', 'dodgerblue']
+    exptime_labels = ['z6000', 'z3600', 'z1200', 'z300']
+    colors = ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
 
     # Setup figure
     fig = plt.figure(figsize=(8,5))
@@ -101,35 +101,28 @@ def main():
     ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray', alpha=0.3)
 
     #ax.legend(loc=6, frameon=False, fontsize=14)
-
+    
     mag23_bin_idx = np.where((cat['Y106mag'] >= 23.0) & (cat['Y106mag'] < 23.5))[0]
-    snr_mag23_3600 = np.mean(cat['SNR3600'][mag23_bin_idx])
-    snr_mag23_900 = np.mean(cat['SNR900'][mag23_bin_idx])
 
     avg_snr_1hr = []
 
     print('\nFor SNe at approx z=1:')
     print('  IMG   SegID   Mag   z-true   z-wide   z-deep   SNR-wide   SNR-deep   SNR-1-hr') 
     for s in range(len(mag23_bin_idx)):
-        snr_1hr = cat['SNR3600'][mag23_bin_idx][s]/np.sqrt(5)
+        snr_1hr = cat['SNR1200'][mag23_bin_idx][s]  #/np.sqrt(5)
         avg_snr_1hr.append(snr_1hr)
-        print(cat['img_suffix'][mag23_bin_idx][s], '  ', 
-              cat['SNSegID'][mag23_bin_idx][s], '  ',
-              cat['Y106mag'][mag23_bin_idx][s], '  ',
-              cat['z_true'][mag23_bin_idx][s], '  ',
-              cat['z900'][mag23_bin_idx][s], '  ',
-              cat['z3600'][mag23_bin_idx][s], '  ',
-              cat['SNR900'][mag23_bin_idx][s], '  ',
-              cat['SNR3600'][mag23_bin_idx][s], '  ', 
-              '{:.2f}'.format(snr_1hr))
+        #print(cat['img_suffix'][mag23_bin_idx][s], '  ', 
+        #      cat['SNSegID'][mag23_bin_idx][s], '  ',
+        #      cat['Y106mag'][mag23_bin_idx][s], '  ',
+        #      cat['z_true'][mag23_bin_idx][s], '  ',
+        #      cat['z900'][mag23_bin_idx][s], '  ',
+        #      cat['z3600'][mag23_bin_idx][s], '  ',
+        #      cat['SNR900'][mag23_bin_idx][s], '  ',
+        #      cat['SNR3600'][mag23_bin_idx][s], '  ', 
+        #      '{:.2f}'.format(snr_1hr))
     print('\n')
 
     print('Average SNR for 1-hour exposures of z~1 SNe:', np.mean(np.array(avg_snr_1hr)))
-
-    #mag24_idx = np.where(cat['Y106mag'] >= 24.0)[0]
-    #print(mag24_idx)
-    #snr_mag24 = np.mean(cat['SNR3600'][mag24_idx])
-    #print(snr_mag24)
 
     # ----------- Top redshift axis
     # Don't need to plot anything
@@ -140,9 +133,9 @@ def main():
     # Since we're not plotting anything the default ticks
     # are at [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     # SO the on the bottom x-axis need to be transformed to [0,1]
-    # i.e., the range [18.0, 26.5] --> [0,1]
-    mt = np.array([20.5, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 26.5])
-    mags_for_z_axis_transform = (mt - 20.5)/6.0
+    # i.e., the range [20.5, 28.0] --> [0,1]
+    mt = np.arange(20.5, 28.5, 0.5)
+    mags_for_z_axis_transform = (mt - 20.5)/7.5
     # the denominator here corresponds to the difference 
     # on the bottom x-axis that is shown in the figure
     # NOT the difference between final and init values in mags_for_z_axis
@@ -161,16 +154,16 @@ def main():
     print('Total sample size:', len(cat))
 
     # Text info
-    ax.text(x=22.0, y=0.37, 
-        s=r'$18000\ \mathrm{seconds;}$' + '\n' + \
-        r'$\mathrm{\left<SNR\right>}^{z\sim1}_{F106\sim23.25}=$' + '{:.1f}'.format(snr_mag23_3600), 
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax.transData, color='crimson', size=14)
-    ax.text(x=22.0, y=0.23, 
-        s=r'$4500\ \mathrm{seconds;}$' + '\n' + \
-        r'$\mathrm{\left<SNR\right>}^{z\sim1}_{F106\sim23.25}=$' + '{:.1f}'.format(snr_mag23_900), 
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax.transData, color='dodgerblue', size=14)
+    #ax.text(x=22.0, y=0.37, 
+    #    s=r'$18000\ \mathrm{seconds;}$' + '\n' + \
+    #    r'$\mathrm{\left<SNR\right>}^{z\sim1}_{F106\sim23.25}=$' + '{:.1f}'.format(snr_mag23_3600), 
+    #    verticalalignment='top', horizontalalignment='left', 
+    #    transform=ax.transData, color='crimson', size=14)
+    #ax.text(x=22.0, y=0.23, 
+    #    s=r'$4500\ \mathrm{seconds;}$' + '\n' + \
+    #    r'$\mathrm{\left<SNR\right>}^{z\sim1}_{F106\sim23.25}=$' + '{:.1f}'.format(snr_mag23_900), 
+    #    verticalalignment='top', horizontalalignment='left', 
+    #    transform=ax.transData, color='dodgerblue', size=14)
 
     ax.text(x=low_maglim-0.2, y=0.28, s=r'$\mbox{---}\ \frac{\Delta z}{1+z} \leq 0.01$', 
         verticalalignment='top', horizontalalignment='left', 
@@ -188,7 +181,7 @@ def main():
     ax.set_xlim(low_maglim - 0.5, high_maglim + 0.5)
 
     # save
-    fig.savefig(results_dir + 'pylinearrecovery_completeness.pdf', 
+    fig.savefig(roman_slitless + 'figures/pylinearrecovery_completeness.pdf', 
                 dpi=200, bbox_inches='tight')
     # Also save in paper figures directory
     fig.savefig('/Users/baj/Library/Mobile Documents/com~apple~CloudDocs/Papers/my_papers/romansims_sne/figures/' \

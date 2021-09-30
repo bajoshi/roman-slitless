@@ -452,10 +452,10 @@ def main():
 
                     # ----- Get noise level
                     ferr = (ferr_lo + ferr_hi)/2.0
-                    noise_correct = ferr * 5
-                    sf_noised = np.zeros(len(sf))
-                    for w in range(len(wav)):
-                        sf_noised[w] = np.random.normal(loc=sf[w], scale=noise_correct[w], size=1)
+                    #noise_correct = ferr * 5
+                    #sf_noised = np.zeros(len(sf))
+                    #for w in range(len(wav)):
+                    #    sf_noised[w] = np.random.normal(loc=sf[w], scale=noise_correct[w], size=1)
 
                     #flam = sf_noised
                     #ferr = noise_correct

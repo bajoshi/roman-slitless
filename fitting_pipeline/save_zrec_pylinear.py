@@ -48,12 +48,12 @@ def get_correct_snr(ext_hdu, segid):
 
     return get_snr(wav, flam)
 
-def check_and_write(fh, emcee_savefile, last=False):
+def check_and_write(fh, emcee_savefile):
 
     if os.path.isfile(emcee_savefile):
         write_to_file_data(fh, emcee_savefile)
     else:
-        write_to_file_blank(fh, last)
+        write_to_file_blank(fh)
 
     return None
 
@@ -93,7 +93,7 @@ def write_to_file_data(fh, emcee_savefile):
 
     return None
 
-def write_to_file_blank(fh, last=False):
+def write_to_file_blank(fh):
 
     fh.write('-9999.0' + '  ')
     fh.write('-9999.0' + '  ')
@@ -105,11 +105,7 @@ def write_to_file_blank(fh, last=False):
 
     fh.write('-9999.0' + '  ')
     fh.write('-9999.0' + '  ')
-
-    if last:
-        fh.write('-9999.0' + '\n')
-    else:
-        fh.write('-9999.0' + '  ')
+    fh.write('-9999.0' + '  ')
 
     return None
 
@@ -267,7 +263,8 @@ for pt in pointings:
                 check_and_write(fh, emcee_savefile1)
                 check_and_write(fh, emcee_savefile2)
                 check_and_write(fh, emcee_savefile3)
-                check_and_write(fh, emcee_savefile4, last=True)
+                check_and_write(fh, emcee_savefile4)
+                fh.write('\n')
 
             ext_hdu1.close()
             ext_hdu2.close()

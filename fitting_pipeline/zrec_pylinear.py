@@ -6,6 +6,9 @@ import sys
 
 import matplotlib.pyplot as plt
 
+home = os.getenv('HOME')
+roman_slitless = home + '/Documents/GitHub/roman-slitless/'
+
 ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
 results_dir = ext_spectra_dir + 'fitting_results/'
 
@@ -13,34 +16,40 @@ resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
 cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
 # Remove invalid measures
-z900 = cat['z900']
-z900[z900 == -9999.0] = np.nan
+z300 = cat['z300']
+z300[z300 == -9999.0] = np.nan
 
-#z1800 = cat['z1800']
-#z1800[z1800 == -9999.0] = np.nan
+z1200 = cat['z1200']
+z1200[z1200 == -9999.0] = np.nan
 
 z3600 = cat['z3600']
 z3600[z3600 == -9999.0] = np.nan
 
-# ---
-phase900 = cat['phase900']
-phase900[phase900 == -9999.0] = np.nan
+z6000 = cat['z6000']
+z6000[z6000 == -9999.0] = np.nan
 
-#phase1800 = cat['phase1800']
-#phase1800[phase1800 == -9999.0] = np.nan
+# ---
+phase300 = cat['phase300']
+phase300[phase300 == -9999.0] = np.nan
+
+phase1200 = cat['phase1200']
+phase1200[phase1200 == -9999.0] = np.nan
 
 phase3600 = cat['phase3600']
 phase3600[phase3600 == -9999.0] = np.nan
 
+phase6000 = cat['phase6000']
+phase6000[phase6000 == -9999.0] = np.nan
+
 # ---
-av900 = cat['Av900']
-av900[av900 == -9999.0] = np.nan
+#av900 = cat['Av900']
+#av900[av900 == -9999.0] = np.nan
 
 #av1800 = cat['Av1800']
 #av1800[av1800 == -9999.0] = np.nan
 
-av3600 = cat['Av3600']
-av3600[av3600 == -9999.0] = np.nan
+#av3600 = cat['Av3600']
+#av3600[av3600 == -9999.0] = np.nan
 
 ###########################################
 """
@@ -279,41 +288,40 @@ plt.close(fig)
 ###########################################
 # -------------------- Plot SNR vs % accuracy
 # get error and accuracy
-z3600err = np.vstack((cat['z3600_lowerr'], cat['z3600_uperr']))
-z3600acc = (z3600 - cat['z_true']) / (1 + cat['z_true'])
+z6000err = np.vstack((cat['z6000_lowerr'], cat['z6000_uperr']))
+z6000acc = (z6000 - cat['z_true']) / (1 + cat['z_true'])
 
 fig = plt.figure(figsize=(9, 5))
 
 gs = fig.add_gridspec(nrows=12, ncols=1, left=0.15, right=0.95, wspace=0.1)
 
-ax1 = fig.add_subplot(gs[:4])
-ax2 = fig.add_subplot(gs[4:8])
-ax3 = fig.add_subplot(gs[8:])
+ax1 = fig.add_subplot(gs[:6])
+ax2 = fig.add_subplot(gs[6:])
+#ax3 = fig.add_subplot(gs[8:])
 
 # Axis labels
 ax1.set_ylabel(r'$\frac{z_\mathrm{inferred} - z_\mathrm{true}}{1 + z_\mathrm{true}}$', fontsize=15)
 ax2.set_ylabel(r'$\Delta \mathrm{Phase}$', fontsize=15)
-ax3.set_ylabel(r'$\Delta \mathrm{A_v}$', fontsize=15)
-
-ax3.set_xlabel(r'$\mathrm{SNR}$', fontsize=15)
+#ax3.set_ylabel(r'$\Delta \mathrm{A_v}$', fontsize=15)
+ax2.set_xlabel(r'$\mathrm{SNR}$', fontsize=15)
 
 # Plotting
-ax1.scatter(cat['SNR3600'], z3600acc, s=7, color='k',  zorder=2)
+ax1.scatter(cat['SNR6000'], z6000acc, s=7, color='k',  zorder=2)
 ax1.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
-ax2.scatter(cat['SNR3600'], phase3600 - cat['phase_true'], s=7, color='k',  zorder=2)
+ax2.scatter(cat['SNR6000'], phase6000 - cat['phase_true'], s=7, color='k',  zorder=2)
 ax2.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
-ax3.scatter(cat['SNR3600'], av3600 - cat['Av_true'], s=7, color='k',  zorder=2)
-ax3.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
+#ax3.scatter(cat['SNR6000'], av6000 - cat['Av_true'], s=7, color='k',  zorder=2)
+#ax3.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
 #ax1.set_xlim(10, 150)
 #ax2.set_xlim(10, 150)
 #ax3.set_xlim(10, 150)
 
-ax1.set_ylim(-0.015, 0.015)
+#ax1.set_ylim(-0.015, 0.015)
 
-fig.savefig(results_dir + 'pylinearrecovery_snr.pdf',
+fig.savefig(roman_slitless + 'figures/pylinearrecovery_snr.pdf',
     dpi=200, bbox_inches='tight')
 
 fig.clear()

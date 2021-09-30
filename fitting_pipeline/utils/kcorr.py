@@ -39,7 +39,8 @@ def get_kcorr(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbose=Fal
 
     # Redshift the spectrum
     nu_obs = sed_nu / (1+redshift)
-    lnu_obs = sed_lnu  # this does NOT need a (1+z)
+    lnu_obs = sed_lnu * (1+redshift)
+    # this does NOT need a (1+z)???
     # See eq 9 in Hogg+2002, it includes L_nu((1+z)*nu_obs)
     # This is just L_nu(nu_em). However the integral is still
     # performed in observed frequency space.
