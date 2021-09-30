@@ -7,6 +7,7 @@ from astropy.convolution import convolve, Box1DKernel
 import os
 import sys
 import glob
+from tqdm import tqdm
 
 ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
 results_dir = ext_spectra_dir + 'fitting_results/'
@@ -19,7 +20,7 @@ fitting_utils = cwd + '/utils/'
 roman_slitless_dir = os.path.dirname(cwd)
 
 sys.path.append(fitting_utils)
-#from get_snr import get_snr
+from get_snr import get_snr
 from get_template_inputs import get_template_inputs
 
 # Set pylinear f_lambda scaling factor
@@ -40,44 +41,117 @@ def get_burn_thin(sampler):
 
     return burn_in, thinning_steps
 
-def get_correct_snr(ext_hdu, segid, wav, old_flam):
+def get_correct_snr(ext_hdu, segid):
 
-    ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * pylinear_flam_scale_fac
-    ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * pylinear_flam_scale_fac
+    wav  = ext_hdu[('SOURCE', segid)].data['wavelength']
+    flam = ext_hdu[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
 
-    # ----- Smooth with boxcar
-    smoothing_width_pix = 4
-    sf = convolve(old_flam, Box1DKernel(smoothing_width_pix))
+    return get_snr(wav, flam)
 
-    # ----- Get noise level
-    ferr = (ferr_lo + ferr_hi)/2.0
-    noise_correct = ferr * 5
-    sf_noised = np.zeros(len(sf))
-    for w in range(len(wav)):
-        sf_noised[w] = np.random.normal(loc=sf[w], scale=noise_correct[w], size=1)
+def check_and_write(fh, emcee_savefile, last=False):
 
-    flam = sf_noised
-    ferr = noise_correct
+    if os.path.isfile(emcee_savefile):
+        write_to_file_data(fh, emcee_savefile)
+    else:
+        write_to_file_blank(fh, last)
 
-    # ----- Check SNR
-    snr = np.nanmean(flam/ferr)
+    return None
 
-    return snr
+def write_to_file_data(fh, emcee_savefile):
+
+    # ----- Get flat samples
+    sampler = emcee.backends.HDFBackend(emcee_savefile)
+    burn_in, thinning_steps = get_burn_thin(sampler)
+    flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
+
+    # ----- Read in corner quantiles
+    cq_z = corner.quantile(x=flat_samples[:, 0], q=[0.16, 0.5, 0.84])
+    cq_day = corner.quantile(x=flat_samples[:, 1], q=[0.16, 0.5, 0.84])
+    cq_av = corner.quantile(x=flat_samples[:, 2], q=[0.16, 0.5, 0.84])
+
+    # -----
+    z_lowerr = cq_z[1] - cq_z[0]
+    z_uperr = cq_z[2] - cq_z[1]
+
+    phase_lowerr = cq_day[1] - cq_day[0]
+    phase_uperr = cq_day[2] - cq_day[1]
+
+    av_lowerr = cq_av[1] - cq_av[0]
+    av_uperr = cq_av[2] - cq_av[1]
+
+    fh.write('{:.3f}'.format(cq_z[1]) + '  ')
+    fh.write('{:.3f}'.format(z_lowerr) + '  ')
+    fh.write('{:.3f}'.format(z_uperr) + '  ')
+
+    fh.write('{:.1f}'.format(cq_day[1]) + '  ')
+    fh.write('{:.1f}'.format(phase_lowerr) + '  ')
+    fh.write('{:.1f}'.format(phase_uperr) + '  ')
+
+    fh.write('{:.3f}'.format(cq_av[1]) + '  ')
+    fh.write('{:.3f}'.format(av_lowerr) + '  ')
+    fh.write('{:.3f}'.format(av_uperr) + '  ')
+
+    return None
+
+def write_to_file_blank(fh, last=False):
+
+    fh.write('-9999.0' + '  ')
+    fh.write('-9999.0' + '  ')
+    fh.write('-9999.0' + '  ')
+
+    fh.write('-9999.0' + '  ')
+    fh.write('-9999.0' + '  ')
+    fh.write('-9999.0' + '  ')
+
+    fh.write('-9999.0' + '  ')
+    fh.write('-9999.0' + '  ')
+
+    if last:
+        fh.write('-9999.0' + '\n')
+    else:
+        fh.write('-9999.0' + '  ')
+
+    return None
+
+def get_faint_sn_mag(segid, segdata, dir_img):
+
+    zeropoint = 26.264
+
+    obj_idx = np.where(segdata == segid)
+    all_counts = dir_img[obj_idx]
+
+    total_counts = np.sum(all_counts)
+
+    faint_mag = -2.5 * np.log10(total_counts) + zeropoint
+
+    return faint_mag
 
 # ---------------------------------------
-exptime1 = '_1500s'
-exptime2 = '_6000s'
+exptime1 = '_300s'
+exptime2 = '_1200s'
+exptime3 = '_3600s'
+exptime4 = '_6000s'
 
 img_filt = 'Y106_'
 ext_root = 'romansim_prism_'
-res_hdr = '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + \
-          'Y106mag  SNR900  SNR3600  ' + \
-          'z900  z900_lowerr  z900_uperr  ' + \
-          'phase900  phase900_lowerr  phase900_uperr  ' + \
-          'Av900  Av900_lowerr  Av900_uperr  ' + \
-          'z3600  z3600_lowerr  z3600_uperr  ' + \
-          'phase3600  phase3600_lowerr  phase3600_uperr  ' + \
-          'Av3600  Av3600_lowerr  Av3600_uperr'
+res_hdr = ( '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + 
+            'Y106mag  SNR300  SNR1200  SNR3600  SNR6000  ' + 
+            'z300  z300_lowerr  z300_uperr  ' + 
+            'phase300  phase300_lowerr  phase300_uperr  ' + 
+            'Av300  Av300_lowerr  Av300_uperr  ' + 
+
+            'z1200  z1200_lowerr  z1200_uperr  ' + 
+            'phase1200  phase1200_lowerr  phase1200_uperr  ' + 
+            'Av1200  Av1200_lowerr  Av1200_uperr  ' + 
+            
+            'z3600  z3600_lowerr  z3600_uperr  ' + 
+            'phase3600  phase3600_lowerr  phase3600_uperr  ' + 
+            'Av3600  Av3600_lowerr  Av3600_uperr  ' + 
+            
+            'z6000  z6000_lowerr  z6000_uperr  ' + 
+            'phase6000  phase6000_lowerr  phase6000_uperr  ' + 
+            'Av6000  Av6000_lowerr  Av6000_uperr'
+          )
 
 # Header for SExtractor catalog
 cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
@@ -85,7 +159,7 @@ cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
 
 # Arrays to loop over
 pointings = np.arange(0, 1)
-detectors = np.arange(1, 3)
+detectors = np.arange(1, 2)
 
 for pt in pointings:
 
@@ -112,9 +186,23 @@ for pt in pointings:
             ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
             ext_hdu2 = fits.open(ext_spec_filename2)
 
+            ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
+            ext_hdu3 = fits.open(ext_spec_filename3)
+
+            ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix + exptime4 + '_x1d.fits'
+            ext_hdu4 = fits.open(ext_spec_filename4)
+
             # ----- Read in catalog from SExtractor
             cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'
             cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+
+            # -----Read in segmentation map
+            segmap = img_sim_dir + '5deg_' + img_suffix + '_segmap.fits'
+            segdata = fits.getdata(segmap)
+
+            # ----- Name of direct image
+            dir_img_name = segmap.replace('_segmap.fits', '_SNadded.fits')
+            dir_img = fits.getdata(dir_img_name)
 
             # ----- loop and find all SN segids
             all_sn_segids = []
@@ -126,7 +214,7 @@ for pt in pointings:
             print(len(all_sn_segids), 'SN in', img_suffix + '\n')
 
             # ----- Now loop over all segids in this img
-            for segid in all_sn_segids:
+            for segid in tqdm(all_sn_segids, desc='Processing SN'):
 
                 segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
@@ -138,19 +226,18 @@ for pt in pointings:
                 true_av    = template_inputs[2]
 
                 # ----- Get SNR
-                wav1 = ext_hdu1[('SOURCE', segid)].data['wavelength']
-                flam1 = ext_hdu1[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
-                wav2 = ext_hdu2[('SOURCE', segid)].data['wavelength']
-                flam2 = ext_hdu2[('SOURCE', segid)].data['flam'] * pylinear_flam_scale_fac
-
-                snr1 = get_correct_snr(ext_hdu1, segid, wav1, flam1)
-                snr2 = get_correct_snr(ext_hdu2, segid, wav2, flam2)
+                snr1 = get_correct_snr(ext_hdu1, segid)
+                snr2 = get_correct_snr(ext_hdu2, segid)
+                snr3 = get_correct_snr(ext_hdu3, segid)
+                snr4 = get_correct_snr(ext_hdu4, segid)
 
                 # ----- Get magnitude in Y106
-                mag_idx = int(np.where(cat['NUMBER'] == segid)[0])
-                mag = cat['MAG_AUTO'][mag_idx]
-                print('SN mag and both SNRs:', '{:.2f}'.format(mag), 
-                    '{:.2f}'.format(snr1), '{:.2f}'.format(snr2), '\n')
+                mag_idx = np.where(cat['NUMBER'] == segid)[0]
+                if mag_idx.size:
+                    mag_idx = int(mag_idx)
+                    mag = cat['MAG_AUTO'][mag_idx]
+                else:
+                    mag = get_faint_sn_mag(segid, segdata, dir_img)
 
                 # ----- Write to file
                 # --- ID and true quantities
@@ -160,6 +247,8 @@ for pt in pointings:
                 fh.write('{:.2f}'.format(mag)  + '  ')
                 fh.write('{:.2f}'.format(snr1) + '  ')
                 fh.write('{:.2f}'.format(snr2) + '  ')
+                fh.write('{:.2f}'.format(snr3) + '  ')
+                fh.write('{:.2f}'.format(snr4) + '  ')
 
                 # ----- Construct the filenames for this segid
                 snstr1 = str(segid) + '_' + img_suffix + exptime1
@@ -168,104 +257,24 @@ for pt in pointings:
                 snstr2 = str(segid) + '_' + img_suffix + exptime2
                 emcee_savefile2 = results_dir + 'emcee_sampler_sn' + snstr2 + '.h5'
 
-                # Make sure the sampler file exists
-                if os.path.isfile(emcee_savefile1):
+                snstr3 = str(segid) + '_' + img_suffix + exptime3
+                emcee_savefile3 = results_dir + 'emcee_sampler_sn' + snstr3 + '.h5'
 
-                    # ----- Get flat samples
-                    sampler1 = emcee.backends.HDFBackend(emcee_savefile1)
-                    burn_in1, thinning_steps1 = get_burn_thin(sampler1)
-                    flat_samples1 = sampler1.get_chain(discard=burn_in1, thin=thinning_steps1, flat=True)
+                snstr4 = str(segid) + '_' + img_suffix + exptime4
+                emcee_savefile4 = results_dir + 'emcee_sampler_sn' + snstr4 + '.h5'
 
-                    # ----- Read in corner quantiles
-                    cq_z1 = corner.quantile(x=flat_samples1[:, 0], q=[0.16, 0.5, 0.84])
-                    cq_day1 = corner.quantile(x=flat_samples1[:, 1], q=[0.16, 0.5, 0.84])
-                    cq_av1 = corner.quantile(x=flat_samples1[:, 2], q=[0.16, 0.5, 0.84])
-
-                    # --- EXPTIME 900 seconds  # wide survey
-                    z900_lowerr = cq_z1[1] - cq_z1[0]
-                    z900_uperr = cq_z1[2] - cq_z1[1]
-
-                    phase900_lowerr = cq_day1[1] - cq_day1[0]
-                    phase900_uperr = cq_day1[2] - cq_day1[1]
-
-                    av900_lowerr = cq_av1[1] - cq_av1[0]
-                    av900_uperr = cq_av1[2] - cq_av1[1]
-
-                    fh.write('{:.3f}'.format(cq_z1[1]) + '  ')
-                    fh.write('{:.3f}'.format(z900_lowerr) + '  ')
-                    fh.write('{:.3f}'.format(z900_uperr) + '  ')
-
-                    fh.write('{:.1f}'.format(cq_day1[1]) + '  ')
-                    fh.write('{:.1f}'.format(phase900_lowerr) + '  ')
-                    fh.write('{:.1f}'.format(phase900_uperr) + '  ')
-
-                    fh.write('{:.3f}'.format(cq_av1[1]) + '  ')
-                    fh.write('{:.3f}'.format(av900_lowerr) + '  ')
-                    fh.write('{:.3f}'.format(av900_uperr) + '  ')
-
-                else:
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-
-
-                if os.path.isfile(emcee_savefile2):
-
-                    # ----- Get flat samples
-                    sampler2 = emcee.backends.HDFBackend(emcee_savefile2)
-                    burn_in2, thinning_steps2 = get_burn_thin(sampler2)
-                    flat_samples2 = sampler2.get_chain(discard=burn_in2, thin=thinning_steps2, flat=True)
-
-                    # ----- Read in corner quantiles
-                    cq_z2 = corner.quantile(x=flat_samples2[:, 0], q=[0.16, 0.5, 0.84])
-                    cq_day2 = corner.quantile(x=flat_samples2[:, 1], q=[0.16, 0.5, 0.84])
-                    cq_av2 = corner.quantile(x=flat_samples2[:, 2], q=[0.16, 0.5, 0.84])
-
-                    # --- EXPTIME 3600 seconds  # deep survey
-                    z3600_lowerr = cq_z2[1] - cq_z2[0]
-                    z3600_uperr = cq_z2[2] - cq_z2[1]
-
-                    phase3600_lowerr = cq_day2[1] - cq_day2[0]
-                    phase3600_uperr = cq_day2[2] - cq_day2[1]
-
-                    av3600_lowerr = cq_av2[1] - cq_av2[0]
-                    av3600_uperr = cq_av2[2] - cq_av2[1]
-
-                    fh.write('{:.3f}'.format(cq_z2[1]) + '  ')
-                    fh.write('{:.3f}'.format(z3600_lowerr) + '  ')
-                    fh.write('{:.3f}'.format(z3600_uperr) + '  ')
-
-                    fh.write('{:.1f}'.format(cq_day2[1]) + '  ')
-                    fh.write('{:.1f}'.format(phase3600_lowerr) + '  ')
-                    fh.write('{:.1f}'.format(phase3600_uperr) + '  ')
-
-                    fh.write('{:.3f}'.format(cq_av2[1]) + '  ')
-                    fh.write('{:.3f}'.format(av3600_lowerr) + '  ')
-                    fh.write('{:.3f}'.format(av3600_uperr) + '\n')
-
-                else:
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '  ')
-                    fh.write('-9999.0' + '\n')
+                # ----------------
+                check_and_write(fh, emcee_savefile1)
+                check_and_write(fh, emcee_savefile2)
+                check_and_write(fh, emcee_savefile3)
+                check_and_write(fh, emcee_savefile4, last=True)
 
             ext_hdu1.close()
             ext_hdu2.close()
+            ext_hdu3.close()
+            ext_hdu4.close()
+
+
 
 
 

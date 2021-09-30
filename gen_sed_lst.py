@@ -873,6 +873,10 @@ def add_faint_sne_sedlst():
             # Name of direct image
             dir_img_name = segmap.replace('_segmap.fits', '_SNadded.fits')
 
+            # Name of catalog
+            cat_filename = img_sim_dir + img_basename + img_filt + \
+                           str(pt) + '_' + str(det) + '_SNadded.cat'
+
             # Read in current sedlst
             sed_filename = (pylinear_lst_dir + 
                            'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst')
@@ -924,6 +928,21 @@ def add_faint_sne_sedlst():
 
                 # Add it to the segmap
                 segdata[faint_sn_pix[0], faint_sn_pix[1]] = new_id
+
+                # Also add to catalog
+                with open(cat_filename, 'a') as fc:
+                    fc.write('      ' + str(new_id) +
+                             '   ' + '{:.4f}'.format(xpos) + 
+                             '   ' + '{:.4f}'.format(ypos) + 
+                             '   ' + str(-99.999999) + 
+                             '   ' + str(-99.999999) + 
+                             '   ' + str(-99.9999) + 
+                             '   ' + str(-99.9999) + 
+                             '   ' + '{:.4f}'.format(faint_mag) +  
+                             '   ' + str(-99.9999) + 
+                             '   ' + str(-99.9999) + 
+                             '   ' + str(-99.9999) + '\n'
+                             )
 
             # Save new segmap
             phdu = fits.PrimaryHDU(header=seghdr, data=segdata)
