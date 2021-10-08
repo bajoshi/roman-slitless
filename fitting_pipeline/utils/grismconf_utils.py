@@ -260,18 +260,10 @@ def roman_prism_dispersion():
     pol = np.poly1d(pp)
 
     new_pol = np.poly1d([pp[0], pp[1], pp[2], pp[3], 7500.0])
-
-    print(pp)
+    
     print(pol)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.plot(tarr, wav, 'o-', markersize=0.5, color='k', label='DISPL')
-    ax.plot(tarr, pol(tarr), color='firebrick', label='best-fit polynomial')
-    ax.plot(tarr, new_pol(tarr), color='seagreen', label='DISPL from new coeffs')
-    ax.legend(loc=0, frameon=False, fontsize=14)
-    plt.show()
-
+    print('-----'*5)
     print('Copy-paste the following into the conf file:')
     roman_prism_conf_path = '/Users/baj/Documents/pylinear_ref_files/pylinear_config/Roman/Roman_WFI_P127_grismconf.v1.0.conf'
     print(roman_prism_conf_path)
@@ -309,35 +301,43 @@ def roman_prism_dispersion():
         # Also compute new wavelengths at t according to DISPL
         new_wav[tcount] = conf.DISPL('+1',0,0,t)
 
-        # Transform again to wav space
-        #prism_disp_trans[tcount] = A + (B/dlam)*(new_wav[tcount] - lam_min)
-
-        # Manually computing derivative
-        #manual_deriv = a10_lam + 2*a20_lam*t# + 3*a30_lam*t**2 + 4*a40_lam*t**3
-
-        #print(tcount, '{:.3f}'.format(t), ' ',
-        #    '{:.3f}'.format(prism_disp[tcount]), ' ',
-        #    '{:.3f}'.format(new_wav[tcount]))#, '      ',
-        #    '{:.3f}'.format(conf.DDISPL('+1',0,0,t)), ' ',
-        #    '{:.3f}'.format(conf.DDISPX('+1',0,0,t)), ' ',
-        #    '{:.3f}'.format(manual_deriv))
-
     if genplot:
 
         import matplotlib.pyplot as plt
+        import os
+        home = os.getenv('HOME')
+        roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
+
+        # --------------------- DISPL plot
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(111)
+        ax.set_xlabel('t', fontsize=18)
+        ax.set_ylabel('DISPL [Angstoms]', fontsize=18)
+
+        ax.plot(tarr, wav, 'o-', markersize=0.5, color='k', label='DISPL')
+        ax.plot(tarr, pol(tarr), color='firebrick', label='best-fit polynomial')
+        ax.plot(tarr, new_pol(tarr) + 500, color='seagreen', label='DISPL from new coeffs (shifted)')
         
+        ax.legend(loc=0, frameon=False, fontsize=14)
+
+        fig1.savefig(roman_slitless_dir + 'figures/displ_t.pdf', dpi=200, bbox_inches='tight')
+
+        fig1.clear()
+        plt.close(fig1)
+
+        # --------------------- Dispersion plot
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.set_xlabel('Wavelength [Angstoms]', fontsize=13)
-        ax.set_ylabel('Dispersion [Angstoms per pixel]', fontsize=13)
+        ax.set_xlabel('Wavelength [Angstoms]', fontsize=18)
+        ax.set_ylabel('Dispersion [Angstoms per pixel]', fontsize=18)
 
-        ax.plot(wavmean, disp, color='k', lw=1.5, label='Orig prism disp')
+        ax.plot(wavmean, disp, color='k', lw=1.5, label='Original prism dispersion')
         #ax.plot(wavmean, pol(wavmean), color='seagreen', lw=1.5, label='np polyfit to orig disp')
-        ax.plot(new_wav, prism_disp, color='crimson', lw=2.0, label='GRISMCONF disp from new conf file')
+        ax.plot(new_wav, prism_disp, color='crimson', lw=2.0, label='GRISMCONF dispersion from new conf file')
 
-        ax.legend(fontsize=12)
+        ax.legend(loc=0, frameon=False, fontsize=14)
 
-        plt.show()
+        fig.savefig(roman_slitless_dir + 'figures/dispersion.pdf', dpi=200, bbox_inches='tight')
 
     return None
 
