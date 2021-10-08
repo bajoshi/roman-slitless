@@ -129,8 +129,8 @@ def loglike_sn(theta, x, data, err):
 
 def logprior_sn(theta):
 
-    zp = 1.0
-    zps = 0.5
+    zp = 1.2
+    zps = 0.7
 
     z, day, av = theta
 
@@ -358,10 +358,10 @@ def main():
     img_basename = '5deg_'
     img_filt = 'Y106_'
 
-    exptime1 = '_6000s'
+    exptime1 = '_10800s'
     exptime2 = '_3600s'
     exptime3 = '_1200s'
-    exptime4 = '_300s'
+    exptime4 = '_400s'
 
     all_exptimes = [exptime1, exptime2, exptime3, exptime4]
 
@@ -382,7 +382,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 3, 1)
+    detectors = np.arange(1, 6, 1)
 
     for pt in pointings:
         for det in detectors:

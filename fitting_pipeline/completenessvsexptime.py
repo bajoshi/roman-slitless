@@ -34,7 +34,7 @@ def main():
     # Create arrays for plotting
     deltamag = 0.5
     low_maglim = 21.0
-    high_maglim = 27.5
+    high_maglim = 28.0
 
     mag_bins = np.arange(low_maglim, high_maglim, deltamag)  # left edges of mag bins
     mags = [(mag_bins[m] + mag_bins[m+1])/2 for m in range(len(mag_bins) - 1)]
@@ -43,7 +43,7 @@ def main():
     z_tol2 = 0.001
 
     # Do this for each exposure time separately
-    exptime_labels = ['z6000', 'z3600', 'z1200', 'z300']
+    exptime_labels = ['z10800', 'z3600', 'z1200', 'z400']
     colors = ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
 
     # Setup figure
@@ -99,6 +99,9 @@ def main():
     # Show the mag dist as a light histogram
     ax1 = ax.twinx()
     ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray', alpha=0.3)
+
+    plt.show()
+    sys.exit(0)
 
     #ax.legend(loc=6, frameon=False, fontsize=14)
     
@@ -184,7 +187,7 @@ def main():
     fig.savefig(roman_slitless + 'figures/pylinearrecovery_completeness.pdf', 
                 dpi=200, bbox_inches='tight')
     # Also save in paper figures directory
-    fig.savefig('/Users/baj/Library/Mobile Documents/com~apple~CloudDocs/Papers/my_papers/romansims_sne/figures/' \
+    fig.savefig('/Users/baj/Library/Mobile Documents/com~apple~CloudDocs/Papers/my_papers/Roman_slitless_sims/figures/' \
                 + 'pylinearrecovery_completeness.pdf', 
                 dpi=200, bbox_inches='tight')
 

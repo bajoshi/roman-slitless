@@ -39,7 +39,7 @@ wav_idx = np.where((wav >= 7800) & (wav <= 18000))[0]
 print(wav[wav_idx], len(wav_idx))
 
 ax.legend(loc=0, fontsize=14)
-#plt.show()
+plt.show()
 
 # Ensure that every curve above is identical
 # Now save to a txt file

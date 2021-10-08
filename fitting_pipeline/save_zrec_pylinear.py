@@ -123,18 +123,18 @@ def get_faint_sn_mag(segid, segdata, dir_img):
     return faint_mag
 
 # ---------------------------------------
-exptime1 = '_300s'
+exptime1 = '_400s'
 exptime2 = '_1200s'
 exptime3 = '_3600s'
-exptime4 = '_6000s'
+exptime4 = '_10800s'
 
 img_filt = 'Y106_'
 ext_root = 'romansim_prism_'
 res_hdr = ( '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + 
             'Y106mag  SNR300  SNR1200  SNR3600  SNR6000  ' + 
-            'z300  z300_lowerr  z300_uperr  ' + 
-            'phase300  phase300_lowerr  phase300_uperr  ' + 
-            'Av300  Av300_lowerr  Av300_uperr  ' + 
+            'z400  z400_lowerr  z400_uperr  ' + 
+            'phase400  phase400_lowerr  phase400_uperr  ' + 
+            'Av400  Av400_lowerr  Av400_uperr  ' + 
 
             'z1200  z1200_lowerr  z1200_uperr  ' + 
             'phase1200  phase1200_lowerr  phase1200_uperr  ' + 
@@ -144,9 +144,9 @@ res_hdr = ( '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' +
             'phase3600  phase3600_lowerr  phase3600_uperr  ' + 
             'Av3600  Av3600_lowerr  Av3600_uperr  ' + 
             
-            'z6000  z6000_lowerr  z6000_uperr  ' + 
-            'phase6000  phase6000_lowerr  phase6000_uperr  ' + 
-            'Av6000  Av6000_lowerr  Av6000_uperr'
+            'z10800  z10800_lowerr  z10800_uperr  ' + 
+            'phase10800  phase10800_lowerr  phase10800_uperr  ' + 
+            'Av10800  Av10800_lowerr  Av10800_uperr'
           )
 
 # Header for SExtractor catalog
