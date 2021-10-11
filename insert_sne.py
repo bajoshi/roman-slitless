@@ -97,7 +97,7 @@ def main():
     dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
 
     # Mag limits for choosing random SN mag
-    lowmag = 21.0
+    lowmag = 19.0
     highmag = 27.5
 
     # ---------------

@@ -100,8 +100,8 @@ def main():
     ax1 = ax.twinx()
     ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray', alpha=0.3)
 
-    plt.show()
-    sys.exit(0)
+    #plt.show()
+    #sys.exit(0)
 
     #ax.legend(loc=6, frameon=False, fontsize=14)
     
