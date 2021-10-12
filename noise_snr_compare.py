@@ -79,16 +79,23 @@ if __name__ == '__main__':
     comp = np.genfromtxt("/Volumes/Joshi_external_HDD/Roman/sensitivity_files/Rubin_SNIa_z1_1hr.txt",
                          dtype=None, names=True, encoding='ascii')
 
+    # Scaling factor 
+    # This is needed because the Kruk et al spectrum is 1000
+    # seconds and the comparison pylinear spectrum here is
+    # 3600 seconds
+    scalefac = 3.6
+
+    # -------------------------
     # Comparison figures
     fig = plt.figure(figsize=(9,6))
-    fig.suptitle('z=1 SN Ia, 1 hour prism exposure', fontsize=15, y=0.94)
+    fig.suptitle('z=1 SN Ia, 1000 seconds prism exposure', fontsize=15, y=0.94)
     gs = fig.add_gridspec(nrows=5, ncols=1, left=0.05, right=0.95, wspace=0.1)
     ax1 = fig.add_subplot(gs[:3])
     ax2 = fig.add_subplot(gs[3:])
 
     # SNR
-    ax1.plot(wav, mean_spec/mean_noise, lw=2.0, color='firebrick', label='pyLINEAR SNR')
-    ax1.plot(comp['waveA'], comp['SN'], lw=2.0, color='blue', label='Jeff Kruk/Rubin et al. SNR')
+    ax1.plot(wav, mean_spec / scalefac, lw=2.0, color='firebrick', label='pyLINEAR flux')
+    ax1.plot(comp['waveA'], comp['signal'], lw=2.0, color='blue', label='Jeff Kruk/Rubin et al. flux')
 
     axt = ax1.twinx()
 
@@ -96,18 +103,21 @@ if __name__ == '__main__':
     axt.plot(wav, mean_noise, ls='--', lw=1.5, color='firebrick', label='pyLINEAR noise')
     axt.plot(comp['waveA'], comp['noise'], ls='--', lw=1.5, color='blue', label='Jeff Kruk/Rubin et al. noise')
 
-    ax1.legend(loc=1, frameon=False, fontsize=12)
-    axt.legend(loc=2, frameon=False, fontsize=12)
+    ax1.legend(loc='upper right', frameon=False, fontsize=12)
+    axt.legend(loc='upper center', frameon=False, fontsize=12)
 
-    ax1.set_ylim(0, 45.0)
+    #ax1.set_ylim(0, 45.0)
     ax1.set_xlim(7700, 18000)
     axt.set_ylim(1e-23, 2e-19)
 
     # -------- plot differences
     mean_noise_regrid = griddata(points=wav, values=mean_noise, xi=comp['waveA'])
-    ax2.plot(comp['waveA'], comp['noise']/mean_noise_regrid, color='deeppink', label='Noise1/Noise2')
+    mean_spec_regrid  = griddata(points=wav, values=mean_spec/scalefac,  xi=comp['waveA'])
 
-    ax2.legend(loc=4, frameon=False, fontsize=12)
+    #ax2.plot(comp['waveA'], comp['noise']/mean_noise_regrid, color='deeppink', label='Noise1/Noise2')
+    ax2.plot(comp['waveA'], mean_spec_regrid/comp['signal'], color='deeppink', label='Flux1/Flux2')
+
+    ax2.legend(loc='upper center', frameon=False, fontsize=12)
 
     # ------- Labels and ticks
     ax1.set_xticks([])
@@ -115,7 +125,7 @@ if __name__ == '__main__':
     ax2.set_xlabel('Wavelength', fontsize=15)
     ax2.set_ylabel('sim1/sim2', fontsize=15)
 
-    ax1.set_ylabel('SNR', fontsize=15)
+    ax1.set_ylabel('F-lambda', fontsize=15)
     axt.set_ylabel('Noise', fontsize=15)
 
     fig.savefig(roman_slitless_dir + 'figures/snr_noise_comparison.pdf', 

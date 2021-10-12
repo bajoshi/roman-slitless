@@ -123,31 +123,47 @@ def get_faint_sn_mag(segid, segdata, dir_img):
     return faint_mag
 
 # ---------------------------------------
-exptime1 = '_400s'
-exptime2 = '_1200s'
-exptime3 = '_3600s'
-exptime4 = '_10800s'
-
 img_filt = 'Y106_'
 ext_root = 'romansim_prism_'
-res_hdr = ( '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + 
-            'Y106mag  SNR300  SNR1200  SNR3600  SNR6000  ' + 
-            'z400  z400_lowerr  z400_uperr  ' + 
-            'phase400  phase400_lowerr  phase400_uperr  ' + 
-            'Av400  Av400_lowerr  Av400_uperr  ' + 
 
-            'z1200  z1200_lowerr  z1200_uperr  ' + 
-            'phase1200  phase1200_lowerr  phase1200_uperr  ' + 
-            'Av1200  Av1200_lowerr  Av1200_uperr  ' + 
-            
-            'z3600  z3600_lowerr  z3600_uperr  ' + 
-            'phase3600  phase3600_lowerr  phase3600_uperr  ' + 
-            'Av3600  Av3600_lowerr  Av3600_uperr  ' + 
-            
-            'z10800  z10800_lowerr  z10800_uperr  ' + 
-            'phase10800  phase10800_lowerr  phase10800_uperr  ' + 
-            'Av10800  Av10800_lowerr  Av10800_uperr'
-          )
+#exptime1 = '_400s'
+#exptime2 = '_1200s'
+#exptime3 = '_3600s'
+#exptime4 = '_10800s'
+#
+#res_hdr = ( '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + 
+#            'Y106mag  SNR300  SNR1200  SNR3600  SNR6000  ' + 
+#            'z400  z400_lowerr  z400_uperr  ' + 
+#            'phase400  phase400_lowerr  phase400_uperr  ' + 
+#            'Av400  Av400_lowerr  Av400_uperr  ' + 
+#
+#            'z1200  z1200_lowerr  z1200_uperr  ' + 
+#            'phase1200  phase1200_lowerr  phase1200_uperr  ' + 
+#            'Av1200  Av1200_lowerr  Av1200_uperr  ' + 
+#            
+#            'z3600  z3600_lowerr  z3600_uperr  ' + 
+#            'phase3600  phase3600_lowerr  phase3600_uperr  ' + 
+#            'Av3600  Av3600_lowerr  Av3600_uperr  ' + 
+#            
+#            'z10800  z10800_lowerr  z10800_uperr  ' + 
+#            'phase10800  phase10800_lowerr  phase10800_uperr  ' + 
+#            'Av10800  Av10800_lowerr  Av10800_uperr'
+#          )
+
+
+exptime1 = '_1s'
+exptime2 = '_1m'
+
+res_hdr = ( '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + 
+            'Y106mag  SNR1s  SNR1m  ' + 
+            'z1s  z1s_lowerr  z1s_uperr  ' + 
+            'phase1s  phase1s_lowerr  phase1s_uperr  ' + 
+            'Av1s  Av1s_lowerr  Av1s_uperr  ' + 
+
+            'z1m  z1m_lowerr  z1m_uperr  ' + 
+            'phase1m  phase1m_lowerr  phase1m_uperr  ' + 
+            'Av1m  Av1m_lowerr  Av1m_uperr  '
+            )
 
 # Header for SExtractor catalog
 cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
@@ -160,7 +176,7 @@ detectors = np.arange(1, 2)
 for pt in pointings:
 
     # Save results to text file
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt' + str(pt) + '.txt'
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt' + str(pt) + '_test.txt'
 
     with open(resfile, 'w') as fh:
         fh.write(res_hdr + '\n')
@@ -182,11 +198,11 @@ for pt in pointings:
             ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix + exptime2 + '_x1d.fits'
             ext_hdu2 = fits.open(ext_spec_filename2)
 
-            ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
-            ext_hdu3 = fits.open(ext_spec_filename3)
+            #ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix + exptime3 + '_x1d.fits'
+            #ext_hdu3 = fits.open(ext_spec_filename3)
 
-            ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix + exptime4 + '_x1d.fits'
-            ext_hdu4 = fits.open(ext_spec_filename4)
+            #ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix + exptime4 + '_x1d.fits'
+            #ext_hdu4 = fits.open(ext_spec_filename4)
 
             # ----- Read in catalog from SExtractor
             cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'
@@ -224,8 +240,8 @@ for pt in pointings:
                 # ----- Get SNR
                 snr1 = get_correct_snr(ext_hdu1, segid)
                 snr2 = get_correct_snr(ext_hdu2, segid)
-                snr3 = get_correct_snr(ext_hdu3, segid)
-                snr4 = get_correct_snr(ext_hdu4, segid)
+                #snr3 = get_correct_snr(ext_hdu3, segid)
+                #snr4 = get_correct_snr(ext_hdu4, segid)
 
                 # ----- Get magnitude in Y106
                 mag_idx = np.where(cat['NUMBER'] == segid)[0]
@@ -243,8 +259,8 @@ for pt in pointings:
                 fh.write('{:.2f}'.format(mag)  + '  ')
                 fh.write('{:.2f}'.format(snr1) + '  ')
                 fh.write('{:.2f}'.format(snr2) + '  ')
-                fh.write('{:.2f}'.format(snr3) + '  ')
-                fh.write('{:.2f}'.format(snr4) + '  ')
+                #fh.write('{:.2f}'.format(snr3) + '  ')
+                #fh.write('{:.2f}'.format(snr4) + '  ')
 
                 # ----- Construct the filenames for this segid
                 snstr1 = str(segid) + '_' + img_suffix + exptime1
@@ -253,23 +269,23 @@ for pt in pointings:
                 snstr2 = str(segid) + '_' + img_suffix + exptime2
                 emcee_savefile2 = results_dir + 'emcee_sampler_sn' + snstr2 + '.h5'
 
-                snstr3 = str(segid) + '_' + img_suffix + exptime3
-                emcee_savefile3 = results_dir + 'emcee_sampler_sn' + snstr3 + '.h5'
+                #snstr3 = str(segid) + '_' + img_suffix + exptime3
+                #emcee_savefile3 = results_dir + 'emcee_sampler_sn' + snstr3 + '.h5'
 
-                snstr4 = str(segid) + '_' + img_suffix + exptime4
-                emcee_savefile4 = results_dir + 'emcee_sampler_sn' + snstr4 + '.h5'
+                #snstr4 = str(segid) + '_' + img_suffix + exptime4
+                #emcee_savefile4 = results_dir + 'emcee_sampler_sn' + snstr4 + '.h5'
 
                 # ----------------
                 check_and_write(fh, emcee_savefile1)
                 check_and_write(fh, emcee_savefile2)
-                check_and_write(fh, emcee_savefile3)
-                check_and_write(fh, emcee_savefile4)
+                #check_and_write(fh, emcee_savefile3)
+                #check_and_write(fh, emcee_savefile4)
                 fh.write('\n')
 
             ext_hdu1.close()
             ext_hdu2.close()
-            ext_hdu3.close()
-            ext_hdu4.close()
+            #ext_hdu3.close()
+            #ext_hdu4.close()
 
 
 

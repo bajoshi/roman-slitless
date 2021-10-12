@@ -27,24 +27,28 @@ def main():
     ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
     results_dir = ext_spectra_dir + 'fitting_results/'
     
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt0_test.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
     # ---------------------------- Completeness plot
     # Create arrays for plotting
     deltamag = 0.5
-    low_maglim = 21.0
-    high_maglim = 28.0
+    low_maglim = 19.0
+    high_maglim = 28.5
 
     mag_bins = np.arange(low_maglim, high_maglim, deltamag)  # left edges of mag bins
     mags = [(mag_bins[m] + mag_bins[m+1])/2 for m in range(len(mag_bins) - 1)]
+
+    print(mag_bins)
+    print(mags)
 
     z_tol1 = 0.01  # abs val of delta-z/(1+z)
     z_tol2 = 0.001
 
     # Do this for each exposure time separately
-    exptime_labels = ['z10800', 'z3600', 'z1200', 'z400']
-    colors = ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
+    exptime_labels = ['z1s', 'z1m'] #['z10800', 'z3600', 'z1200', 'z400']
+    colors = ['k', 'k']  #['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
+    ls = ['o:', 'o--']  # 'o-'
 
     # Setup figure
     fig = plt.figure(figsize=(8,5))
@@ -69,6 +73,8 @@ def main():
 
             mag_idx = int((mag - low_maglim) / deltamag)
 
+            #print(i, mag_idx, mag)
+
             total_counts[mag_idx] += 1
 
             if z_acc <= z_tol1:
@@ -80,7 +86,7 @@ def main():
         percent_complete1 = ztol_counts1 / total_counts
         percent_complete2 = ztol_counts2 / total_counts
 
-        ax.plot(mags, percent_complete1, 'o-',  markersize=5, lw=2.0, color=colors[e])
+        ax.plot(mags, percent_complete1, ls=ls[e],  markersize=5, lw=2.0, color=colors[e])
         #ax.plot(mags, percent_complete2, 'o--', markersize=5, lw=2.0, color=colors[e])
 
         # Cumulative completeness fraction
@@ -104,7 +110,8 @@ def main():
     #sys.exit(0)
 
     #ax.legend(loc=6, frameon=False, fontsize=14)
-    
+
+    """    
     mag23_bin_idx = np.where((cat['Y106mag'] >= 23.0) & (cat['Y106mag'] < 23.5))[0]
 
     avg_snr_1hr = []
@@ -126,6 +133,7 @@ def main():
     print('\n')
 
     print('Average SNR for 1-hour exposures of z~1 SNe:', np.mean(np.array(avg_snr_1hr)))
+    """
 
     # ----------- Top redshift axis
     # Don't need to plot anything
@@ -137,8 +145,8 @@ def main():
     # are at [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     # SO the on the bottom x-axis need to be transformed to [0,1]
     # i.e., the range [20.5, 28.0] --> [0,1]
-    mt = np.arange(20.5, 28.5, 0.5)
-    mags_for_z_axis_transform = (mt - 20.5)/7.5
+    mt = np.arange(18.5, 28.5, 0.5)
+    mags_for_z_axis_transform = (mt - 18.5)/10.0
     # the denominator here corresponds to the difference 
     # on the bottom x-axis that is shown in the figure
     # NOT the difference between final and init values in mags_for_z_axis
@@ -151,8 +159,7 @@ def main():
 
     print('Magnitudes:', mt)
     print('Redshifts at above magnitudes:', redshift_ticks)
-
-    print('z at mag 23 and 23.5:', get_z_for_mag([23.0]), get_z_for_mag([23.5]))
+    #print('z at mag 23 and 23.5:', get_z_for_mag([23.0]), get_z_for_mag([23.5]))
 
     print('Total sample size:', len(cat))
 
@@ -182,6 +189,7 @@ def main():
 
     # Limits
     ax.set_xlim(low_maglim - 0.5, high_maglim + 0.5)
+    ax.set_ylim(-0.04, 1.04)
 
     # save
     fig.savefig(roman_slitless + 'figures/pylinearrecovery_completeness.pdf', 
