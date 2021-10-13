@@ -70,15 +70,11 @@ def gen_reference_cutout():
 
 def main():
 
-    print('THIS IS FLUX UNITS BEING PUT IN TO AN IMAGE OF ')
-    print('UNIT COUNTS. FIX!! You need to use ZP to get back to counts per sec.')
-    print('Also -- fix the two hacks in this code.')
-
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
     ref_mag = 15.9180
-    ref_flux = 13753.24  # read in mag and counts from SExtractor catalog on dir img
+    ref_counts = 13753.24  # read in mag and counts from SExtractor catalog on dir img
     ref_segid = 630
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
@@ -98,7 +94,7 @@ def main():
 
     # Mag limits for choosing random SN mag
     lowmag = 19.0
-    highmag = 27.5
+    highmag = 30.0
 
     # ---------------
     # Read in the reference image of the star from 
@@ -156,8 +152,7 @@ def main():
 
                 # Decide some random mag for the SN
                 # This is a power law # previously uniform dist
-                # chosen from low=19.0, high=26.0 mag
-                pow_idx = 2.0  # power law index # PDF given by: P(x;a) = a * x^(a-1)
+                pow_idx = 1.5  # power law index # PDF given by: P(x;a) = a * x^(a-1)
                 snmag = np.random.power(pow_idx, size=None)
                 snmag = snmag * (highmag - lowmag) + lowmag
                 snmag_arr[i] = snmag
@@ -182,17 +177,16 @@ def main():
 
                 # Now scale reference
                 delta_m = ref_mag - snmag_eff
-                snflux = ref_flux * (1/np.power(10, -1*0.4*delta_m))
+                sncounts = ref_counts * (1 / 10**(-0.4*delta_m) )
 
-                scale_fac = snflux / ref_flux
+                scale_fac = sncounts / ref_counts
                 new_cutout = ref_data * scale_fac
 
                 if verbose:
                     tqdm.write('Inserted SN mag: ' + "{:.3f}".format(snmag))
                     tqdm.write('delta_m: ' + "{:.3f}".format(delta_m))
-                    tqdm.write('Added SN flux: ' + "{:.3f}".format(snflux))
+                    tqdm.write('Added SN counts: ' + "{:.3f}".format(sncounts))
                     tqdm.write('Scale factor: ' + "{:.3f}".format(scale_fac))
-                    tqdm.write('New flux: ' + "{:.3f}".format(np.sum(new_cutout, axis=None)))
 
                 # Now get coords
                 xi = x_ins[i]

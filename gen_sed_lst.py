@@ -929,6 +929,10 @@ def add_faint_sne_sedlst():
                 # Add it to the segmap
                 segdata[faint_sn_pix[0], faint_sn_pix[1]] = new_id
 
+                # Get obj counts
+                dirdat = fits.getdata(dir_img_name)
+                faint_sn_counts = np.sum(dirdat[faint_sn_pix[0], faint_sn_pix[1]])
+
                 # Also add to catalog
                 with open(cat_filename, 'a') as fc:
                     fc.write('      ' + str(new_id) +
@@ -936,7 +940,7 @@ def add_faint_sne_sedlst():
                              '   ' + '{:.4f}'.format(ypos) + 
                              '   ' + str(-99.999999) + 
                              '   ' + str(-99.999999) + 
-                             '   ' + str(-99.9999) + 
+                             '   ' + str(faint_sn_counts) + 
                              '   ' + str(-99.9999) + 
                              '   ' + '{:.4f}'.format(faint_mag) +  
                              '   ' + str(-99.9999) + 
