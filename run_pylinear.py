@@ -475,11 +475,11 @@ def main():
             # also check WFIRST tech report TR1901
             # Also see file from Rick Kessler which came from Jeff Kruk
             # in folder sensitivity_files in external drive
-            sky  = 1.1     # e/s/pix  # zodi + thermal + sky
+            sky  = 1.1     # e/s/pix  # zodi + thermal + MW
             npix = 4096 * 4096
     
-            dark = 0.1     # e/s/pix
-            read = 20.0    # electrons per pixel
+            dark = 0.005   # e/s/pix
+            read = 10      # electrons per pixel
     
             exptime = exptime_list[e]  # seconds
             
