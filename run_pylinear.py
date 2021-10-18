@@ -415,7 +415,7 @@ def main():
         wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
 
         beam = '+1'
-        maglim = 30.0
+        maglim = 32.0
 
         # make sure the files exist
         assert os.path.isfile(segfile)
@@ -452,7 +452,12 @@ def main():
 
         # ---------------------- Proceed if all okay
         # ---------------------- Get sources
-        sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
+        counts_file_path = img_sim_dir + 'counts_for_pylinear_Y106_0_1.txt'
+        sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim,
+            countflag='user', usercountfile=counts_file_path)
+
+        print('Done with loading sources.')
+        sys.exit(0)
 
         # Set up
         grisms = pylinear.grism.GrismCollection(wcslst, observed=False)

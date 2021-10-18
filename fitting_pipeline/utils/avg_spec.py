@@ -29,6 +29,10 @@ def plot_avg_spec(cat, all_exptimes):
 
     # --------------------- PLOT
     fig, axes = plt.subplots(figsize=(13,6), nrows=1, ncols=4)
+
+    # Also quote avg snr and z on figures
+     = get_snr(wav, flux)
+
     plt.show()
 
     # Close hdu

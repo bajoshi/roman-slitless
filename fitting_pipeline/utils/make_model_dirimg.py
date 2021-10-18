@@ -1,0 +1,40 @@
+import numpy as np
+from astropy.io import fits
+
+def gen_model_img(dirimg_path, segmap_path, save=False):
+
+    # Open file
+    dhdu = fits.open(dirimg_path)
+    shdu = fits.open(segmap_path)
+
+    # Get direct image and segmap data
+    ddat = dhdu[0].data
+    dhdr = dhdu[0].header
+    sdat = shdu[0].data
+
+    # Close HDUs
+    dhdu.close()
+    shdu.close()
+
+    # Get indices where no sources are detected
+    backidx = np.where(sdat == 0)
+
+    # Estimate background. Just to see the value. Not actually used.
+    backest = np.mean(ddat[backidx])
+    print('Estimated (mean) background:', backest)
+
+    # Force background pix to exactly zero
+    model_img = ddat
+    model_img[backidx] = 0.0
+
+    if save:
+        new_hdu = fits.PrimaryHDU(data=model_img, header=dhdr)
+        new_flname = dirimg_path.replace('.fits', '_model.fits')
+        new_hdu.writeto(new_flname, overwrite=True)
+        print('Saved:', new_flname)
+
+        return None
+
+    else:
+        return model_img
+

@@ -930,8 +930,11 @@ def add_faint_sne_sedlst():
                 segdata[faint_sn_pix[0], faint_sn_pix[1]] = new_id
 
                 # Get obj counts
-                dirdat = fits.getdata(dir_img_name)
-                faint_sn_counts = np.sum(dirdat[faint_sn_pix[0], faint_sn_pix[1]])
+                # This is inferred from flam and NOT summed
+                # from the direct image because the direct image is
+                # too shallow. If you try to sum the counts in the 
+                # direct image then it'll just be summing background.
+                faint_sn_counts = 10**(-0.4*(faint_mag - 26.264))
 
                 # Also add to catalog
                 with open(cat_filename, 'a') as fc:
