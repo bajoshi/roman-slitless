@@ -961,7 +961,7 @@ if __name__ == '__main__':
 
     gen_sed_lst()
     remove_duplicates()
-    add_faint_sne_sedlst()
+    #add_faint_sne_sedlst()
 
     sys.exit(0)
 

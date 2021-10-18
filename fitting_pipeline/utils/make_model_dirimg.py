@@ -1,15 +1,15 @@
 import numpy as np
 from astropy.io import fits
 
-def gen_model_img(dirimg_path, segmap_path, save=False):
+def gen_model_img(dirimg_path, segmap_path, save=False, data_ext=0):
 
     # Open file
     dhdu = fits.open(dirimg_path)
     shdu = fits.open(segmap_path)
 
     # Get direct image and segmap data
-    ddat = dhdu[0].data
-    dhdr = dhdu[0].header
+    ddat = dhdu[data_ext].data
+    dhdr = dhdu[data_ext].header
     sdat = shdu[0].data
 
     # Close HDUs

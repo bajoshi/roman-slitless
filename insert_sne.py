@@ -14,16 +14,36 @@ if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
     modeldir = extdir + 'bc03_output_dir/'
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+
+    roman_slitless_dir = extdir + 'GitHub/roman-slitless/'
+    utils_dir = roman_slitless_dir + 'fitting_pipeline/utils/'
+
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+
+    home = os.getenv('HOME')
+    roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
+    utils_dir = roman_slitless_dir + 'fitting_pipeline/utils/'
 
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_direct_dir)
 
 dir_img_part = 'part1'
 img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+
+sys.path.append(utils_dir)
+from make_model_dirimg import gen_model_img
+
+# ----------------------
+# Scaling factor for direct images
+# The difference here that appears in the power of 10
+# is the difference between the ZP of the current img
+# and what I think the correct ZP is i.e., the WFC3/F105W ZP.
+dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
+# ----------------------
+
 
 def get_insertion_coords(num_to_insert, img_cat=None):
 
@@ -35,9 +55,7 @@ def get_insertion_coords(num_to_insert, img_cat=None):
 
     return x_ins, y_ins
 
-def gen_reference_cutout():
-
-    showref = False
+def gen_reference_cutout(showref=False):
 
     img_basename = '5deg_'
     img_suffix = 'Y106_0_6'
@@ -45,9 +63,48 @@ def gen_reference_cutout():
     xloc = 2512
     yloc = 2268
 
-    dir_img_name = roman_direct_dir + img_basename + img_suffix + '_forref.fits'
-    dir_hdu = fits.open(dir_img_name)
-    img_arr = dir_hdu[0].data
+    # NOTE: this is saved one level up from all the other sim images
+    dir_img_name = roman_direct_dir + img_basename + img_suffix + '_model.fits'
+
+    # Create model image if it doesn't exist
+    if not os.path.isfile(dir_img_name):
+        # ---------
+        # Get the reference image first
+        dname = img_sim_dir + img_basename + img_suffix + '.fits'
+        ddat, dhdr = fits.getdata(dname, header=True)
+        
+        # Now scale image to get the image to counts per sec
+        cps_sci_arr = ddat * dirimg_scaling
+
+        # Save to be able to run sextractor to generate model image
+        mhdu = fits.PrimaryHDU(data=cps_sci_arr, header=dhdr)
+        model_img_name = dname.replace('.fits', '_scaled.fits')
+        mhdu.writeto(model_img_name) 
+
+        # ---------
+        # Run SExtractor on this scaled image
+        os.chdir(img_sim_dir)
+
+        cat_filename = model_img_name.replace('.fits', '.cat')
+        checkimage   = model_img_name.replace('.fits', '_segmap.fits')
+
+        sextractor   = subprocess.run(['sex', model_img_name, 
+            '-c', 'roman_sims_sextractor_config.txt', 
+            '-CATALOG_NAME', os.path.basename(cat_filename), 
+            '-CHECKIMAGE_NAME', checkimage], check=True)
+
+        # Go back to roman-slitless directory
+        os.chdir(roman_slitless_dir)
+
+        # ---------
+        # Now turn it into a model image
+        model_img = gen_model_img(model_img_name, checkimage)
+
+        # Save
+        pref = fits.PrimaryHDU(data=model_img, header=dhdr)
+        pref.writeto(dir_img_name)
+
+    img_arr = fits.getdata(dir_img_name)
 
     r = yloc
     c = xloc
@@ -56,8 +113,9 @@ def gen_reference_cutout():
 
     ref_img = img_arr[r-s:r+s, c-s:c+s]
 
+    # Save
     rhdu = fits.PrimaryHDU(data=ref_img)
-    rhdu.writeto(img_sim_dir + 'ref_cutout.fits', overwrite=True)
+    rhdu.writeto(img_sim_dir + 'ref_cutout_psf.fits', overwrite=True)
 
     if showref:
 
@@ -79,19 +137,6 @@ def main():
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
 
-    # Read the reference segmap and find the pixels 
-    # associated with reference point source
-    #ref_segmap_name = roman_direct_dir + '5deg_Y106_0_6_forref_segmap.fits'
-    #segmap = fits.open(ref_segmap_name)
-    #segmap_data = segmap[0].data
-    #ref_idx = np.where(segmap_data == ref_segid)
-
-    # Scaling factor for direct images
-    # The difference here that appears in the power of 10
-    # is the difference between the ZP of the current img
-    # and what I think the correct ZP is i.e., the WFC3/F105W ZP.
-    dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
-
     # Mag limits for choosing random SN mag
     lowmag = 19.0
     highmag = 30.0
@@ -99,12 +144,11 @@ def main():
     # ---------------
     # Read in the reference image of the star from 
     # Y106_0_6 at 72.1175280, -53.5739388 (~16th mag)
-    ref_cutout_path = img_sim_dir + 'ref_cutout.fits'
+    ref_cutout_path = img_sim_dir + 'ref_cutout_psf.fits'
     if not os.path.isfile(ref_cutout_path):
         gen_reference_cutout()
 
-    ref_cutout = fits.open(ref_cutout_path)
-    ref_data = ref_cutout[0].data
+    ref_data = fits.getdata(ref_cutout_path)
 
     # ---------------
     # Arrays to loop over
@@ -114,11 +158,15 @@ def main():
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
 
+            # ---------------
+            # Determine number of SNe to insert and open dir img
             num_to_insert = np.random.randint(low=200, high=300)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
-
             dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
+
+            tqdm.write("Working on: " + dir_img_name)
+            tqdm.write("Will insert " + str(num_to_insert) + " SNe in " + os.path.basename(dir_img_name))
 
             # First check that the files have been unzipped
             if not os.path.isfile(dir_img_name):
@@ -128,17 +176,41 @@ def main():
             # Open dir image
             dir_hdu = fits.open(dir_img_name)
 
+            # ---------------
             # Now scale image to get the image to counts per sec
             cps_sci_arr = dir_hdu[1].data * dirimg_scaling
             cps_hdr = dir_hdu[1].header
             dir_hdu.close()
             #cps_hdr['BUNIT'] = 'ELECTRONS'
+            # Save to be able to run sextractor to generate model image
+            mhdu = fits.PrimaryHDU(data=cps_sci_arr, header=cps_hdr)
+            model_img_name = dir_img_name.replace('.fits', '_formodel.fits')
+            mhdu.writeto(model_img_name, overwrite=True) 
+
+            # ---------------
+            # First pass of SExtractor 
+            # See notes on sextractor args for subprocess
+            # in gen_sed_lst.py
+            # Change directory to images directory
+            os.chdir(img_sim_dir)
+
+            cat_filename = model_img_name.replace('.fits', '.cat')
+            checkimage   = model_img_name.replace('.fits', '_segmap.fits')
+
+            sextractor   = subprocess.run(['sex', model_img_name, 
+                '-c', 'roman_sims_sextractor_config.txt', 
+                '-CATALOG_NAME', os.path.basename(cat_filename), 
+                '-CHECKIMAGE_NAME', checkimage], check=True)
+
+            # Go back to roman-slitless directory
+            os.chdir(roman_slitless_dir)
+
+            # ---------------
+            # Convert to model image
+            model_img = gen_model_img(model_img_name, checkimage)
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
-            tqdm.write("Working on: " + dir_img_name)
-            tqdm.write("Will insert " + str(num_to_insert) + " SNe in " + os.path.basename(dir_img_name))
-
             x_ins, y_ins = get_insertion_coords(num_to_insert)
 
             # ---------------
@@ -160,7 +232,7 @@ def main():
                 # Hack because Sextractor for some reason assigns 
                 # fainter mags to these SNe # by about ~0.1 to 0.3 mag
                 # depending on the inserted magnitude.
-                snmag_eff = snmag - 0.3
+                #snmag -= 0.3
                 # I think this problem is because when SExtractor is 
                 # run again on the SNadded images the flux is summed 
                 # within a smaller area NOT the whole cutout area (like
@@ -176,7 +248,7 @@ def main():
                 #snmag_eff -= 0.25
 
                 # Now scale reference
-                delta_m = ref_mag - snmag_eff
+                delta_m = ref_mag - snmag
                 sncounts = ref_counts * (1 / 10**(-0.4*delta_m) )
 
                 scale_fac = sncounts / ref_counts
@@ -196,7 +268,7 @@ def main():
                 c = xi
 
                 # Add in the new SN
-                cps_sci_arr[r-s:r+s, c-s:c+s] = cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout
+                model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
 
                 tqdm.write(str(xi) + "  " + str(yi) + "    " + "{:.3f}".format(snmag))
 
@@ -207,7 +279,7 @@ def main():
             tqdm.write('Saved: ' + snadd_fl)
 
             # Save and check with ds9
-            new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
+            new_hdu = fits.PrimaryHDU(header=cps_hdr, data=model_img)
             savefile = dir_img_name.replace('.fits', '_SNadded.fits')
             new_hdu.writeto(savefile, overwrite=True)
             tqdm.write('Saved: ' + savefile)
@@ -231,6 +303,11 @@ def main():
                                 " width=3" + "\n")
 
             tqdm.write('Saved: ' + snadd_regfl)
+
+            # Clean up intermediate files
+            os.remove(checkimage)
+            os.remove(cat_filename)
+            os.remove(model_img_name)
 
     return None
 

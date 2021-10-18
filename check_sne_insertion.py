@@ -39,10 +39,7 @@ assert os.path.isdir(roman_direct_dir)
 # ------------------------------------
 # TEST 1:
 # Make sure that there are "enough" SNe inserted in each detector.
-# There should be greater than 10 SNe detected in each, typically
-# although sometimes you might get unlucky and have less than 10.
-# This is because most of the SNe inserted are quite faint and 
-# although there are quite a few inserted, SExtractor won't detect all of them.
+# There should be greater than 200 SNe detected in each.
 
 pt = '0'  # Enter the pointing you want to test
 
