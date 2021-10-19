@@ -115,13 +115,17 @@ magdiff = sextractor_mags - inserted_mags
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
-ax.set_ylabel('Mag. diff.', fontsize=14)
-ax.set_xlabel('Inserted SN AB mag in F106', fontsize=14)
+ax.set_ylabel('SE mag - Inserted mag', fontsize=14)
+ax.set_xlabel('SExtractor SN AB mag in F106', fontsize=14)
 
-ax.scatter(inserted_mags, magdiff, s=7, color='k')
+ax.scatter(sextractor_mags, magdiff, s=7, color='k')
 ax.axhline(y=0.0, ls='--', color='gray', lw=2.5)
 
-fig.savefig(extdir + 'check_inserted_sn_mag.pdf', dpi=200, bbox_inches='tight')
+axt = ax.twinx()
+axt.hist(sextractor_mags, 22, color='gray', histtype='step', range=(19.0, 30.0))
+axt.set_ylabel('\#objects', fontsize=14)
+
+fig.savefig(roman_slitless_dir + 'figures/check_inserted_sn_mag.pdf', dpi=200, bbox_inches='tight')
 
 fig.clear()
 plt.close(fig)
@@ -164,7 +168,7 @@ if plot_filt:
     ax.set_xlabel('Wavelength [Angstroms]')
     ax.set_ylabel('Throughput')
     ax.plot(filt['Wave_Angstroms'], filt['Throughput'])
-    fig.savefig(extdir + 'f105w_filt_curve.pdf', dpi=200, bbox_inches='tight')
+    fig.savefig(roman_slitless_dir + 'figures/f105w_filt_curve.pdf', dpi=200, bbox_inches='tight')
     fig.clear()
     plt.close(fig)
 
@@ -238,7 +242,7 @@ if plot_magdiff:
     ax.set_xlabel('Sextractor mag - flam thru filter')
     ax.set_ylabel('Number')
     ax.hist(mdiff, 40, range=(-10,10))
-    fig.savefig(extdir + 'sextractor_and_pylinear_magdiff.pdf', dpi=200, bbox_inches='tight')
+    fig.savefig(roman_slitless_dir + 'figures/sextractor_and_pylinear_magdiff.pdf', dpi=200, bbox_inches='tight')
     fig.clear()
     plt.close(fig)
 """
@@ -307,7 +311,7 @@ axt = ax.twinx()
 axt.scatter(all_sn_z, all_sn_mags, s=3, color='r')
 axt.set_ylabel('Inserted SN AB mag in F106', fontsize=14)
 
-fig.savefig(extdir + 'test_sn_insert_mag_z.pdf', dpi=200, bbox_inches='tight')
+fig.savefig(roman_slitless_dir + 'figures/test_sn_insert_mag_z.pdf', dpi=200, bbox_inches='tight')
 
 fig.clear()
 plt.close(fig)
@@ -339,7 +343,7 @@ for i in range(18):
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.hist(all_sn_av, 30, color='k', histtype='step')
-fig.savefig(extdir + 'test_sn_insert_av.pdf', dpi=200, bbox_inches='tight')
+fig.savefig(roman_slitless_dir + 'figures/test_sn_insert_av.pdf', dpi=200, bbox_inches='tight')
 
 fig.clear()
 plt.close(fig)

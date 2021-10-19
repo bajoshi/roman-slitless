@@ -453,8 +453,8 @@ def main():
         # ---------------------- Proceed if all okay
         # ---------------------- Get sources
         counts_file_path = img_sim_dir + 'counts_for_pylinear_Y106_0_1.txt'
-        sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim,
-            countflag='user', usercountfile=counts_file_path)
+        sources = pylinear.source.SourceCollection(segfile, obslst, detindex=0, maglim=maglim)
+        #countflag='user', usercountfile=counts_file_path)
 
         print('Done with loading sources.')
         sys.exit(0)

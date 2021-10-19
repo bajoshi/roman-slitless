@@ -36,12 +36,14 @@ img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
 sys.path.append(utils_dir)
 from make_model_dirimg import gen_model_img
 
-# ----------------------
+# ---------------------- GLOBAL DEFS
 # Scaling factor for direct images
 # The difference here that appears in the power of 10
 # is the difference between the ZP of the current img
 # and what I think the correct ZP is i.e., the WFC3/F105W ZP.
 dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
+# ----------------------
+back_scale = 0.001  # standard deviation for background to be added.
 # ----------------------
 
 
@@ -98,7 +100,9 @@ def gen_reference_cutout(showref=False):
 
         # ---------
         # Now turn it into a model image
+        # and add a small amount of background. See notes below on this.
         model_img = gen_model_img(model_img_name, checkimage)
+        model_img += np.random.normal(loc=0.0, scale=back_scale, size=model_img.shape)
 
         # Save
         pref = fits.PrimaryHDU(data=model_img, header=dhdr)
@@ -210,6 +214,16 @@ def main():
             model_img = gen_model_img(model_img_name, checkimage)
 
             # ---------------
+            # Add a small amount of background
+            # The mean is zero and the standard deviation is
+            # is about 80 times lower than the expected counts
+            # for a 29th mag source (which are ~0.08 for mag=29.0).
+            # By trial and error I found that this works best for
+            # SExtractor being able to detect sources down to 27.0
+            # Not sure why it needs to be that much lower...
+            model_img += np.random.normal(loc=0.0, scale=back_scale, size=model_img.shape)
+
+            # ---------------
             # Get a list of x-y coords to insert SNe at
             x_ins, y_ins = get_insertion_coords(num_to_insert)
 
@@ -270,7 +284,7 @@ def main():
                 # Add in the new SN
                 model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
 
-                tqdm.write(str(xi) + "  " + str(yi) + "    " + "{:.3f}".format(snmag))
+                tqdm.write(str(xi) + "  " + str(yi) + "    " + "{:.3f}".format(snmag) + "    " + "{:.3f}".format(sncounts))
 
             # Save the locations and SN mag as a numpy array
             added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
