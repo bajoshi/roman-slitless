@@ -7,7 +7,11 @@ from tqdm import tqdm
 from get_template_inputs import get_template_inputs
 from get_snr import get_snr
 
-def plot_z_mag_snr(mag, snr, redshift):
+import os
+home = os.getenv('HOME')
+roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
+
+def plot_z_mag_snr(mag, snr, redshift, savepath=None):
 
     # Make fig and choose cmap
     fig = plt.figure(figsize=(9,5))
@@ -19,7 +23,7 @@ def plot_z_mag_snr(mag, snr, redshift):
     cmap = plt.cm.get_cmap('viridis_r')
 
     # Plot
-    cax = ax.scatter(mag, snr, s=20, c=redshift, cmap=cmap, facecolors='None')
+    cax = ax.scatter(mag, snr, s=15, c=redshift, cmap=cmap, facecolors='None')
 
     # Colorbar and label
     cbar = fig.colorbar(cax)
@@ -28,9 +32,16 @@ def plot_z_mag_snr(mag, snr, redshift):
     # Add horizontal line at SNR=5.0
     ax.axhline(y=5.0, ls='--', color='k', lw=2.0)
 
-    plt.show()
-    fig.clear()
-    plt.close(fig)
+    # limits
+    ax.set_ylim(-10.0, 200.0)
+
+    # Save figure if needed
+    if savepath:
+        fig.savefig(savepath, dpi=200, bbox_inches='tight')
+    else:
+        plt.show()
+        fig.clear()
+        plt.close(fig)
 
     return None
 
@@ -90,7 +101,8 @@ if __name__ == '__main__':
     img_sim_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/K_5degimages_part1/'
 
     img_suffix = 'Y106_0_1'
-    resfile = 'romansim_prism_' + img_suffix + '_1200s_x1d.fits'
+    exptime = '_20s'
+    resfile = 'romansim_prism_' + img_suffix + exptime + '_x1d.fits'
     
     # --------------- Read in extracted spectra
     xhdu = fits.open(results_dir + resfile)
@@ -106,8 +118,6 @@ if __name__ == '__main__':
     for i in range(len(sedlst)):
         if 'salt' in sedlst['sed_path'][i]:
             all_sn_segids.append(sedlst['segid'][i])
-
-    print('ALL SN segids in this file:', all_sn_segids)
 
     # --------------- Also read in SExtractor catalog for mags
     cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'
@@ -140,8 +150,21 @@ if __name__ == '__main__':
         inp = get_template_inputs(template_name)
         redshift.append(inp[0])
 
-    # --------------- Make plot
-    plot_z_mag_snr(mag, snr, redshift)
+    # --------------- Make plot and save
+    if exptime == '_20s':
+        figname = 'snr_1min.pdf'    
+    elif exptime == '_400s':
+        figname = 'snr_20min.pdf'
+    elif exptime == '_1200s':
+        figname = 'snr_1hr.pdf'
+    elif exptime == '_3600s':
+        figname = 'snr_3hr.pdf'
+    elif exptime == '_10800s':
+        figname = 'snr_9hr.pdf'
+
+    savepath = roman_slitless_dir + 'figures/' + figname
+
+    plot_z_mag_snr(mag, snr, redshift, savepath)
 
     # Close HDU
     xhdu.close()
