@@ -1,0 +1,4 @@
+Steps to lower noise floor in direct simulated images from Kevin for preparing pyLINEAR sims:
+
+1.
+

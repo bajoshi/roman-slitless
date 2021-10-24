@@ -14,16 +14,21 @@ roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
 def plot_z_mag_snr(mag, snr, redshift, savepath=None):
 
     # Make fig and choose cmap
-    fig = plt.figure(figsize=(9,5))
+    fig = plt.figure(figsize=(11,5))
     ax = fig.add_subplot(111)
 
     ax.set_xlabel('Y106 magnitude', fontsize=16)
-    ax.set_ylabel('1-hour SNR', fontsize=16)
+    ax.set_ylabel('SNR of extracted 1d spectrum', fontsize=16)
 
-    cmap = plt.cm.get_cmap('viridis_r')
+    cmaps = [plt.cm.get_cmap('Oranges_r'),
+             plt.cm.get_cmap('Purples_r'),
+             plt.cm.get_cmap('Blues_r'),
+             plt.cm.get_cmap('Greens_r'),
+             plt.cm.get_cmap('Reds_r')]
 
     # Plot
-    cax = ax.scatter(mag, snr, s=15, c=redshift, cmap=cmap, facecolors='None')
+    for i in range(5):
+        cax = ax.scatter(mag[i], snr[i], s=12, c=redshift[i], cmap=cmaps[i], facecolors='None')
 
     # Colorbar and label
     cbar = fig.colorbar(cax)
@@ -101,11 +106,7 @@ if __name__ == '__main__':
     img_sim_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/K_5degimages_part1/'
 
     img_suffix = 'Y106_0_1'
-    exptime = '_20s'
-    resfile = 'romansim_prism_' + img_suffix + exptime + '_x1d.fits'
-    
-    # --------------- Read in extracted spectra
-    xhdu = fits.open(results_dir + resfile)
+    exptime = ['_20s', '_400s', '_1200s', '_3600s', '_10800s']
 
     # --------------- Get all SNe IDs
     # Read in sed.lst
@@ -126,43 +127,39 @@ if __name__ == '__main__':
     cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
 
     # --------------- Collect needed arrays
-    mag = []
-    snr = []
-    redshift = []
+    mag = np.zeros((len(exptime), len(all_sn_segids)))
+    snr = np.zeros((len(exptime), len(all_sn_segids)))
+    redshift = np.zeros((len(exptime), len(all_sn_segids)))
 
-    for i in tqdm(range(len(all_sn_segids)), desc='Processing SN'):
+    for e in tqdm(range(len(exptime)), desc='Exptime', leave=False):
 
-        current_segid = all_sn_segids[i]
-        segid_idx = int(np.where(cat['NUMBER'] == current_segid)[0])
+        resfile = 'romansim_prism_' + img_suffix + exptime[e] + '_x1d.fits'
 
-        # Get magnitude
-        mag.append(cat['MAG_AUTO'][segid_idx])
+        # --------------- Read in extracted spectra
+        xhdu = fits.open(results_dir + resfile)
 
-        # Get spectrum and SNR
-        wav = xhdu[('SOURCE', current_segid)].data['wavelength']
-        flam = xhdu[('SOURCE', current_segid)].data['flam'] * 1e-17
+        for i in tqdm(range(len(all_sn_segids)), desc='Processing SN', leave=False):
 
-        snr.append(float(get_snr(wav, flam)))
+            current_segid = all_sn_segids[i]
+            segid_idx = int(np.where(cat['NUMBER'] == current_segid)[0])
 
-        # Get redshift
-        sed_idx = int(np.where(sedlst['segid'] == current_segid)[0])
-        template_name = sedlst['sed_path'][sed_idx]
-        inp = get_template_inputs(template_name)
-        redshift.append(inp[0])
+            # Get magnitude
+            mag[e, i] = cat['MAG_AUTO'][segid_idx]
+
+            # Get spectrum and SNR
+            wav = xhdu[('SOURCE', current_segid)].data['wavelength']
+            flam = xhdu[('SOURCE', current_segid)].data['flam'] * 1e-17
+
+            snr[e, i] = float(get_snr(wav, flam))
+
+            # Get redshift
+            sed_idx = int(np.where(sedlst['segid'] == current_segid)[0])
+            template_name = sedlst['sed_path'][sed_idx]
+            inp = get_template_inputs(template_name)
+            redshift[e, i] = inp[0]
 
     # --------------- Make plot and save
-    if exptime == '_20s':
-        figname = 'snr_1min.pdf'    
-    elif exptime == '_400s':
-        figname = 'snr_20min.pdf'
-    elif exptime == '_1200s':
-        figname = 'snr_1hr.pdf'
-    elif exptime == '_3600s':
-        figname = 'snr_3hr.pdf'
-    elif exptime == '_10800s':
-        figname = 'snr_9hr.pdf'
-
-    savepath = roman_slitless_dir + 'figures/' + figname
+    savepath = roman_slitless_dir + 'figures/extracted_snr.pdf'
 
     plot_z_mag_snr(mag, snr, redshift, savepath)
 
