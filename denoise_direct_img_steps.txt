@@ -1,4 +1,21 @@
 Steps to lower noise floor in direct simulated images from Kevin for preparing pyLINEAR sims:
+(Steps before running pyLINEAR to simulate and extract).
 
-1.
+Why is it needed?
+If the background is kept at exactly zero then SExtractor (in step ... below)
+detects WAY more fake sources (about 2x more). So adding an artificial background,
+after the pre-existing background is removed, imposes a limit on the faintest 
+magnitude source that can be detected at some set threshold above the background.
+
+---------------------------------------------------
+1. Correct direct image from Kevin to bring it to the correct WFC3/F105W zeropoint.
+2. Run first pass of SExtractor on image from above step -- using a fairly low threshold (2-sigma)?
+3. Using segmap from above step force all pix not associated with a source to be exactly zero.
+4. Add a low non-zero background. This is simply a Gaussian with mean of 0.0 and some small sigma.
+5. Insert fake SNe with correct counts.
+6. Run second pass of SExtractor -- this time with a threshold of at least 3.
+7. Assign a spectrum to each source.
+8. Run final checks on inserted SNe magnitudes, mag distribution, and redshifts.
+
+
 
