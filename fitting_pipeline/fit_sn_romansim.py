@@ -358,15 +358,14 @@ def main():
     img_basename = '5deg_'
     img_filt = 'Y106_'
 
-    exptime_a = '_1s'
-    exptime_b = '_1m'
+    exptime_a = '_20s'
 
     exptime1 = '_10800s'
     exptime2 = '_3600s'
     exptime3 = '_1200s'
     exptime4 = '_400s'
 
-    all_exptimes = [exptime_a, exptime_b, exptime1, exptime2, exptime3, exptime4]
+    all_exptimes = [exptime_a, exptime1, exptime2, exptime3, exptime4]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -385,7 +384,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 6, 1)
+    detectors = np.arange(1, 3, 1)
 
     for pt in pointings:
         for det in detectors:

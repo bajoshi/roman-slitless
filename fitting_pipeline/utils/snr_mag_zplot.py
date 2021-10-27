@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from get_template_inputs import get_template_inputs
 from get_snr import get_snr
+from get_all_sn_segids import get_all_sn_segids
 
 import os
 home = os.getenv('HOME')
@@ -109,16 +110,8 @@ if __name__ == '__main__':
     exptime = ['_20s', '_400s', '_1200s', '_3600s', '_10800s']
 
     # --------------- Get all SNe IDs
-    # Read in sed.lst
-    sedlst_header = ['segid', 'sed_path']
     sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
-    sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
-
-    # loop and find all SN segids
-    all_sn_segids = []
-    for i in range(len(sedlst)):
-        if 'salt' in sedlst['sed_path'][i]:
-            all_sn_segids.append(sedlst['segid'][i])
+    all_sn_segids = get_all_sn_segids(sedlst_path)
 
     # --------------- Also read in SExtractor catalog for mags
     cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'

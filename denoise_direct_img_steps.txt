@@ -12,7 +12,7 @@ magnitude source that can be detected at some set threshold above the background
 2. Run first pass of SExtractor on image from above step -- using a fairly low threshold (2-sigma)?
 3. Using segmap from above step force all pix not associated with a source to be exactly zero.
 4. Add a low non-zero background. This is simply a Gaussian with mean of 0.0 and some small sigma.
-5. Insert fake SNe with correct counts.
+5. Insert fake SNe with correct counts and PSF.
 6. Run second pass of SExtractor -- this time with a threshold of at least 3.
 7. Assign a spectrum to each source.
 8. Run final checks on inserted SNe magnitudes, mag distribution, and redshifts.

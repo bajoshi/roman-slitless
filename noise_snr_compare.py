@@ -10,54 +10,117 @@ import matplotlib.pyplot as plt
 home = os.getenv('HOME')
 roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
 
+sys.path.append(roman_slitless_dir + 'fitting_pipeline/utils/')
+from get_template_inputs import get_template_inputs
+from get_snr import get_snr
+from get_all_sn_segids import get_all_sn_segids
+
 def get_avg_pylinear_z1spec():
 
-    # Read in results file
+    # Set directories
     ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
-    results_dir = ext_spectra_dir + 'fitting_results/'
-    
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
-    cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
+    img_sim_dir = "/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/K_5degimages_part1/"
+    pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
 
-    # Also read in x1d file
-    one_hr_x1d = ext_spectra_dir + 'romansim_prism_Y106_0_1_1200s_x1d.fits'
-    ext_hdu = fits.open(one_hr_x1d)
+    # Read in SED LST files 
+    # This is to get the SN IDs and their redshifts
+    sedlst_fl1 = pylinear_lst_dir + 'sed_Y106_0_1.lst'
+    sedlst_fl2 = pylinear_lst_dir + 'sed_Y106_0_2.lst'
+    sedlst_fl3 = pylinear_lst_dir + 'sed_Y106_0_3.lst'
+
+    all_sn_segids1 = get_all_sn_segids(sedlst_fl1)
+    all_sn_segids2 = get_all_sn_segids(sedlst_fl2)
+    all_sn_segids3 = get_all_sn_segids(sedlst_fl3)
+
+    all_seg_list = [all_sn_segids1, all_sn_segids2, all_sn_segids3]
+
+    # Also read in through numpy
+    sedlst1 = np.genfromtxt(sedlst_fl1, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
+    sedlst2 = np.genfromtxt(sedlst_fl2, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
+    sedlst3 = np.genfromtxt(sedlst_fl3, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
+
+    all_sed = [sedlst1, sedlst2, sedlst3]
+
+    # Read in SExtractor catalogs 
+    # This is to get the magnitudes
+    catfile1 = img_sim_dir + '5deg_Y106_0_1_SNadded.cat'
+    catfile2 = img_sim_dir + '5deg_Y106_0_2_SNadded.cat'
+    catfile3 = img_sim_dir + '5deg_Y106_0_3_SNadded.cat'
+
+    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+    'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
+    cat1 = np.genfromtxt(catfile1, dtype=None, names=cat_header, encoding='ascii')
+    cat2 = np.genfromtxt(catfile2, dtype=None, names=cat_header, encoding='ascii')
+    cat3 = np.genfromtxt(catfile3, dtype=None, names=cat_header, encoding='ascii')
+
+    # Also read in x1d file to get the extracted spectra
+    one_hr_x1d_1 = ext_spectra_dir + 'romansim_prism_Y106_0_1_1200s_x1d.fits'
+    one_hr_x1d_2 = ext_spectra_dir + 'romansim_prism_Y106_0_2_1200s_x1d.fits'
+    one_hr_x1d_3 = ext_spectra_dir + 'romansim_prism_Y106_0_3_1200s_x1d.fits'
+    
+    ext_hdu1 = fits.open(one_hr_x1d_1)
+    ext_hdu2 = fits.open(one_hr_x1d_2)
+    ext_hdu3 = fits.open(one_hr_x1d_3)
+
+    all_ext = [ext_hdu1, ext_hdu2, ext_hdu3]
 
     # Now get all spectra that are 1 hour exptime and close to z~1
     # ------------ Gather all spectra
     # First need the wavelengths 
     # Since the wav array is always the same just get the first one
-    wav = ext_hdu[1].data['wavelength']
+    wav = ext_hdu1[1].data['wavelength']
 
-    z1_bin_idx = np.where((cat['z_true'] >= 0.97) & (cat['z_true'] <= 1.03))[0]
-    print('\nAveraging', len(z1_bin_idx), 'spectra...')
-
-    all_spec  = np.zeros((len(z1_bin_idx), len(wav)))
-    all_noise = np.zeros((len(z1_bin_idx), len(wav)))
+    all_spec  = []  #np.zeros((total_spectra, len(wav)))
+    all_noise = []  #np.zeros((total_spectra, len(wav)))
     avg_snr_1hr = []
 
-    for s in range(len(z1_bin_idx)):
-        snr_1hr = cat['SNR1200'][z1_bin_idx][s]
-        avg_snr_1hr.append(snr_1hr)
+    total_spectra = 0
 
-        mag = cat['Y106mag'][z1_bin_idx][s]
-        z = cat['z_true'][z1_bin_idx][s]
+    for i in range(3):
 
-        segid = cat['SNSegID'][z1_bin_idx][s]
+        print('----------')
 
-        all_spec[s]  = ext_hdu[('SOURCE', segid)].data['flam'] * 1e-17
+        all_sn_segids = all_seg_list[i]
+        xhdu = all_ext[i]
+        sedlst = all_sed[i]
 
-        ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * 1e-17
-        ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * 1e-17
-        all_noise[s] = (ferr_lo + ferr_hi)/2
+        for j in range(len(all_sn_segids)):
 
-        # print(s, 
-        #       '{:.2f}'.format(mag),
-        #       '{:.3f}'.format(z),
-        #       '{:.3f}'.format(snr_1hr))
+            segid = all_sn_segids[j]
+
+            sed_idx = int(np.where(sedlst['segid'] == segid)[0])
+            template_name = sedlst['sed_path'][sed_idx]
+            inp = get_template_inputs(template_name)
+            ztrue = inp[0]
+
+            # Check if the redshift is okay
+            if (ztrue >= 0.97) and (ztrue <= 1.03):
+
+                # Get spectrum
+                #wav = xhdu[('SOURCE', segid)].data['wavelength']
+                flam = xhdu[('SOURCE', segid)].data['flam'] * 1e-17
+
+                ferr_lo = xhdu[('SOURCE', segid)].data['flounc'] * 1e-17
+                ferr_hi = xhdu[('SOURCE', segid)].data['fhiunc'] * 1e-17
+                noise = (ferr_lo + ferr_hi)/2
+
+                snr = get_snr(wav, flam)
+
+                # Append
+                all_spec.append(flam)
+                all_noise.append(noise)
+                avg_snr_1hr.append(snr)
+
+                total_spectra += 1
+
+                print(segid, ztrue, snr)
+
+    print('\nAveraging', total_spectra, 'spectra...')
+
+    all_spec = np.array(all_spec)
+    all_noise = np.array(all_noise)
 
     avg_snr = np.mean(np.array(avg_snr_1hr))
-
     print('Average SNR for 1-hour exposures of z~1 SNe:', 
           '{:.3f}'.format(avg_snr), '\n')
 
@@ -66,7 +129,9 @@ def get_avg_pylinear_z1spec():
     mean_noise = np.mean(all_noise, axis=0)
 
     # Close open HDUs
-    ext_hdu.close()
+    ext_hdu1.close()
+    ext_hdu2.close()
+    ext_hdu3.close()
 
     return wav, mean_spec, mean_noise
 
