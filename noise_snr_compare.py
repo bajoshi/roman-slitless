@@ -22,56 +22,10 @@ def get_avg_pylinear_z1spec():
     img_sim_dir = "/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/K_5degimages_part1/"
     pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
 
-    # Read in SED LST files 
-    # This is to get the SN IDs and their redshifts
-    sedlst_fl1 = pylinear_lst_dir + 'sed_Y106_0_1.lst'
-    sedlst_fl2 = pylinear_lst_dir + 'sed_Y106_0_2.lst'
-    sedlst_fl3 = pylinear_lst_dir + 'sed_Y106_0_3.lst'
-
-    all_sn_segids1 = get_all_sn_segids(sedlst_fl1)
-    all_sn_segids2 = get_all_sn_segids(sedlst_fl2)
-    all_sn_segids3 = get_all_sn_segids(sedlst_fl3)
-
-    all_seg_list = [all_sn_segids1, all_sn_segids2, all_sn_segids3]
-
-    # Also read in through numpy
-    sedlst1 = np.genfromtxt(sedlst_fl1, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
-    sedlst2 = np.genfromtxt(sedlst_fl2, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
-    sedlst3 = np.genfromtxt(sedlst_fl3, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
-
-    all_sed = [sedlst1, sedlst2, sedlst3]
-
-    # Read in SExtractor catalogs 
-    # This is to get the magnitudes
-    catfile1 = img_sim_dir + '5deg_Y106_0_1_SNadded.cat'
-    catfile2 = img_sim_dir + '5deg_Y106_0_2_SNadded.cat'
-    catfile3 = img_sim_dir + '5deg_Y106_0_3_SNadded.cat'
-
-    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-    'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
-    cat1 = np.genfromtxt(catfile1, dtype=None, names=cat_header, encoding='ascii')
-    cat2 = np.genfromtxt(catfile2, dtype=None, names=cat_header, encoding='ascii')
-    cat3 = np.genfromtxt(catfile3, dtype=None, names=cat_header, encoding='ascii')
-
-    # Also read in x1d file to get the extracted spectra
-    one_hr_x1d_1 = ext_spectra_dir + 'romansim_prism_Y106_0_1_1200s_x1d.fits'
-    one_hr_x1d_2 = ext_spectra_dir + 'romansim_prism_Y106_0_2_1200s_x1d.fits'
-    one_hr_x1d_3 = ext_spectra_dir + 'romansim_prism_Y106_0_3_1200s_x1d.fits'
-    
-    ext_hdu1 = fits.open(one_hr_x1d_1)
-    ext_hdu2 = fits.open(one_hr_x1d_2)
-    ext_hdu3 = fits.open(one_hr_x1d_3)
-
-    all_ext = [ext_hdu1, ext_hdu2, ext_hdu3]
-
     # Now get all spectra that are 1 hour exptime and close to z~1
     # ------------ Gather all spectra
-    # First need the wavelengths 
-    # Since the wav array is always the same just get the first one
-    wav = ext_hdu1[1].data['wavelength']
-
-    all_spec  = []  #np.zeros((total_spectra, len(wav)))
-    all_noise = []  #np.zeros((total_spectra, len(wav)))
+    all_spec  = []
+    all_noise = []
     avg_snr_1hr = []
 
     total_spectra = 0
@@ -80,9 +34,13 @@ def get_avg_pylinear_z1spec():
 
         print('----------')
 
-        all_sn_segids = all_seg_list[i]
-        xhdu = all_ext[i]
-        sedlst = all_sed[i]
+        sedlst_fl = pylinear_lst_dir + 'sed_Y106_0_' + str(i+1) + '.lst'
+        sedlst = np.genfromtxt(sedlst_fl, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
+
+        all_sn_segids = get_all_sn_segids(sedlst_fl)
+
+        one_hr_x1d = ext_spectra_dir + 'romansim_prism_Y106_0_' + str(i+1) + '_1200s_x1d.fits'
+        xhdu = fits.open(one_hr_x1d)
 
         for j in range(len(all_sn_segids)):
 
@@ -97,7 +55,7 @@ def get_avg_pylinear_z1spec():
             if (ztrue >= 0.97) and (ztrue <= 1.03):
 
                 # Get spectrum
-                #wav = xhdu[('SOURCE', segid)].data['wavelength']
+                wav = xhdu[('SOURCE', segid)].data['wavelength']
                 flam = xhdu[('SOURCE', segid)].data['flam'] * 1e-17
 
                 ferr_lo = xhdu[('SOURCE', segid)].data['flounc'] * 1e-17
@@ -113,7 +71,9 @@ def get_avg_pylinear_z1spec():
 
                 total_spectra += 1
 
-                print(segid, ztrue, snr)
+                print(segid, ztrue, '{:.2f}'.format(snr))
+
+        xhdu.close()
 
     print('\nAveraging', total_spectra, 'spectra...')
 
@@ -127,11 +87,6 @@ def get_avg_pylinear_z1spec():
     # ----------- Average the spectra and return
     mean_spec = np.mean(all_spec, axis=0)
     mean_noise = np.mean(all_noise, axis=0)
-
-    # Close open HDUs
-    ext_hdu1.close()
-    ext_hdu2.close()
-    ext_hdu3.close()
 
     return wav, mean_spec, mean_noise
 
