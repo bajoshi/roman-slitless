@@ -27,28 +27,25 @@ def main():
     ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
     results_dir = ext_spectra_dir + 'fitting_results/'
     
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt0_test.txt'
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
     # ---------------------------- Completeness plot
     # Create arrays for plotting
-    deltamag = 0.5
+    deltamag = 0.25
     low_maglim = 19.0
-    high_maglim = 28.5
+    high_maglim = 30.0
 
     mag_bins = np.arange(low_maglim, high_maglim, deltamag)  # left edges of mag bins
     mags = [(mag_bins[m] + mag_bins[m+1])/2 for m in range(len(mag_bins) - 1)]
-
-    print(mag_bins)
-    print(mags)
 
     z_tol1 = 0.01  # abs val of delta-z/(1+z)
     z_tol2 = 0.001
 
     # Do this for each exposure time separately
-    exptime_labels = ['z1s', 'z1m'] #['z10800', 'z3600', 'z1200', 'z400']
-    colors = ['k', 'k']  #['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
-    ls = ['o:', 'o--']  # 'o-'
+    exptime_labels = ['z10800', 'z3600', 'z1200', 'z400']
+    colors = ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
+    ls = 'o-'
 
     # Setup figure
     fig = plt.figure(figsize=(8,5))
@@ -86,7 +83,7 @@ def main():
         percent_complete1 = ztol_counts1 / total_counts
         percent_complete2 = ztol_counts2 / total_counts
 
-        ax.plot(mags, percent_complete1, ls=ls[e],  markersize=5, lw=2.0, color=colors[e])
+        ax.plot(mags, percent_complete1, 'o-',  markersize=3, lw=2.0, color=colors[e])
         #ax.plot(mags, percent_complete2, 'o--', markersize=5, lw=2.0, color=colors[e])
 
         # Cumulative completeness fraction
@@ -145,8 +142,8 @@ def main():
     # are at [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     # SO the on the bottom x-axis need to be transformed to [0,1]
     # i.e., the range [20.5, 28.0] --> [0,1]
-    mt = np.arange(18.5, 28.5, 0.5)
-    mags_for_z_axis_transform = (mt - 18.5)/10.0
+    mt = np.arange(18.5, 31.5, 1.0)
+    mags_for_z_axis_transform = (mt - 18.5)/13.0
     # the denominator here corresponds to the difference 
     # on the bottom x-axis that is shown in the figure
     # NOT the difference between final and init values in mags_for_z_axis
