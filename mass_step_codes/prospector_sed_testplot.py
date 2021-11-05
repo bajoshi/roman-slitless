@@ -13,7 +13,7 @@ from prospect.models.sedmodel import SedModel
 from prospect.models.templates import TemplateLibrary
 
 home = os.getenv('HOME')
-adap_dir = home + '/Documents/adap2021/'
+adap_dir = home + '/Documents/Proposals/ADAP/adap2021/'
 utils_dir = home + '/Documents/GitHub/roman-slitless/fitting_pipeline/utils/'
 
 sys.path.append(utils_dir)
@@ -90,8 +90,6 @@ print("Match index:", i, "for Seq:", galaxy_seq)
 nwalkers = 1000
 niter = 500
 
-ndim = 12
-
 # Other set up
 obj_ra = df['RA'][i]
 obj_dec = df['DEC'][i]
@@ -144,14 +142,14 @@ model = build_model(**run_params)
 #plot_data(obs)
 #sys.exit(0)
 
-results_type = 'dynesty'
+results_type = 'emcee'
 
 result, obs, _ = reader.results_from(adap_dir + results_type + "_" + \
                  field + "_" + str(galaxy_seq) + ".h5", dangerous=False)
 
 parnames = np.array(result['theta_labels'])
 print('Parameters in this model:', parnames)
-
+ndim = len(parnames) # 12
 
 # ------------------
 from prospect.plotting.utils import sample_posterior

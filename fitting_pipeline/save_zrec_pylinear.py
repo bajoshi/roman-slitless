@@ -157,7 +157,7 @@ cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
 
 # Arrays to loop over
 pointings = np.arange(0, 1)
-detectors = np.arange(1, 3)
+detectors = np.arange(1, 6)
 
 for pt in pointings:
 

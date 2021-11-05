@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import curve_fit
 
 import matplotlib.pyplot as plt
 
@@ -20,6 +21,12 @@ def get_z_for_mag(m):
         zarr[i] = get_sn_z(mag)
 
     return zarr
+
+def sigmoid(x, T, mc, s):
+
+    sigmoid_fn = T / (1 - np.exp((x - mc)/s))
+
+    return sigmoid_fn
 
 def main():
 
@@ -83,8 +90,20 @@ def main():
         percent_complete1 = ztol_counts1 / total_counts
         percent_complete2 = ztol_counts2 / total_counts
 
-        ax.plot(mags, percent_complete1, 'o-',  markersize=3, lw=2.0, color=colors[e])
-        #ax.plot(mags, percent_complete2, 'o--', markersize=5, lw=2.0, color=colors[e])
+        ax.plot(mags, percent_complete1, 'o-',  markersize=3, color=colors[e])
+        #ax.plot(mags, percent_complete2, 'x', markersize=5, color=colors[e])
+
+        # ----------- Fit sigmoid curves and plot
+        # fix nan to zero
+        percent_complete1[np.isnan(percent_complete1)] = 0.0
+        # init guess
+        p0 = [1.0, 25.0, 0.05]  # in order: T, mc, s
+        popt, pcov = curve_fit(sigmoid, mags, percent_complete1, p0)
+
+        print('----'*3)
+        print(popt)
+
+        #ax.plot(mags, sigmoid(mags, popt[0], popt[1], popt[2]), lw=2.0, color=colors[e])
 
         # Cumulative completeness fraction
         # ONLY SHOWN FOR LONGEST EXPTIME
@@ -102,35 +121,6 @@ def main():
     # Show the mag dist as a light histogram
     ax1 = ax.twinx()
     ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray', alpha=0.3)
-
-    #plt.show()
-    #sys.exit(0)
-
-    #ax.legend(loc=6, frameon=False, fontsize=14)
-
-    """    
-    mag23_bin_idx = np.where((cat['Y106mag'] >= 23.0) & (cat['Y106mag'] < 23.5))[0]
-
-    avg_snr_1hr = []
-
-    print('\nFor SNe at approx z=1:')
-    print('  IMG   SegID   Mag   z-true   z-wide   z-deep   SNR-wide   SNR-deep   SNR-1-hr') 
-    for s in range(len(mag23_bin_idx)):
-        snr_1hr = cat['SNR1200'][mag23_bin_idx][s]  #/np.sqrt(5)
-        avg_snr_1hr.append(snr_1hr)
-        #print(cat['img_suffix'][mag23_bin_idx][s], '  ', 
-        #      cat['SNSegID'][mag23_bin_idx][s], '  ',
-        #      cat['Y106mag'][mag23_bin_idx][s], '  ',
-        #      cat['z_true'][mag23_bin_idx][s], '  ',
-        #      cat['z900'][mag23_bin_idx][s], '  ',
-        #      cat['z3600'][mag23_bin_idx][s], '  ',
-        #      cat['SNR900'][mag23_bin_idx][s], '  ',
-        #      cat['SNR3600'][mag23_bin_idx][s], '  ', 
-        #      '{:.2f}'.format(snr_1hr))
-    print('\n')
-
-    print('Average SNR for 1-hour exposures of z~1 SNe:', np.mean(np.array(avg_snr_1hr)))
-    """
 
     # ----------- Top redshift axis
     # Don't need to plot anything

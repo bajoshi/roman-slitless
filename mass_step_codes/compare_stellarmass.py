@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import prospect.io.read_results as reader
 
 home = os.getenv('HOME')
-adap_dir = home + '/Documents/adap2021/'
+adap_dir = home + '/Documents/Proposals/ADAP/adap2021/'
 
 def get_cq_mass(result):
 
@@ -239,11 +239,11 @@ def main():
             # Now read in the fitting results and get our stellar masses
             galaxy_seq = df[key][i]
 
-            h5file_allbands = adap_dir + "goodss_param_sfh/all_bands/" + "emcee_" + \
+            h5file_allbands = adap_dir + "goods_param_sfh/all_bands/" + "emcee_" + \
                               field + "_" + str(galaxy_seq) + ".h5"
-            h5file_ubriz    = adap_dir + "goodss_param_sfh/ubriz/"     + "emcee_" + \
+            h5file_ubriz    = adap_dir + "goods_param_sfh/ubriz/"     + "emcee_" + \
                               field + "_" + str(galaxy_seq) + ".h5"
-            h5file_briz     = adap_dir + "goodss_param_sfh/briz/"      + "emcee_" + \
+            h5file_briz     = adap_dir + "goods_param_sfh/briz/"      + "emcee_" + \
                               field + "_" + str(galaxy_seq) + ".h5"
 
             result_all, obs, _ = reader.results_from(h5file_allbands, dangerous=False)
@@ -352,8 +352,8 @@ def main():
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111)
 
-    ax1.set_xlabel(r'$\mathrm{log(M_{s;\,all\ bands})}$')
-    ax1.set_ylabel(r'$\mathrm{log(M_{s;\,all\ bands})  -  log(M_{s;\,(u)briz}) }$')
+    ax1.set_xlabel(r'$\mathrm{log(M_{s;\,all\ bands})}$', fontsize=16)
+    ax1.set_ylabel(r'$\mathrm{log(M_{s;\,all\ bands})  -  log(M_{s;\,(u)briz}) }$', fontsize=16)
 
     deltamass1 = xdata - np.log10(fit_mass_ubriz)
     deltamass2 = xdata - np.log10(fit_mass_briz)
@@ -362,48 +362,203 @@ def main():
     deltamass1_err = np.empty((2, 66))
     deltamass2_err = np.empty((2, 66))
 
+    xb1 = []
+    yb1 = []
+    xb1_wt = []
+    yb1_wt = []
+    count_b1 = 0
+
     for j in range(len(xdata)):
+
         xd = fit_mass_allbands[j]
-        xdl = np.abs(np.log10(1 - fit_mass_allbands_err[0, j]/xd))
-        xdu = np.log10(1 + fit_mass_allbands_err[1, j]/xd)
+
+        # Check for NaN
+        if np.isnan(fit_mass_allbands_err[0, j]) and np.isnan(fit_mass_allbands_err[1, j]):
+            fit_mass_allbands_err[0, j] = xd / 3.0
+            fit_mass_allbands_err[1, j] = xd / 3.0
+        elif np.isnan(fit_mass_allbands_err[0, j]) and (not np.isnan(fit_mass_allbands_err[1, j])): 
+            fit_mass_allbands_err[0, j] = fit_mass_allbands_err[1, j]
+        elif np.isnan(fit_mass_allbands_err[1, j]) and (not np.isnan(fit_mass_allbands_err[0, j])):
+            fit_mass_allbands_err[1, j] = fit_mass_allbands_err[0, j]
+
+        # Also check that error is not larger than central value
+        # this isn't exactly correct but is causing problems with the log
+        if fit_mass_allbands_err[0, j] > xd:
+            fit_mass_allbands_err[0, j] = 0.9 * xd
+        if fit_mass_allbands_err[1, j] > xd:
+            fit_mass_allbands_err[1, j] = 0.9 * xd
+
+        xdl = 0.434 * fit_mass_allbands_err[0, j]/xd
+        xdu = 0.434 * fit_mass_allbands_err[1, j]/xd
+
         xdata_err[:, j] = [xdl, xdu]
 
+        # -----------------
         val1 = fit_mass_ubriz[j]
-        dm1l = np.abs(np.log10(1 - fit_mass_allbands_err[0, j]/xd) + np.log10(1 + fit_mass_ubriz_err[1, j]/val1))
-        dm1u = np.log10(1 + fit_mass_allbands_err[1, j]/xd) + np.log10(1 - fit_mass_ubriz_err[0, j]/val1)
+
+        # Check for NaN
+        if np.isnan(fit_mass_ubriz_err[0, j]) and np.isnan(fit_mass_ubriz_err[1, j]):
+            fit_mass_ubriz_err[0, j] = val1 / 3.0
+            fit_mass_ubriz_err[1, j] = val1 / 3.0
+        elif np.isnan(fit_mass_ubriz_err[0, j]) and (not np.isnan(fit_mass_ubriz_err[1, j])): 
+            fit_mass_ubriz_err[0, j] = fit_mass_ubriz_err[1, j]
+        elif np.isnan(fit_mass_ubriz_err[1, j]) and (not np.isnan(fit_mass_ubriz_err[0, j])):
+            fit_mass_ubriz_err[1, j] = fit_mass_ubriz_err[0, j]
+
+        # Also check that error is not larger than central value
+        # this isn't exactly correct but is causing problems with the log
+        if fit_mass_ubriz_err[0, j] > val1:
+            fit_mass_ubriz_err[0, j] = 0.9 * val1
+        if fit_mass_ubriz_err[1, j] > val1:
+            fit_mass_ubriz_err[1, j] = 0.9 * val1
+
+        y1l = 0.434 * fit_mass_ubriz_err[0, j]/val1
+        y1u = 0.434 * fit_mass_ubriz_err[1, j]/val1
+
+        dm1l = np.sqrt(xdl**2 + y1l**2)
+        dm1u = np.sqrt(xdu**2 + y1u**2)
+
         deltamass1_err[:, j] = [dm1l, dm1u]
 
+        # -----------------
         val2 = fit_mass_briz[j]
-        dm2l = np.abs(np.log10(1 - fit_mass_allbands_err[0, j]/xd) + np.log10(1 + fit_mass_briz_err[1, j]/val2))
-        dm2u = np.log10(1 + fit_mass_allbands_err[1, j]/xd) + np.log10(1 - fit_mass_briz_err[0, j]/val2)
+
+        # Check for NaN
+        if np.isnan(fit_mass_briz_err[0, j]) and np.isnan(fit_mass_briz_err[1, j]):
+            fit_mass_briz_err[0, j] = val2 / 3.0
+            fit_mass_briz_err[1, j] = val2 / 3.0
+        elif np.isnan(fit_mass_briz_err[0, j]) and (not np.isnan(fit_mass_briz_err[1, j])): 
+            fit_mass_briz_err[0, j] = fit_mass_briz_err[1, j]
+        elif np.isnan(fit_mass_briz_err[1, j]) and (not np.isnan(fit_mass_briz_err[0, j])):
+            fit_mass_briz_err[1, j] = fit_mass_briz_err[0, j]
+
+        # Also check that error is not larger than central value
+        # this isn't exactly correct but is causing problems with the log
+        if fit_mass_briz_err[0, j] > val2:
+            fit_mass_briz_err[0, j] = 0.9 * val2
+        if fit_mass_briz_err[1, j] > val2:
+            fit_mass_briz_err[1, j] = 0.9 * val2
+
+        y2l = 0.434 * fit_mass_briz_err[0, j]/val2
+        y2u = 0.434 * fit_mass_briz_err[1, j]/val2
+
+        dm2l = np.sqrt(xdl**2 + y2l**2)
+        dm2u = np.sqrt(xdu**2 + y2u**2)
+
         deltamass2_err[:, j] = [dm2l, dm2u]
+
+        """
+        l = np.log10(xd - fit_mass_allbands_err[0, j])
+        u = np.log10(xd + fit_mass_allbands_err[1, j])
+        xdl = np.log10(xd) - l
+        xdu =  u - np.log10(xd)
+
+        xdata_err[:, j] = [xdl, xdu]
+
+        # -----------------
+        val1 = fit_mass_ubriz[j]
+
+        l1 = np.log10(val1 - fit_mass_ubriz_err[0, j])
+        u1 = np.log10(val1 + fit_mass_ubriz_err[1, j])
+        y1l = np.log10(val1) - l1
+        y1u = u1 - np.log10(val1)
+
+        cd1 = deltamass1[j]
+        delta_uplim1 = u - l1
+        delta_lolim1 = l - u1
+
+        #dm1u = delta_uplim1 - cd1 
+        #dm1l = cd1 - delta_lolim1
+
+        dm1l = np.sqrt(xdl**2 + y1l**2)
+        dm1u = np.sqrt(xdu**2 + y1u**2)
+
+        deltamass1_err[:, j] = [dm1l, dm1u]
+
+        # -----------------
+        val2 = fit_mass_briz[j]
+
+        l2 = np.log10(val2 - fit_mass_briz_err[0, j])
+        u2 = np.log10(val2 + fit_mass_briz_err[1, j])
+        y2l = np.log10(val2) - l2
+        y2u = u2 - np.log10(val2)
+
+        cd2 = deltamass2[j]
+        delta_uplim2 = u - l2
+        delta_lolim2 = l - u2
+
+        #dm2u = delta_uplim2 - cd2
+        #dm2l = cd2 - delta_lolim2
+
+        dm2l = np.sqrt(xdl**2 + y2l**2)
+        dm2u = np.sqrt(xdu**2 + y2u**2)
+
+        deltamass2_err[:, j] = [dm2l, dm2u]
+
+        # -----------------
+        if (np.log10(xd) > 8.6) and (np.log10(xd) < 8.65):
+            print('---------------')
+            print("{:.2f}".format(xd), "{:.2f}".format(np.log10(xd)))  # value and its log
+            print("{:.2f}".format(l), "{:.2f}".format(u))  # lower and upper limits of full range for mass from all bands
+            print("{:.2f}".format(xdl), "{:.2f}".format(xdu))  # lower and upper error bars
+
+            print('---------------')
+            print("{:.2f}".format(val1), "{:.2f}".format(np.log10(val1)))  # value and its log
+            print("{:.2f}".format(fit_mass_ubriz_err[0, j]), "{:.2f}".format(fit_mass_ubriz_err[1, j]))
+            print("{:.2f}".format(l1), "{:.2f}".format(u1))  # lower and upper limits of full range for mass from ubriz
+            print("{:.2f}".format(y1l), "{:.2f}".format(y1u))  # lower and upper error bars for ubriz mass
+
+            print('---------------')
+            print("{:.3f}".format(cd1))
+            print("{:.3f}".format(delta_lolim1), "{:.3f}".format(delta_uplim1))
+            print("{:.3f}".format(dm1l), "{:.3f}".format(dm1u))
+
+        """
+
+        sigma_x = np.sqrt(xdl**2 + xdu**2)
+        sigma_y = np.sqrt(dm1l**2 + dm1u**2)
+
+        x = np.log10(xd)
+        
+        if (x >= 8.0) and (x < 9.0):
+            count_b1 += 1
+            xb1.append(x)
+            yb1.append(deltamass1[j])
+
+            xb1_wt.append(sigma_x)
+            yb1_wt.append(sigma_y)
 
     ax1.axhline(y=0.0, ls='--', color='k', zorder=1)
 
     dm1_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,ubriz})}$'
     dm2_lbl = r'$\mathrm{log(M_{s;\,all}) - log(M_{s;\,briz})}$'
 
-    #ax1.errorbar(xdata, deltamass1, xerr=xdata_err, yerr=deltamass1_err,
-    #    fmt='o', ms=2.0, elinewidth=1.0, ecolor='mediumblue',
+    ax1.errorbar(xdata, deltamass1, xerr=xdata_err, yerr=deltamass1_err,
+        fmt='o', ms=2.5, elinewidth=0.5, ecolor='mediumblue',
+        color='mediumblue', zorder=2, label=dm1_lbl, alpha=0.3)
+    ax1.errorbar(xdata, deltamass2, xerr=xdata_err, yerr=deltamass2_err,
+        fmt='o', ms=2.5, elinewidth=0.5, ecolor='darkturquoise',
+        color='darkturquoise', zorder=2, label=dm2_lbl, alpha=0.3)
+
+    #ax1.scatter(xdata, deltamass1, s=12, 
     #    color='mediumblue', zorder=2, label=dm1_lbl)
-    #ax1.errorbar(xdata, deltamass2, xerr=xdata_err, yerr=deltamass2_err,
-    #    fmt='o', ms=2.0, elinewidth=1.0, ecolor='darkturquoise',
+    #ax1.scatter(xdata, deltamass2, s=10, 
     #    color='darkturquoise', zorder=2, label=dm2_lbl)
 
-    ax1.scatter(xdata, deltamass1, s=12, 
-        color='mediumblue', zorder=2, label=dm1_lbl)
-    ax1.scatter(xdata, deltamass2, s=10, 
-        color='darkturquoise', zorder=2, label=dm2_lbl)
-
-    # Fit a line to the points
+    # --------- Fit a line to the points
     m1, b1 = np.polyfit(xdata, deltamass1, 1)
     m2, b2 = np.polyfit(xdata, deltamass2, 1)
 
-    ax1.plot(x_arr, b1 + x_arr*m1, '--', color='mediumblue')
-    ax1.plot(x_arr, b2 + x_arr*m2, '--', color='darkturquoise')
+    ax1.plot(x_arr, b1 + x_arr*m1, '--', lw=2.0, color='mediumblue')
+    ax1.plot(x_arr, b2 + x_arr*m2, '--', lw=2.0, color='darkturquoise')
 
-    print("Errors for the points and the line estimate --")
+    # --------- Binned points
+    # First divide by num points to get correct avg
+    xb1 = np.average(xb1, weights=1/np.array(xb1_wt)**2)
+    yb1 = np.average(yb1, weights=1/np.array(yb1_wt)**2)
+    ax1.scatter(xb1, yb1, s=30, color='deeppink', facecolors='None', zorder=5)
 
+    # Limits and text
     ax1.legend(fontsize=10, frameon=False)
     ax1.set_xlim(6.8, 12.5)
     ax1.set_ylim(-1.6, 0.8)
@@ -416,6 +571,8 @@ def main():
         transform=ax.transAxes, color='darkturquoise', size=14)
 
     fig1.savefig(adap_dir + 'mass_residuals.pdf', dpi=300, bbox_inches='tight')
+
+    sys.exit(0)
 
     # --------------
     # Histograms of measurement significance

@@ -18,12 +18,13 @@ class bcolors:
 total_visits = 9
 
 print('\n   z-range       Mean z in range        DAY  : 0      5      10     15     20     25     30     35     40')
-print('                                        VISIT: 0      1      2      3      4      5      6      7      8\n')
+print('                                        VISIT: 1      2      3      4      5      6      7      8      9\n')
 
 zmean_arr = np.arange(0.5, 3.5, 0.5)
-starting_phase = -5
 
 for zmean in zmean_arr:
+
+    starting_phase = np.random.choice([-5, -4, -3, -2, -1])
 
     cosmic_time_dilation_rest_frame = 5 / (1 + zmean)
     phase_list = []

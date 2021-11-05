@@ -10,7 +10,7 @@ import prospect.models.transforms as pt
 import prospect.io.read_results as reader
 
 home = os.getenv('HOME')
-adap_dir = home + '/Documents/adap2021/'
+adap_dir = home + '/Documents/Proposals/ADAP/adap2021/'
 
 field = 'North'
 galaxy_seq = 27438
@@ -44,6 +44,7 @@ zf_arr = np.array([zf1[1], zf2[1], zf3[1], zf4[1], zf5[1]])
 cq_mass = corner.quantile(samples[:, 7], q=[0.16, 0.5, 0.84])
 
 new_agebins = pt.zred_to_agebins(zred=obj_z, agebins=agebins)
+x_agebins = 10**new_agebins# / 1e9
 
 # now convert to sfh and its errors
 sfr = pt.zfrac_to_sfr(total_mass=cq_mass[1], z_fraction=zf_arr, agebins=new_agebins)
@@ -57,7 +58,17 @@ ax.set_xlabel(r'$\mathrm{Time\, [yr];\, since\ galaxy\ formation}$', fontsize=20
 ax.set_ylabel(r'$\mathrm{SFR\, [M_\odot/yr]}$', fontsize=20)
 
 for a in range(nagebins):
-    ax.plot(10**new_agebins[a], np.ones(len(new_agebins[a])) * sfr[a], color='mediumblue', lw=3.5)
+    #ax.plot(10**new_agebins[a], np.ones(len(new_agebins[a])) * sfr[a], color='mediumblue', lw=3.5)
+
+    ax.plot(x_agebins[a], np.ones(len(x_agebins[a])) * sfr[a], color='mediumblue', lw=3.0)
+    print(a, x_agebins[a], sfr[a])
+    # put in some poisson errors
+    sfr_err = np.ones(len(x_agebins[a])) * np.sqrt(sfr[a])
+    sfr_plt = np.ones(len(x_agebins[a])) * sfr[a]
+    sfr_low_fill = sfr_plt - sfr_err
+    sfr_up_fill = sfr_plt + sfr_err
+    ax.fill_between(x_agebins[a], sfr_low_fill, sfr_up_fill, 
+        color='gray', alpha=0.6)
 
 #ax.set_xlim(0.0, 10.1335)
 
@@ -92,6 +103,7 @@ ax.set_yscale('log')
 ax.set_xlim(1e5, 5e9)
 ax.set_ylim(5, 2e4)
 
+plt.show()
 fig.savefig(adap_dir +'nonparam_vs_param_sfh.pdf', dpi=300, bbox_inches='tight')
 
 
