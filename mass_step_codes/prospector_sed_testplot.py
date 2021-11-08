@@ -142,14 +142,14 @@ model = build_model(**run_params)
 #plot_data(obs)
 #sys.exit(0)
 
-results_type = 'emcee'
+results_type = 'dynesty'
 
 result, obs, _ = reader.results_from(adap_dir + results_type + "_" + \
                  field + "_" + str(galaxy_seq) + ".h5", dangerous=False)
 
 parnames = np.array(result['theta_labels'])
 print('Parameters in this model:', parnames)
-ndim = len(parnames) # 12
+ndim = len(parnames)
 
 # ------------------
 from prospect.plotting.utils import sample_posterior
@@ -271,13 +271,16 @@ ax.text(x=0.55, y=0.96, s=mass_str,
 
 ax.legend(loc=0, fontsize=12, frameon=False)
 
-ax.set_xlim(3000, 150000)
+#ax.set_xlim(3000, 150000)
 ax.set_ylim(ymin, ymax)
 
-ax.set_xscale('log')
+#ax.set_xscale('log')
 ax.set_yscale('log')
 
-fig.savefig(adap_dir + field + str(galaxy_seq) + '_allbands_sed.png', dpi=300, bbox_inches='tight')
+ax.set_xlim(10000, 17000)
+
+plt.show()
+#fig.savefig(adap_dir + field + str(galaxy_seq) + '_allbands_sed.png', dpi=300, bbox_inches='tight')
 
 
 

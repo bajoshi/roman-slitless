@@ -60,8 +60,11 @@ ax.set_ylabel(r'$\mathrm{SFR\, [M_\odot/yr]}$', fontsize=20)
 for a in range(nagebins):
     #ax.plot(10**new_agebins[a], np.ones(len(new_agebins[a])) * sfr[a], color='mediumblue', lw=3.5)
 
-    ax.plot(x_agebins[a], np.ones(len(x_agebins[a])) * sfr[a], color='mediumblue', lw=3.0)
-    print(a, x_agebins[a], sfr[a])
+    if a == 0:
+        ax.plot(x_agebins[a], np.ones(len(x_agebins[a])) * sfr[a], color='mediumblue', lw=3.0, label='Non-parametric SFH')
+    else:
+        ax.plot(x_agebins[a], np.ones(len(x_agebins[a])) * sfr[a], color='mediumblue', lw=3.0)
+
     # put in some poisson errors
     sfr_err = np.ones(len(x_agebins[a])) * np.sqrt(sfr[a])
     sfr_plt = np.ones(len(x_agebins[a])) * sfr[a]
@@ -95,7 +98,9 @@ t = 10**logt
 A = cq_mass[1] / tau**2
 sfr = A * t * np.exp(-1 * t / tau)
 
-ax.plot(t, sfr, color='k')
+ax.plot(t, sfr, color='k', label='Parametric SFH; Delayed tau')
+
+ax.legend(loc='upper right', fontsize=15, frameon=False)
 
 ax.set_xscale('log')
 ax.set_yscale('log')
@@ -103,7 +108,7 @@ ax.set_yscale('log')
 ax.set_xlim(1e5, 5e9)
 ax.set_ylim(5, 2e4)
 
-plt.show()
+#plt.show()
 fig.savefig(adap_dir +'nonparam_vs_param_sfh.pdf', dpi=300, bbox_inches='tight')
 
 

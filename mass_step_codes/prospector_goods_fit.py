@@ -211,15 +211,15 @@ def build_model(object_redshift=None, fixed_metallicity=None, add_duste=False, *
 
     # Get (a copy of) one of the prepackaged model set dictionaries.
     # This is, somewhat confusingly, a dictionary of dictionaries, keyed by parameter name
-    #model_params = TemplateLibrary["alpha"]
-    model_params = TemplateLibrary["parametric_sfh"]
+    model_params = TemplateLibrary["alpha"]
+    #model_params = TemplateLibrary["parametric_sfh"]
 
     # Set agebins manually
     #age_at_z = astropy_cosmo.age(object_redshift).value
 
-    #nbins_sfh = 8
-    #model_params['agebins']['N'] = nbins_sfh
-    #model_params['mass']['N'] = nbins_sfh
+    nbins_sfh = 8
+    model_params['agebins']['N'] = nbins_sfh
+    model_params['mass']['N'] = nbins_sfh
 
     # This will give the stellar mass as the surviving
     # mass which is what we want. Otherwise by default
@@ -281,11 +281,11 @@ def build_sps(zcontinuous=1, **extras):
         have a continuous metallicity parameter (`logzsol`)
         See python-FSPS documentation for details
     """
-    #from prospect.sources import FastStepBasis
-    #sps = FastStepBasis(zcontinuous=zcontinuous)
+    from prospect.sources import FastStepBasis
+    sps = FastStepBasis(zcontinuous=zcontinuous)
 
-    from prospect.sources import CSPSpecBasis
-    sps = CSPSpecBasis(zcontinuous=zcontinuous)
+    #from prospect.sources import CSPSpecBasis
+    #sps = CSPSpecBasis(zcontinuous=zcontinuous)
     return sps
 
 def main(field, galaxy_seq):

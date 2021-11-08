@@ -1,0 +1,36 @@
+---
+# Define constants
+Lsol: 3.826e33
+# Define SN scaling factor
+# Check sn_scaling.py in roman-slitless
+sn_scalefac: 1.734e40
+
+# survey pointing related
+pointing: 0
+detector: 1
+
+# Direct image related
+img:
+  basename: '5deg_'
+  filt: 'Y106_'
+
+# SNe insertion related
+insert:
+  lowmag:  19.0
+  highmag: 31.0
+  ref_mag: 15.9180
+  ref_counts: 13753.24  # read in mag and counts from SExtractor catalog on dir img
+  ref_segid: 630
+  ref_size: 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
+
+# pylinear config
+pylin:
+  beam: '+1'
+  maglim: '32'
+  dark: 0.01      # e/s/pix
+  readnoise: 80   # total; electrons
+  sky: 1.1        # e/s/pix; zodi + thermal + MW
+  npix: 16777216  # 4096 * 4096
+
+# Runtime config
+verbose: False
