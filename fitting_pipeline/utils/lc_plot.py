@@ -1,8 +1,8 @@
 import numpy as np
 
-def read_lc(band):
+def read_lc(lc_dir, band):
 
-    lc = np.genfromtxt('light_curves/vectors_' + band.upper() + '.dat',
+    lc = np.genfromtxt(lc_dir + 'vectors_' + band.upper() + '.dat',
         dtype=None, names=['phase', 'absmag'], usecols=(0,1))
 
     return lc['phase'], lc['absmag']

@@ -1,57 +1,54 @@
 import numpy as np
 from astropy.io import fits
+from astropy.cosmology import FlatLambdaCDM
+cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
 import yaml
 import os
 import sys
 import socket
 import subprocess
+import pdb
+
 from pprint import pprint
+from tqdm import tqdm
 
 # -----------------
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
-    modeldir = extdir + 'bc03_output_dir/'
-    
-    roman_sims_seds = extdir + 'roman_slitless_sims_seds/'
-    pylinear_lst_dir = extdir + 'pylinear_lst_files/'
-    roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
-
     roman_slitless_dir = extdir + "GitHub/roman-slitless/"
-    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
-
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
-    modeldir = extdir + 'bc03_output_dir/m62/'
-    
-    roman_sims_seds = extdir + "roman_slitless_sims_seds/"
-    pylinear_lst_dir = extdir + "pylinear_lst_files/"
-    roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
-
     home = os.getenv("HOME")
     roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
+    
+pylinear_lst_dir = extdir + "pylinear_lst_files/"
+roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
-#assert os.path.isdir(modeldir)
-#assert os.path.isdir(roman_sims_seds)
-#assert os.path.isdir(pylinear_lst_dir)
-#assert os.path.isdir(roman_direct_dir)
+fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
+survey_dir = roman_slitless_dir + "survey/"
+
+# One more step to defining the directory with the image sims
+img_sim_dir = roman_direct_dir + 'K_5degimages_part1/'
+
+assert os.path.isdir(pylinear_lst_dir)
+assert os.path.isdir(img_sim_dir)
+assert os.path.isdir(fitting_utils)
 # -----------------
 
 ######## CUSTOM IMPORTS
 
 sys.path.append(fitting_utils)
-import proper_and_lum_dist as cosmo
-import dust_utils as du
 from make_model_dirimg import gen_model_img
 from ref_cutout import gen_reference_cutout
 from get_insertion_coords import get_insertion_coords
-from lc_plot import read_lc
-from get_sn_mag import get_sn_magF106
-
+from get_sn_mag import get_sn_mag_F106
+from get_sn_spec_path import get_sn_spec_path
+from get_gal_spec_path import get_gal_spec_path
 
 ################## END IMPORTS
 
+# Colored text on terminal
 # This class came from stackoverflow
 # SEE:
 # https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
@@ -65,6 +62,182 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+
+# Assign spectra to all detected objects in an image
+def assign_spectra(dir_img_name, sn_prop, visit):
+    """
+    This function will run sextractor to detect
+    all objects in a given image, and assign 
+    either a galaxy or SN Ia spectrum to each 
+    object depending on the object type.
+    """
+
+    # Run Sextractor ONLY ON THE FIRST VISIT
+    # for visits beyond the first one we will 
+    # simply read in the catalog from the first visit
+    cat_filename = dir_img_name.replace('.fits', '.cat')
+    if visit == 1:
+        # See notes on sextractor args for subprocess
+        # in gen_sed_lst.py
+        # Change directory to images directory
+        os.chdir(img_sim_dir)
+
+        checkimage = dir_img_name.replace('.fits', '_segmap.fits')
+            
+        sextractor = subprocess.run(['sex', os.path.basename(dir_img_name), 
+            '-c', 'roman_sims_sextractor_config.txt', 
+            '-CATALOG_NAME', os.path.basename(cat_filename), 
+            '-CHECKIMAGE_NAME', os.path.basename(checkimage)], check=True)
+            
+        # Go back to roman-slitless directory
+        os.chdir(survey_dir)
+
+    # Now read in the SExtractor catalog 
+    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+    'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
+    'FWHM_IMAGE']
+    cat = np.genfromtxt(cat_filename, dtype=None, 
+        names=cat_header, encoding='ascii')
+
+    # Assign spectra 
+    # First construct the path of the SED.lst file
+    ibase = os.path.basename(dir_img_name)  # file base name
+    ibase = ibase.replace('.fits','')  # remove extension
+    isplt = ibase.split('_')  # split by underscores and rejoin
+    img_suffix = isplt[1] + '_' + isplt[2] + '_' + isplt[3]
+
+    sedlst_filename = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+
+    # Read in previous SED LST file if visit > 1
+    if visit > 1:
+        # Get all lines
+        alllines = open(sedlst_filename, 'r').readlines()
+
+    # On the first visit also  record all the randomly
+    # chosen Av. The same values will continue to be 
+    # used afterwards.
+    av_list = np.zeros(len(sn_prop))
+
+    # Now loop over all objects
+    with open(sedlst_filename, 'w') as fh:
+
+        # Write header
+        fh.write("# 1: SEGMENTATION ID" + "\n")
+        fh.write("# 2: SED FILE" + "\n")
+
+        for i in tqdm(range(len(cat)), desc="Object SegID"):
+
+            current_sextractor_id = int(cat['NUMBER'][i])
+
+            # Check if the object is a SN
+            obj_x = cat['X_IMAGE'][i]
+            obj_y = cat['Y_IMAGE'][i]
+
+            # If there is a SN within 5 pix of this object 
+            # then assign this object a SN spectrum 
+            # otherwise assign a galaxy spectrum
+            sn_idx = np.where((abs(sn_prop['xc'] - obj_x) < 5) & \
+                              (abs(sn_prop['yc'] - obj_y) < 5))[0]
+            
+            if sn_idx.size:
+                sn_idx = int(sn_idx)
+                sn_z = sn_prop['redshift'][sn_idx]
+                starting_phase = sn_prop['phase'][sn_idx]
+                cosmic_time_dilation_rest_frame = 5 / (1 + sn_z)
+
+                # For visit 1 the current phase is equal 
+                # to the starting phase
+                current_phase = starting_phase + \
+                                cosmic_time_dilation_rest_frame * (visit - 1)
+                # Ensure that the phase is an integer
+                current_phase = int(current_phase)
+                if visit == 1:
+                    sn_spec_path, _r, _d, _av = \
+                    get_sn_spec_path(cosmo, sn_z, day_chosen=current_phase)
+                    
+                    av_list[sn_idx] = _av
+
+                elif visit > 1:
+                    sn_av = sn_prop['Av'][sn_idx]
+                    sn_spec_path, _r, _d, _av = \
+                    get_sn_spec_path(cosmo, sn_z, 
+                        day_chosen=current_phase, chosen_av=sn_av)
+
+                # Write to file
+                _w = str(current_sextractor_id) + ' ' + sn_spec_path + '\n'
+                fh.write(_w)
+            else:
+                if visit == 1:
+                    # Pick a random redshift for this galaxy
+                    # the z_arr variable is global above so
+                    # we can simply use that again
+                    random_z = np.random.choice(z_arr)
+                    gal_spec_path = get_gal_spec_path(cosmo, random_z)
+
+                    # Write to file
+                    _w = str(current_sextractor_id) + ' ' + gal_spec_path + '\n'
+                    fh.write(_w)
+                elif visit > 1:
+                    fh.write(alllines[i+2])  # shifted by two header lines
+
+    # Finally if it is the first visit update the sn_prop file
+    # with the dust extinction applied to the SN spectrum
+    if visit == 1:
+        # Put the old data in arrays first
+        snx  = sn_prop['xc']
+        sny  = sn_prop['yc']
+        snph = sn_prop['phase']
+        snz  = sn_prop['redshift']
+        snm  = sn_prop['magF106']
+
+        new_dat = np.c_[snx, sny, snph, snz, snm, av_list]
+
+        np.savetxt('inserted_sn_props.txt', new_dat, 
+            fmt=['%.3f', '%.3f', '%d', '%.3f', '%.2f', '%.2f'], 
+            header='xc  yc  phase  redshift  magF106  Av')
+
+    return None
+
+
+# Function to update the inserted SNe mags according to LC evolution
+def update_sn_visit_mag(visit, sn_prop):
+
+    for i in range(insert_num):
+    
+        sn_z = sn_prop['redshift'][i]
+        starting_phase = sn_prop['phase'][i]
+    
+        cosmic_time_dilation_rest_frame = 5 / (1 + sn_z)
+    
+        # Get current phase in rest frame
+        current_phase = starting_phase + \
+                        cosmic_time_dilation_rest_frame * (visit - 1)
+    
+        # Get new apparent magnitude at this phase
+        snmag = get_sn_mag_F106(current_phase, sn_z, fitting_utils)
+    
+        # Add the reference cutout again at this new magnitude
+        delta_m = ref_mag - snmag
+        sncounts = ref_counts * (1 / 10**(-0.4*delta_m) )
+    
+        scale_fac = sncounts / ref_counts
+        new_cutout = ref_data * scale_fac
+    
+        # Now get coords
+        xi = sn_prop['xc'][i]
+        yi = sn_prop['yc'][i]
+    
+        r = yi
+        c = xi
+    
+        # Add in the new SN
+        model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
+
+    return None
+
+
+################## END FUNCTION DEFS
 
 ##### TO DO LIST
 print(f'{bcolors.WARNING}')
@@ -84,8 +257,8 @@ with open(config_flname, 'r') as fh:
 print('Received the following configuration for the simulation:')
 pprint(cfg)
 
-###############################################################################
-###############################################################################
+################################################################################
+################################################################################
 # Insert SNe in visit 1
 # ---------------
 # Read in the reference image of the star from 
@@ -98,6 +271,8 @@ ref_data = fits.getdata(ref_cutout_path)
 
 ref_mag = cfg['insert']['ref_mag']
 ref_counts = cfg['insert']['ref_counts']
+
+s = cfg['insert']['ref_size']  # reference cutout size
 
 # For now we're simulating all SNE on a single Roman detector
 # so no need to loop over all 18 or multiple pointings.
@@ -122,10 +297,9 @@ print(f'{bcolors.ENDC}')
 # Open dir image
 img_basename = cfg['img']['basename']
 img_filt = cfg['img']['filt']
-img_sim_dir = roman_direct_dir + 'K_5degimages_part1/'
 
 dir_img_name = (img_sim_dir + img_basename + img_filt + 
-               str(pointing) + str(detector) + '.fits')
+               str(pointing) + '_' + str(detector) + '.fits')
 dir_hdu = fits.open(dir_img_name)
 
 # ---------------
@@ -162,8 +336,8 @@ sextractor   = subprocess.run(['sex', model_img_name,
     '-CATALOG_NAME', os.path.basename(cat_filename), 
     '-CHECKIMAGE_NAME', checkimage], check=True)
 
-# Go back to roman-slitless directory
-os.chdir(roman_slitless_dir)
+# Go back to survey directory
+os.chdir(survey_dir)
 
 # ---------------
 # Convert to model image
@@ -198,7 +372,7 @@ redshift_chosen = np.zeros(insert_num)
 sn_magnitudes = np.zeros(insert_num)
 
 # Loop over all SNe to be inserted
-for i in range(insert_num):
+for i in tqdm(range(insert_num), desc='Inserting SNe'):
 
     # Pick a phase with equal probability from
     # [-7, -6, -5, -4, -3]
@@ -209,7 +383,7 @@ for i in range(insert_num):
     redshift = np.random.choice(z_arr)
 
     # Now figure out what F106 magnitude this SN will be
-    snmag = get_sn_magF106(phase, redshift)
+    snmag = get_sn_mag_F106(phase, redshift, fitting_utils)
 
     # Now scale reference
     delta_m = ref_mag - snmag
@@ -233,70 +407,48 @@ for i in range(insert_num):
     redshift_chosen[i] = redshift
     sn_magnitudes[i] = snmag
 
+# Save and check image with ds9 if needed
+new_hdu = fits.PrimaryHDU(header=cps_hdr, data=model_img)
+img_savefile = dir_img_name.replace('.fits', '_SNadded.fits')
+new_hdu.writeto(img_savefile, overwrite=True)
+
 # Save all needed quantities to a numpy array
 dat = np.c_[x_ins, y_ins, phase_chosen, redshift_chosen, sn_magnitudes]
 
-print(dat.shape)
-
 np.savetxt('inserted_sn_props.txt', dat, 
-    fmt=, 
+    fmt=['%.3f', '%.3f', '%d', '%.3f', '%.2f'], 
     header='xc  yc  phase  redshift  magF106')
 
-assign_spectra()
+print(f'{bcolors.CYAN}')
+print('Inserted SNe and props file saved. Assigning spectra now...')
+print(f'{bcolors.ENDC}')
 
-check_simprep()
-run_sim(visit=1)
+# Read in the SN properties file just created
+sn_prop = np.genfromtxt('inserted_sn_props.txt', 
+    dtype=None, names=True, encoding='ascii')
 
-###############################################################################
-###############################################################################
+assign_spectra(img_savefile, sn_prop, visit=1)
+pdb.set_trace()
+
+
+# Read in the updated SN properties file after the first visit
+sn_prop = np.genfromtxt('inserted_sn_props.txt', 
+    dtype=None, names=True, encoding='ascii')
+
+assign_spectra(img_savefile, sn_prop, visit=2)
+
+#check_simprep()
+
+print('Running visit 1 sim.')
+run_sim(config=cfg, visit=1)
+
+################################################################################
+################################################################################
 # Visit 2 and future visits
 # ---------------
-# Function to update the inserted SNe mags according to LC evolution
-def update_sn_visit_mag(visit, sn_prop):
 
-    for i in range(insert_num):
-    
-        sn_z = sn_prop['redshift'][i]
-        starting_phase = sn_prop['phase'][i]
-    
-        cosmic_time_dilation_rest_frame = 5 / (1 + sn_z)
-    
-        # Get current phase in rest frame
-        current_phase = starting_phase + cosmic_time_dilation_rest_frame * (visit - 1)
-    
-        # Get new apparent magnitude at this phase
-        snmag = get_sn_magF106(current_phase, sn_z)
-    
-        # Add the reference cutout again at this new magnitude
-        delta_m = ref_mag - snmag
-        sncounts = ref_counts * (1 / 10**(-0.4*delta_m) )
-    
-        scale_fac = sncounts / ref_counts
-        new_cutout = ref_data * scale_fac
-    
-        # Now get coords
-        xi = sn_prop['xc'][i]
-        yi = sn_prop['yc'][i]
-    
-        r = yi
-        c = xi
-    
-        # Add in the new SN
-        model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
-
-    return None
-
-def update_sn_visit_spectra():
-
-    return None
 
 # ---------------
-# Read in light curves to add in SN luminosity evolution
-lc_b_phase, lc_b_absmag = read_lc('B')
-
-# Also read in properties of inserted SNe
-sn_prop = np.genfromtxt('inserted_sn_props.txt', dtype=None, 
-    names=True, encoding='ascii')
 
 
 

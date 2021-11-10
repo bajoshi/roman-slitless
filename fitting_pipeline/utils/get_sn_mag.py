@@ -6,9 +6,9 @@ cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 from lc_plot import read_lc
 from kcorr import get_kcorr_Hogg
 
-def get_restframe_mag(phase, band):
+def get_restframe_mag(phase, band, lc_dir):
 
-    lc_phase, lc_absmag = read_lc(band)
+    lc_phase, lc_absmag = read_lc(lc_dir, band)
 
     phase_idx = np.argmin(abs(lc_phase - phase))
     abs_mag = lc_absmag[phase_idx]
@@ -24,12 +24,23 @@ def get_distance_modulus(redshift):
 
     return dm
 
-def get_sn_mag_F106(phase, redshift):
+def get_sn_mag_F106(phase, redshift, utils_dir=None):
 
+    # -----------
+    # Set directories
+    if utils_dir is None:
+        import os
+        utils_dir = os.getcwd()
+
+    lc_dir          = utils_dir + 'light_curves/'
+    templates_dir   = utils_dir + 'templates/'
+    throughputs_dir = utils_dir + 'throughputs/'
+
+    # -----------
     # First get the absolute magnitude for 
     # the chosen band at the given phase
     abs_band = 'I'
-    abs_mag = get_restframe_mag(phase, abs_band)
+    abs_mag = get_restframe_mag(phase, abs_band, lc_dir)
 
     # ----------------------------
     # Now apply a K correction to get to the apparent
@@ -37,7 +48,7 @@ def get_sn_mag_F106(phase, redshift):
     speed_of_light_ang = 3e18  # angstroms per second
 
     # ------- SN Ia spectrum from Lou
-    salt2_spec = np.genfromtxt("templates/salt2_template_0.txt", 
+    salt2_spec = np.genfromtxt(templates_dir + "salt2_template_0.txt", 
         dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
 
     # ---------
@@ -56,17 +67,17 @@ def get_sn_mag_F106(phase, redshift):
     # While the column label says transmission
     # it is actually the throughput that we want.
     # B and Y band in this case
-    f105 = np.genfromtxt('throughputs/F105W_IR_throughput.csv', 
+    f105 = np.genfromtxt(throughputs_dir + 'F105W_IR_throughput.csv', 
                          delimiter=',', dtype=None, names=['wav','trans'], 
                          encoding='ascii', usecols=(1,2), skip_header=1)
 
-    f435 = np.genfromtxt('throughputs/f435w_filt_curve.txt', 
-                         dtype=None, names=['wav','trans'], encoding='ascii')
+    #f435 = np.genfromtxt(throughputs_dir + 'f435w_filt_curve.txt', 
+    #                     dtype=None, names=['wav','trans'], encoding='ascii')
 
-    f606 = np.genfromtxt('throughputs/f606w_filt_curve.txt', 
-                         dtype=None, names=['wav','trans'], encoding='ascii')
+    #f606 = np.genfromtxt(throughputs_dir + 'f606w_filt_curve.txt', 
+    #                     dtype=None, names=['wav','trans'], encoding='ascii')
 
-    f814 = np.genfromtxt('throughputs/HST_ACS_WFC.F814W.dat', 
+    f814 = np.genfromtxt(throughputs_dir + 'HST_ACS_WFC.F814W.dat', 
                          dtype=None, names=['wav','trans'], encoding='ascii')
 
     # ---------
@@ -80,7 +91,7 @@ def get_sn_mag_F106(phase, redshift):
 
     # Delete numpy record arrays that have been read in
     del salt2_spec
-    del f105, f435, f606, f814
+    del f105, f814 #f105, f435, f606, f814
 
     return sn_mag_f106
 

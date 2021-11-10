@@ -123,8 +123,7 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     final version. 
 
     The spectrum file contains a type 1A spectrum from -20 to +50 days relative to max.
-    Since the -20 spectrum is essentially empty, I won't choose that spectrum for now.
-    Also, for now, I will restrict this function to -5 to +5 days relative to maximum.
+    Since the -20 spectrum is essentially empty, I won't choose that spectrum.
     """
 
     # Create array for days relative to max
@@ -139,7 +138,7 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     day_idx = np.where(salt2_spec['day'] == day_chosen)[0]
 
     sn_spec_lam = salt2_spec['lam'][day_idx]
-    sn_spec_llam = salt2_spec['llam'][day_idx] * sn_scalefac
+    sn_spec_llam = salt2_spec['llam'][day_idx]
 
     # Apply dust extinction
     # Apply Calzetti dust extinction depending on av value chosen
@@ -544,8 +543,10 @@ def gen_sed_lst():
                 os.chdir(roman_slitless_dir)
 
             cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-            'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
-            cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+            'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
+            'FWHM_IMAGE']
+            cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, 
+                encoding='ascii')
             tqdm.write(f"{bcolors.GREEN}" + str(len(cat)) + " objects in catalog." + f"{bcolors.ENDC}")
 
             # Loop over all objects and assign spectra
