@@ -1,12 +1,5 @@
 import numpy as np
 
-import matplotlib.pyplot as plt
-
-import os
-home = os.getenv('HOME')
-
-roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
-
 def read_lc(band):
 
     lc = np.genfromtxt('light_curves/vectors_' + band.upper() + '.dat',
@@ -16,6 +9,13 @@ def read_lc(band):
 
 if __name__ == '__main__':
     
+    import matplotlib.pyplot as plt
+    
+    import os
+    home = os.getenv('HOME')
+    
+    roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
+
     lc_u_phase, lc_u_absmag = read_lc('U')
     lc_b_phase, lc_b_absmag = read_lc('B')
     lc_v_phase, lc_v_absmag = read_lc('V')
@@ -39,6 +39,7 @@ if __name__ == '__main__':
     ax.legend(loc=0, fontsize=14, frameon=False)
 
     ax.set_xlim(-10, 20)
+    ax.set_ylim(-17, -21)
 
     fig.savefig(roman_slitless_dir + 'figures/mlcs_lightcurves.pdf', dpi=200, bbox_inches='tight')
     

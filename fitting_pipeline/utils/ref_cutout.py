@@ -4,7 +4,7 @@ from astropy.io import fits
 import subprocess
 import os
 
-from make_model_img import gen_model_img
+from make_model_dirimg import gen_model_img
 
 def gen_reference_cutout(showref=False):
 

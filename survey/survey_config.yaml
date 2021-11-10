@@ -1,9 +1,7 @@
 ---
 # Define constants
-Lsol: 3.826e33
-# Define SN scaling factor
-# Check sn_scaling.py in roman-slitless
-sn_scalefac: 1.734e40
+Lsol: 3.826e33  # erg/s
+sn_scalefac: 1.734e40  # Check sn_scaling.py in roman-slitless
 
 # survey pointing related
 pointing: 0
@@ -11,13 +9,21 @@ detector: 1
 
 # Direct image related
 img:
+  img_zp: 31.7956
+  wfc3_f105w_zp: 26.264
+
+  back_scale: 0.001  # standard deviation for background to be added.
+
+  # Other img params
   basename: '5deg_'
   filt: 'Y106_'
 
 # SNe insertion related
 insert:
-  lowmag:  19.0
-  highmag: 31.0
+  lowmag:  19.0 # brightest mag SN to be inserted
+  highmag: 31.0 # faintest mag SN to be inserted
+  numlow:  750  # min number of SNe to be inserted
+  numhigh: 800  # max number of SNe to be inserted
   ref_mag: 15.9180
   ref_counts: 13753.24  # read in mag and counts from SExtractor catalog on dir img
   ref_segid: 630
@@ -26,9 +32,9 @@ insert:
 # pylinear config
 pylin:
   beam: '+1'
-  maglim: '32'
+  maglim: '32'    # Faintest mag to be simulated/extracted
   dark: 0.01      # e/s/pix
-  readnoise: 80   # total; electrons
+  readnoise: 15   # electrons per read
   sky: 1.1        # e/s/pix; zodi + thermal + MW
   npix: 16777216  # 4096 * 4096
 

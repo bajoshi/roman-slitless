@@ -91,11 +91,10 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     return redshifted_wav, redshifted_flux
 
-def main():
-    gen_lookup_table()
-    return None
-
 if __name__ == '__main__':
-    main()
+
+    gen_lookup_table()
+
+    
 
 
