@@ -335,6 +335,7 @@ def run_sim(dir_img_name, visit, config):
         detindex=0, maglim=maglim)
 
     # Set up
+    """
     grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
     tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
     tabnames = tabulate.run(grisms, sources, beam)
@@ -343,12 +344,13 @@ def run_sim(dir_img_name, visit, config):
     simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
     fltnames = simulate.run(grisms, sources, beam)
     print(f'{bcolors.CYAN}', 'Simulation done.', f'{bcolors.ENDC}')
+    """
 
     # ---------------------- Noise 2D dispersed image
     npix = config['pylin']['npix']
     sky = config['pylin']['sky']
     dark = config['pylin']['dark']
-    rdnoise = config['pylin']['rdnoise']
+    rdnoise = config['pylin']['readnoise']
 
     for exptime in [3600, 900]:
 
@@ -367,7 +369,11 @@ def run_sim(dir_img_name, visit, config):
     
             # Randomly vary signal about its mean. Assuming Gaussian distribution
             # first get the uncertainty
-            variance = signal + read**2
+            # Number of reads
+            nreads = int(exptime/900)
+            read_total = nreads * rdnoise
+
+            variance = signal + read_total**2
             sigma = np.sqrt(variance)
             new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
 
@@ -396,7 +402,7 @@ def run_sim(dir_img_name, visit, config):
 
         # ------------------
         # Extract
-        print(f'{bcolors.CYAN}', 'Beginning extraction...', f'{bcolors.ENDC}')
+        print(f'{bcolors.CYAN}', 'Prepping extraction...', f'{bcolors.ENDC}')
         if e == 3600:
             fltlst = fltlst_deep
         else:
