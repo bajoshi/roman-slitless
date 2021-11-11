@@ -407,7 +407,7 @@ def run_sim(dir_img_name, visit, config):
         # ------------------
         # Extract
         print(f'{bcolors.CYAN}', 'Prepping extraction...', f'{bcolors.ENDC}')
-        if e == 3600:
+        if exptime == 3600:
             fltlst = fltlst_deep
         else:
             fltlst = fltlst_wide
