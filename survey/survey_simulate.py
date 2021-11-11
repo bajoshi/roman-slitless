@@ -30,6 +30,10 @@ result_dir = extdir + 'survey_sim/'
 fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 survey_dir = roman_slitless_dir + "survey/"
 
+# Define paths for tables and matrices
+tablespath =  result_dir + 'tables/'
+matricespath = result_dir + 'matrices/'
+
 # One more step to defining the directory with the image sims
 img_sim_dir = roman_direct_dir + 'K_5degimages_part1/'
 
