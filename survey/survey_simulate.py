@@ -195,7 +195,7 @@ def assign_spectra(dir_img_name, sn_prop, visit):
 
         new_dat = np.c_[snx, sny, snph, snz, snm, av_list]
 
-        np.savetxt('inserted_sn_props.txt', new_dat, 
+        np.savetxt('inserted_sn_props_updated.txt', new_dat, 
             fmt=['%.3f', '%.3f', '%d', '%.3f', '%.2f', '%.3f'], 
             header='xc  yc  phase  redshift  magF106  Av')
 
@@ -203,7 +203,7 @@ def assign_spectra(dir_img_name, sn_prop, visit):
 
 
 # Function to update the inserted SNe mags according to LC evolution
-def update_sn_visit_mag(visit, sn_prop):
+def update_sn_visit_mag(visit, sn_prop, dir_img_name):
 
     for i in range(insert_num):
     
@@ -235,6 +235,11 @@ def update_sn_visit_mag(visit, sn_prop):
     
         # Add in the new SN
         model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
+
+    # Save and check image with ds9 if needed
+    new_hdu = fits.PrimaryHDU(header=cps_hdr, data=model_img)
+    img_savefile = dir_img_name.replace('.fits', '_SNadded.fits')
+    new_hdu.writeto(img_savefile, overwrite=True)
 
     return None
 
@@ -343,7 +348,6 @@ def run_sim(dir_img_name, visit, config):
         detindex=0, maglim=maglim)
 
     # Set up
-    """
     grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
     tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
     tabnames = tabulate.run(grisms, sources, beam)
@@ -352,7 +356,6 @@ def run_sim(dir_img_name, visit, config):
     simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
     fltnames = simulate.run(grisms, sources, beam)
     print(f'{bcolors.CYAN}', 'Simulation done.', f'{bcolors.ENDC}')
-    """
 
     # ---------------------- Noise 2D dispersed image
     npix = config['pylin']['npix']
@@ -619,7 +622,7 @@ new_hdu.writeto(img_savefile, overwrite=True)
 # Save all needed quantities to a numpy array
 dat = np.c_[x_ins, y_ins, phase_chosen, redshift_chosen, sn_magnitudes]
 
-np.savetxt('inserted_sn_props.txt', dat, 
+np.savetxt('inserted_sn_props_visit1.txt', dat, 
     fmt=['%.3f', '%.3f', '%d', '%.3f', '%.2f'], 
     header='xc  yc  phase  redshift  magF106')
 
@@ -628,10 +631,10 @@ print('Inserted SNe and props file saved. Assigning spectra now...')
 print(f'{bcolors.ENDC}')
 
 # Read in the SN properties file just created
-sn_prop = np.genfromtxt('inserted_sn_props.txt', 
+sn_prop1 = np.genfromtxt('inserted_sn_props_visit1.txt', 
     dtype=None, names=True, encoding='ascii')
 
-assign_spectra(img_savefile, sn_prop, visit=1)
+assign_spectra(img_savefile, sn_prop1, visit=1)
 
 #check_simprep()
 
@@ -641,26 +644,33 @@ print(f'{bcolors.ENDC}')
 
 run_sim(img_savefile, visit=1, config=cfg)
 
-sys.exit(0)
-
 ################################################################################
 ################################################################################
 # Visit 2 and future visits
-# ---------------
-# Update image with new SN mags
-update_sn_visit_mag(visit, sn_prop)
-print('Ensure Av mag taken into account for dir img')
 
-# ---------------
-# Read in the updated SN properties file after the first visit
-sn_prop = np.genfromtxt('inserted_sn_props.txt', 
+# Read in the updated SN properties file after the previous visit
+sn_prop_new = np.genfromtxt('inserted_sn_props_updated.txt', 
     dtype=None, names=True, encoding='ascii')
 
-assign_spectra(img_savefile, sn_prop, visit=2)
+for vt in np.arange(2, 10, 1):
+    # ---------------
+    # Update image with new SN mags
+    update_sn_visit_mag(visit, sn_prop1)
+    
+    print('Ensure Av mag taken into account for dir img')
+    
+    # ---------------
+    # Assign spectra
+    assign_spectra(img_savefile, sn_prop_new, visit=vt)
+    
+    # ---------------
+    print(f'{bcolors.CYAN}')
+    print('Running visit', vt, 'sim.')
+    print(f'{bcolors.ENDC}')
 
-# ---------------
+    run_sim(img_savefile, visit=vt, config=cfg)
 
-
+print('All done.')
 
 
 
