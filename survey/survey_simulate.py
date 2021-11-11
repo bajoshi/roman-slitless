@@ -104,12 +104,7 @@ def assign_spectra(dir_img_name, sn_prop, visit):
         names=cat_header, encoding='ascii')
 
     # Assign spectra 
-    # First construct the path of the SED.lst file
-    ibase = os.path.basename(dir_img_name)  # file base name
-    ibase = ibase.replace('.fits','')  # remove extension
-    isplt = ibase.split('_')  # split by underscores and rejoin
-    img_suffix = isplt[1] + '_' + isplt[2] + '_' + isplt[3]
-
+    img_suffix = get_img_suffix(dir_img_name)
     sedlst_filename = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
 
     # Read in previous SED LST file if visit > 1
@@ -242,11 +237,7 @@ def update_sn_visit_mag(visit, sn_prop):
 
 def create_lst_files(dir_img_name, visit, config):
 
-    # First construct the img suffix
-    ibase = os.path.basename(dir_img_name)  # file base name
-    ibase = ibase.replace('.fits','')  # remove extension
-    isplt = ibase.split('_')  # split by underscores and rejoin
-    img_suffix = isplt[1] + '_' + isplt[2] + '_' + isplt[3]
+    img_suffix = get_img_suffix(dir_img_name)
 
     # Paths to each file
     fltlst_deep = pylinear_lst_dir + 'flt_' + img_suffix + '_deep.lst'
@@ -312,12 +303,25 @@ def create_lst_files(dir_img_name, visit, config):
     return fltlst_deep, fltlst_wide, obslst, wcslst, sedlst
 
 
+def get_img_suffix(dir_img_name):
+
+    # Construct the img suffix
+    ibase = os.path.basename(dir_img_name)  # file base name
+    ibase = ibase.replace('.fits','')  # remove extension
+    isplt = ibase.split('_')  # split by underscores and rejoin
+    img_suffix = isplt[1] + '_' + isplt[2] + '_' + isplt[3]
+
+    return img_suffix
+
+
 def run_sim(dir_img_name, visit, config):
 
     # ------------------
     # Create LST files
     fltlst_deep, fltlst_wide, obslst, wcslst, sedlst = \
     create_lst_files(dir_img_name, visit, config)
+
+    img_suffix = get_img_suffix(dir_img_name)
 
     # ------------------
     # Now run sim
