@@ -2,6 +2,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
+import pylinear
 
 import yaml
 import os
@@ -24,6 +25,7 @@ else:
     
 pylinear_lst_dir = extdir + "pylinear_lst_files/"
 roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
+result_dir = extdir + 'survey_sim/'
 
 fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 survey_dir = roman_slitless_dir + "survey/"
@@ -34,6 +36,7 @@ img_sim_dir = roman_direct_dir + 'K_5degimages_part1/'
 assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(img_sim_dir)
 assert os.path.isdir(fitting_utils)
+assert os.path.isdir(result_dir)
 # -----------------
 
 ######## CUSTOM IMPORTS
@@ -194,7 +197,7 @@ def assign_spectra(dir_img_name, sn_prop, visit):
         new_dat = np.c_[snx, sny, snph, snz, snm, av_list]
 
         np.savetxt('inserted_sn_props.txt', new_dat, 
-            fmt=['%.3f', '%.3f', '%d', '%.3f', '%.2f', '%.2f'], 
+            fmt=['%.3f', '%.3f', '%d', '%.3f', '%.2f', '%.3f'], 
             header='xc  yc  phase  redshift  magF106  Av')
 
     return None
@@ -233,6 +236,193 @@ def update_sn_visit_mag(visit, sn_prop):
     
         # Add in the new SN
         model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
+
+    return None
+
+
+def create_lst_files(dir_img_name, visit, config):
+
+    # First construct the img suffix
+    ibase = os.path.basename(dir_img_name)  # file base name
+    ibase = ibase.replace('.fits','')  # remove extension
+    isplt = ibase.split('_')  # split by underscores and rejoin
+    img_suffix = isplt[1] + '_' + isplt[2] + '_' + isplt[3]
+
+    # Paths to each file
+    fltlst_deep = pylinear_lst_dir + 'flt_' + img_suffix + '_deep.lst'
+    fltlst_wide = pylinear_lst_dir + 'flt_' + img_suffix + '_wide.lst'
+    obslst = pylinear_lst_dir + 'obs_' + img_suffix + '.lst'
+    wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
+    sedlst = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+
+    # Some other stuff needed from config
+    disp_elem = config['disp_elem']
+    ra_cen_fmt = config['ra_cen']
+    dec_cen_fmt = config['dec_cen']
+
+    # ---------- OBSLST
+    with open(obslst, 'w') as fh:
+        fh.write("# Image File name" + "\n")
+        fh.write("# Observing band" + "\n")
+
+        fh.write("\n" + dir_img_name + '  ' + 'hst_wfc3_f105w')
+
+    # ---------- WCSLST
+    with open(wcslst, 'w') as fh:
+        fh.write("# TELESCOPE = Roman" + "\n")
+        fh.write("# INSTRUMENT = WFI" + "\n")
+        fh.write("# DETECTOR = WFI" + "\n")
+        fh.write("# GRISM = " + disp_elem + "\n")
+        fh.write("# BLOCKING = " + "\n")
+
+        # Get roll angle dependent on vist
+        roll_angle = 5 * (visit - 1)
+
+        str_to_write = "\n" + 'romanprism_hltds_' + img_suffix + \
+        '  ' + ra_cen_fmt + '  ' + dec_cen_fmt + \
+        '  ' + str(roll_angle) + '  ' + disp_elem
+            
+        fh.write(str_to_write)
+
+    # ---------- FLTLST
+    # One for each exposure time -- deep and wide 
+    for e in [3600, 900]:
+
+        if e == 3600:
+            fltlst = fltlst_deep
+        else:
+            fltlst = fltlst_wide
+
+        with open(fltlst, 'w') as fh:
+            h1 = "# Path to each flt image"
+            h2 = "# This has to be a simulated or observed dispersed image"
+            fh.write(h1 + "\n")
+            fh.write(h2 + "\n")
+
+            str_to_write = "\n" + result_dir + 'romanprism_hltds_' + \
+                    img_suffix + '_' + str(e) + 's_flt.fits'
+
+            fh.write(str_to_write)
+
+    # ---------- SEDLST
+    # Doesn't need anything here. SED LST is created and edited 
+    # by the assign_spectra function above.
+
+    # Return all paths
+    return fltlst_deep, fltlst_wide, obslst, wcslst, sedlst
+
+
+def run_sim(dir_img_name, visit, config):
+
+    # ------------------
+    # Create LST files
+    fltlst_deep, fltlst_wide, obslst, wcslst, sedlst = \
+    create_lst_files(dir_img_name, visit, config)
+
+    # ------------------
+    # Now run sim
+    # Change directory to where the simulation results will go
+    os.chdir(result_dir)
+
+    # Get pylinear config params
+    beam = config['pylin']['beam']
+    maglim = config['pylin']['maglim']
+
+    segfile = dir_img_name.replace('.fits', '_segmap.fits')
+
+    # ---------------------- Get sources
+    sources = pylinear.source.SourceCollection(segfile, obslst, 
+        detindex=0, maglim=maglim)
+
+    # Set up
+    grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
+    tabulate = pylinear.modules.Tabulate('pdt', ncpu=0)
+    tabnames = tabulate.run(grisms, sources, beam)
+
+    ## ---------------------- Simulate
+    simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
+    fltnames = simulate.run(grisms, sources, beam)
+    print(f'{bcolors.CYAN}', 'Simulation done.', f'{bcolors.ENDC}')
+
+    # ---------------------- Noise 2D dispersed image
+    npix = config['pylin']['npix']
+    sky = config['pylin']['sky']
+    dark = config['pylin']['dark']
+    rdnoise = config['pylin']['rdnoise']
+
+    for exptime in [3600, 900]:
+
+        oldf = 'romanprism_hltds_' + img_suffix + '_flt.fits'
+
+        with fits.open(oldf) as hdul:
+            sci = hdul[('SCI',1)].data
+            size = sci.shape
+
+            # update the science extension with sky background and dark current
+            signal = (sci + sky + dark)
+
+            # Multiply the science image with the exptime
+            # sci image originally in electrons/s
+            signal = signal * exptime  # this is now in electrons
+    
+            # Randomly vary signal about its mean. Assuming Gaussian distribution
+            # first get the uncertainty
+            variance = signal + read**2
+            sigma = np.sqrt(variance)
+            new_sig = np.random.normal(loc=signal, scale=sigma, size=size)
+
+            # now divide by the exptime and subtract the sky again 
+            # to get back to e/s. LINEAR expects a background subtracted image
+            final_sig = (new_sig / exptime) - sky
+    
+            # Stop if you find nans
+            nan_idx = np.where(np.isnan(final_sig))
+            nan_idx = np.asarray(nan_idx)
+            if nan_idx.size:
+                logger.critical("Found NaNs. Resolve this issue first. Exiting.")
+                sys.exit(1)
+
+            # Assign updated sci image to the first [SCI] extension
+            hdul[('SCI',1)].data = final_sig
+    
+            # update the uncertainty extension with the sigma
+            err = np.sqrt(signal) / exptime
+    
+            hdul[('ERR',1)].data = err
+    
+            # now write to a new file name
+            newfilename = oldf.replace('_flt', '_' + str(exptime) + 's' + '_flt')
+            hdul.writeto(newfilename, overwrite=True)
+
+        # ------------------
+        # Extract
+        print(f'{bcolors.CYAN}', 'Beginning extraction...', f'{bcolors.ENDC}')
+        if e == 3600:
+            fltlst = fltlst_deep
+        else:
+            fltlst = fltlst_wide
+
+        grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+        tabulate = pylinear.modules.Tabulate('pdt', path=tablespath, ncpu=0)
+        tabnames = tabulate.run(grisms, sources, beam)
+    
+        extraction_parameters = grisms.get_default_extraction()
+    
+        extpar_fmt = \
+        'Default parameters: range = {lamb0}, {lamb1} A, sampling = {dlamb} A'
+        print(extpar_fmt.format(**extraction_parameters))
+    
+        # Set extraction params
+        sources.update_extraction_parameters(**extraction_parameters)
+        method = 'golden'  # golden, grid, or single
+        extroot = 'romanprism_hltds_' + img_suffix + '_' + str(exptime) + 's' \
+                  + '_visit' + str(visit)
+        logdamp = [-6, -1, 0.1]
+    
+        print(f'{bcolors.CYAN}', "Extracting...", f'{bcolors.ENDC}')
+        pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
+            method, extroot, tablespath, 
+            inverter='lsqr', ncpu=1, group=False)
 
     return None
 
@@ -428,25 +618,31 @@ sn_prop = np.genfromtxt('inserted_sn_props.txt',
     dtype=None, names=True, encoding='ascii')
 
 assign_spectra(img_savefile, sn_prop, visit=1)
-pdb.set_trace()
-
-
-# Read in the updated SN properties file after the first visit
-sn_prop = np.genfromtxt('inserted_sn_props.txt', 
-    dtype=None, names=True, encoding='ascii')
-
-assign_spectra(img_savefile, sn_prop, visit=2)
 
 #check_simprep()
 
+print(f'{bcolors.CYAN}')
 print('Running visit 1 sim.')
-run_sim(config=cfg, visit=1)
+print(f'{bcolors.ENDC}')
+
+run_sim(img_savefile, visit=1, config=cfg)
+
+sys.exit(0)
 
 ################################################################################
 ################################################################################
 # Visit 2 and future visits
 # ---------------
+# Update image with new SN mags
+update_sn_visit_mag(visit, sn_prop)
+print('Ensure Av mag taken into account for dir img')
 
+# ---------------
+# Read in the updated SN properties file after the first visit
+sn_prop = np.genfromtxt('inserted_sn_props.txt', 
+    dtype=None, names=True, encoding='ascii')
+
+assign_spectra(img_savefile, sn_prop, visit=2)
 
 # ---------------
 

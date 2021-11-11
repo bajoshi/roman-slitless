@@ -6,6 +6,9 @@ sn_scalefac: 1.734e40  # Check sn_scaling.py in roman-slitless
 # survey pointing related
 pointing: 0
 detector: 1
+disp_elem: 'P127'
+ra_cen:   '71.9150429'  # needs to be a string  # look this up from dir img header in ds9
+dec_cen: '-53.8258429'  # needs to be a string  # look this up from dir img header in ds9
 
 # Direct image related
 img:
@@ -32,7 +35,7 @@ insert:
 # pylinear config
 pylin:
   beam: '+1'
-  maglim: '32'    # Faintest mag to be simulated/extracted
+  maglim: 32      # Faintest mag to be simulated/extracted
   dark: 0.01      # e/s/pix
   readnoise: 15   # electrons per read
   sky: 1.1        # e/s/pix; zodi + thermal + MW
