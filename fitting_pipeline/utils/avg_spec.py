@@ -15,16 +15,20 @@ def plot_avg_spec(cat, all_exptimes):
     img_suffix = 'Y106_0_1'
 
     # ----- Read in x1d file to get spectra
-    ext_spec_filename1 = ext_spectra_dir + 'romansim_prism_' + img_suffix + all_exptimes[0] + '_x1d.fits'
+    ext_spec_filename1 = ext_spectra_dir + 'romansim_prism_' + img_suffix + \
+                         all_exptimes[0] + '_x1d.fits'
     ext_hdu1 = fits.open(ext_spec_filename1)
 
-    ext_spec_filename2 = ext_spectra_dir + 'romansim_prism_' + img_suffix + all_exptimes[1] + '_x1d.fits'
+    ext_spec_filename2 = ext_spectra_dir + 'romansim_prism_' + img_suffix + \
+                         all_exptimes[1] + '_x1d.fits'
     ext_hdu2 = fits.open(ext_spec_filename2)
 
-    ext_spec_filename3 = ext_spectra_dir + 'romansim_prism_' + img_suffix + all_exptimes[2] + '_x1d.fits'
+    ext_spec_filename3 = ext_spectra_dir + 'romansim_prism_' + img_suffix + \
+                         all_exptimes[2] + '_x1d.fits'
     ext_hdu3 = fits.open(ext_spec_filename3)
 
-    ext_spec_filename4 = ext_spectra_dir + 'romansim_prism_' + img_suffix + all_exptimes[3] + '_x1d.fits'
+    ext_spec_filename4 = ext_spectra_dir + 'romansim_prism_' + img_suffix + \
+                         all_exptimes[3] + '_x1d.fits'
     ext_hdu4 = fits.open(ext_spec_filename4)
 
     # --------------------- PLOT

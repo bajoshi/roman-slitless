@@ -25,8 +25,8 @@ img:
 insert:
   lowmag:  19.0 # brightest mag SN to be inserted
   highmag: 31.0 # faintest mag SN to be inserted
-  numlow:  10 #750  # min number of SNe to be inserted
-  numhigh: 15 #800  # max number of SNe to be inserted
+  numlow:  750  # min number of SNe to be inserted
+  numhigh: 800  # max number of SNe to be inserted
   ref_mag: 15.9180
   ref_counts: 13753.24  # read in mag and counts from SExtractor catalog on dir img
   ref_segid: 630
