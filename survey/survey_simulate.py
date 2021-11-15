@@ -209,7 +209,7 @@ def assign_spectra(dir_img_name, sn_prop, visit):
 # Function to update the inserted SNe mags according to LC evolution
 def update_sn_visit_mag(visit, sn_prop, dir_img_name):
 
-    for i in range(len(sn_prop)):
+    for i in tqdm(range(len(sn_prop)), desc='Updating SNe'):
     
         sn_z = sn_prop['redshift'][i]
         starting_phase = sn_prop['phase'][i]
@@ -238,12 +238,11 @@ def update_sn_visit_mag(visit, sn_prop, dir_img_name):
         c = xi
     
         # Add in the new SN
-        print(r, c, s)
         orig_model_img[r-s:r+s, c-s:c+s] = orig_model_img[r-s:r+s, c-s:c+s] + new_cutout
 
     # Save and check image with ds9 if needed
     new_hdu = fits.PrimaryHDU(header=cps_hdr, data=orig_model_img)
-    img_savefile = dir_img_name.replace('.fits', '_SNadded.fits')
+    img_savefile = dir_img_name.replace('.fits', '_SNadded_visit' + str(visit) + '.fits')
     new_hdu.writeto(img_savefile, overwrite=True)
 
     return None
@@ -254,11 +253,16 @@ def create_lst_files(dir_img_name, visit, config):
     img_suffix = get_img_suffix(dir_img_name)
 
     # Paths to each file
-    fltlst_deep = pylinear_lst_dir + 'flt_' + img_suffix + '_deep.lst'
-    fltlst_wide = pylinear_lst_dir + 'flt_' + img_suffix + '_wide.lst'
-    obslst = pylinear_lst_dir + 'obs_' + img_suffix + '.lst'
-    wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
-    sedlst = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+    fltlst_deep = pylinear_lst_dir + 'flt_' + img_suffix + '_visit' + \
+                  str(visit) + '_deep.lst'
+    fltlst_wide = pylinear_lst_dir + 'flt_' + img_suffix + '_visit' + \
+                  str(visit) + '_wide.lst'
+    obslst      = pylinear_lst_dir + 'obs_' + img_suffix + '_visit' + \
+                  str(visit) + '.lst'
+    wcslst      = pylinear_lst_dir + 'wcs_' + img_suffix + '_visit' + \
+                  str(visit) + '.lst'
+    sedlst      = pylinear_lst_dir + 'sed_' + img_suffix + '_visit' + \
+                  str(visit) + '.lst'
 
     # Some other stuff needed from config
     disp_elem = config['disp_elem']
