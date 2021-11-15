@@ -234,10 +234,10 @@ def update_sn_visit_mag(visit, sn_prop, dir_img_name):
         c = xi
     
         # Add in the new SN
-        model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
+        orig_model_img[r-s:r+s, c-s:c+s] = orig_model_img[r-s:r+s, c-s:c+s] + new_cutout
 
     # Save and check image with ds9 if needed
-    new_hdu = fits.PrimaryHDU(header=cps_hdr, data=model_img)
+    new_hdu = fits.PrimaryHDU(header=cps_hdr, data=orig_model_img)
     img_savefile = dir_img_name.replace('.fits', '_SNadded.fits')
     new_hdu.writeto(img_savefile, overwrite=True)
 
@@ -562,6 +562,9 @@ back_scale = cfg['img']['back_scale']
 
 model_img += np.random.normal(loc=0.0, scale=back_scale, size=model_img.shape)
 
+orig_model_img = model_img
+# Keeping a copy because it will be needed for visits beyond 1
+
 # ---------------
 # Get a list of x-y coords to insert SNe at
 x_ins, y_ins = get_insertion_coords(insert_num)
@@ -648,7 +651,8 @@ run_sim(img_savefile, visit=1, config=cfg)
 ################################################################################
 # Visit 2 and future visits
 
-# Force cd to survey dir just to be sure
+# Force cd to survey dir because running sim 
+# above was done in result dir
 os.chdir(survey_dir)
 
 # Read in the updated SN properties file after the previous visit
@@ -672,6 +676,10 @@ for vt in np.arange(2, 10, 1):
     print(f'{bcolors.ENDC}')
 
     run_sim(img_savefile, visit=vt, config=cfg)
+
+    # ---------------
+    # Go back to survey directory
+    os.chdir(survey_dir)
 
 print('All done.')
 
