@@ -242,7 +242,7 @@ def update_sn_visit_mag(visit, sn_prop, dir_img_name):
 
     # Save and check image with ds9 if needed
     new_hdu = fits.PrimaryHDU(header=cps_hdr, data=orig_model_img)
-    img_savefile = dir_img_name.replace('.fits', '_SNadded_visit' + str(visit) + '.fits')
+    img_savefile = dir_img_name.replace('.fits', '_SNadded' + '.fits')
     new_hdu.writeto(img_savefile, overwrite=True)
 
     return None
@@ -253,16 +253,11 @@ def create_lst_files(dir_img_name, visit, config):
     img_suffix = get_img_suffix(dir_img_name)
 
     # Paths to each file
-    fltlst_deep = pylinear_lst_dir + 'flt_' + img_suffix + '_visit' + \
-                  str(visit) + '_deep.lst'
-    fltlst_wide = pylinear_lst_dir + 'flt_' + img_suffix + '_visit' + \
-                  str(visit) + '_wide.lst'
-    obslst      = pylinear_lst_dir + 'obs_' + img_suffix + '_visit' + \
-                  str(visit) + '.lst'
-    wcslst      = pylinear_lst_dir + 'wcs_' + img_suffix + '_visit' + \
-                  str(visit) + '.lst'
-    sedlst      = pylinear_lst_dir + 'sed_' + img_suffix + '_visit' + \
-                  str(visit) + '.lst'
+    fltlst_deep = pylinear_lst_dir + 'flt_' + img_suffix + '_deep.lst'
+    fltlst_wide = pylinear_lst_dir + 'flt_' + img_suffix + '_wide.lst'
+    obslst      = pylinear_lst_dir + 'obs_' + img_suffix + '.lst'
+    wcslst      = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
+    sedlst      = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
 
     # Some other stuff needed from config
     disp_elem = config['disp_elem']

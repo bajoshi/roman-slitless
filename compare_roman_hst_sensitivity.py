@@ -20,11 +20,11 @@ g141_wav = hst_g141[1].data['WAVELENGTH']
 g141_sen = hst_g141[1].data['SENSITIVITY']
 
 # ------- Roman 
-roman_grism_1 = fits.open(sens_dir + 'Roman_g150_1_throughput_20190325.fits')
-g150_wav = roman_grism_1[1].data['Wavelength']
-g150_sen = roman_grism_1[1].data['Sensitivity']
+#roman_grism_1 = fits.open(sens_dir + 'Roman_g150_1_throughput_20190325.fits')
+#g150_wav = roman_grism_1[1].data['Wavelength']
+#g150_sen = roman_grism_1[1].data['Sensitivity']
 
-roman_prism = fits.open(sens_dir + 'Roman_p127_1_throughput_20190325.fits')
+roman_prism = fits.open(sens_dir + 'Roman_p127_sens.fits')  #'Roman_p127_1_throughput_20190325.fits')
 p127_wav = roman_prism[1].data['Wavelength']
 p127_sen = roman_prism[1].data['Sensitivity']
 
@@ -32,7 +32,7 @@ p127_sen = roman_prism[1].data['Sensitivity']
 fig = plt.figure(figsize=(10,5))
 ax = fig.add_subplot(111)
 
-ax.set_xlabel('Wavelength', fontsize=15)
+ax.set_xlabel('Wavelength [A]', fontsize=15)
 ax.set_ylabel('Sensitivity', fontsize=15)
 
 ax.plot(g102_wav, g102_sen, '--', color='blue', label='HST WFC3/G102, +1 order')
