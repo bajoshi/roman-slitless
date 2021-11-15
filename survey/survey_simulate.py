@@ -143,7 +143,11 @@ def assign_spectra(dir_img_name, sn_prop, visit):
                               (abs(sn_prop['yc'] - obj_y) < 5))[0]
             
             if sn_idx.size:
-                sn_idx = int(sn_idx)
+                if len(sn_idx) == 1:    
+                    sn_idx = int(sn_idx)
+                elif len(sn_idx) > 1:
+                    sn_idx = int(sn_idx[0])
+                    
                 sn_z = sn_prop['redshift'][sn_idx]
                 starting_phase = sn_prop['phase'][sn_idx]
                 cosmic_time_dilation_rest_frame = 5 / (1 + sn_z)
