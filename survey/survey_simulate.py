@@ -562,6 +562,7 @@ back_scale = cfg['img']['back_scale']
 
 model_img += np.random.normal(loc=0.0, scale=back_scale, size=model_img.shape)
 
+"""
 # ---------------
 # Get a list of x-y coords to insert SNe at
 x_ins, y_ins = get_insertion_coords(insert_num)
@@ -643,10 +644,21 @@ print('Running visit 1 sim.')
 print(f'{bcolors.ENDC}')
 
 run_sim(img_savefile, visit=1, config=cfg)
+"""
+
+
+# Force cd to survey dir just to be sure
+os.chdir(survey_dir)
+
+# Read in the SN properties file just created
+sn_prop1 = np.genfromtxt('inserted_sn_props_visit1.txt', 
+    dtype=None, names=True, encoding='ascii')
 
 ################################################################################
 ################################################################################
 # Visit 2 and future visits
+
+
 
 # Read in the updated SN properties file after the previous visit
 sn_prop_new = np.genfromtxt('inserted_sn_props_updated.txt', 

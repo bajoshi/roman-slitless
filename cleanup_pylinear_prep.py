@@ -35,9 +35,11 @@ if __name__ == '__main__':
     # 3. Remove all segmap, SNadded, npy, reg, and cat files
     # --- the segmap and cat for the reference img: 5deg_Y106_0_6
     # have been moved one level up to avoid deleting them.
+    # 4. Remove all txt files in surver/ folder.
 
     dir_img_part = 'part1'
     img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+    survey_dir = roman_slitless_dir + 'survey/'
 
     # ---- LST files
     print('Working on deleting LST files.')
@@ -55,6 +57,11 @@ if __name__ == '__main__':
         print('Working on deleting:', ext)
         for fl in glob.glob(img_sim_dir + '*' + ext):
             os.remove(fl)
+
+    # ---- Txt files with inserted SN props in survey
+    os.chdir(survey_dir)
+    for fl in glob.glob('inserted_sn_*.txt'):
+        os.remove(fl)
 
     print('Finished cleanup.')
 
