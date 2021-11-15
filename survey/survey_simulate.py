@@ -238,6 +238,7 @@ def update_sn_visit_mag(visit, sn_prop, dir_img_name):
         c = xi
     
         # Add in the new SN
+        print(r, c, s)
         orig_model_img[r-s:r+s, c-s:c+s] = orig_model_img[r-s:r+s, c-s:c+s] + new_cutout
 
     # Save and check image with ds9 if needed
