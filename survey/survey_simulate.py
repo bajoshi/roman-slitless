@@ -575,6 +575,9 @@ model_img += np.random.normal(loc=0.0, scale=back_scale, size=model_img.shape)
 orig_model_img = model_img
 # Keeping a copy because it will be needed for visits beyond 1
 
+# Define new file name
+img_savefile = dir_img_name.replace('.fits', '_SNadded.fits')
+
 """
 # ---------------
 # Get a list of x-y coords to insert SNe at
@@ -630,7 +633,6 @@ for i in tqdm(range(insert_num), desc='Inserting SNe'):
 
 # Save and check image with ds9 if needed
 new_hdu = fits.PrimaryHDU(header=cps_hdr, data=model_img)
-img_savefile = dir_img_name.replace('.fits', '_SNadded.fits')
 new_hdu.writeto(img_savefile, overwrite=True)
 
 # Save all needed quantities to a numpy array
