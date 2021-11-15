@@ -203,12 +203,12 @@ if __name__ == '__main__':
         dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
 
     # Also load in lookup table for luminosity distance
-    #dl_cat = np.genfromtxt('dl_lookup_table.txt', dtype=None, names=True)
-    ## Get arrays 
-    #dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
-    #dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
-    #age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
-    #del dl_cat
+    dl_cat = np.genfromtxt('dl_lookup_table.txt', dtype=None, names=True)
+    # Get arrays 
+    dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
+    dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
+    age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
+    del dl_cat
 
     # Get day 0 spectrum
     day0_idx = np.where(salt2_spec['day'] == 0)[0]
@@ -223,20 +223,16 @@ if __name__ == '__main__':
     # Read in the two required filter curves
     # While the column label says transmission
     # it is actually the throughput that we want.
-    # B and Y band in this case
+    # I and Y band in this case
     f105 = np.genfromtxt('throughputs/F105W_IR_throughput.csv', 
                          delimiter=',', dtype=None, names=['wav','trans'], 
                          encoding='ascii', usecols=(1,2), skip_header=1)
 
+    f814 = np.genfromtxt('throughputs/HST_ACS_WFC.F814W.dat', 
+                         dtype=None, names=['wav','trans'], encoding='ascii')
+
     f435 = np.genfromtxt('throughputs/f435w_filt_curve.txt', 
-                         dtype=None, names=['wav','trans'], 
-                         encoding='ascii')
-
-    bessel_b = np.genfromtxt('throughputs/Bessel_B.txt', dtype=None, 
-        names=['wav','trans'], encoding='ascii')
-
-    bessel_r = np.genfromtxt('throughputs/Bessel_R.txt', dtype=None, 
-        names=['wav','trans'], encoding='ascii')
+                         dtype=None, names=['wav','trans'], encoding='ascii')
 
     zarr = np.arange(0.01, 3.0, 0.01)
     kcor_arr = np.zeros(len(zarr))
@@ -244,7 +240,7 @@ if __name__ == '__main__':
 
     for i in range(len(zarr)):
         redshift = zarr[i]
-        kcor = get_kcorr_Hogg(day0_llam, day0_lam, redshift, bessel_b, bessel_r)
+        kcor = get_kcorr_Hogg(day0_lnu, day0_nu, redshift, f435, f105)
         kcor_arr[i] = kcor
 
         # Now compute the sum of 5log(dl) at the z and K-correction
@@ -279,7 +275,6 @@ if __name__ == '__main__':
     axt.set_ylabel('m - M = 5log[dl(z)] + 25 + K(z)', fontsize=14)
     
     plt.show()
-    sys.exit()
 
     # ----------------------
     # Another test: 
@@ -291,7 +286,7 @@ if __name__ == '__main__':
     # -------- Prep first
     # Need to save the dl and K-corr sum lookup
     #zrange = np.arange(0.0001, 8.0001, 0.0001)
-    zrange = np.arange(0.01, 5.01, 0.01)
+    zrange = np.arange(0.01, 5.01, 0.001)
     # K-correction starts giving nonsense beyond z~9.5
     # I'm stopping at z=5 which is the limit beyond which
     # I cannot redshift the SALT2 spectrum. SALT2 spec starts 
@@ -321,7 +316,7 @@ if __name__ == '__main__':
             age_at_z = age_gyr_arr[z_match]
 
             # Now compute the sum of 5log(dl) at the z and K-correction
-            kcor = get_kcorr(day0_lnu, day0_nu, z, f435, f105)
+            kcor = get_kcorr_Hogg(day0_lnu, day0_nu, z, f435, f105)
             dl_mpc = dl_cm / 3.086e24
             s = 5 * np.log10(dl_mpc) + 25 + kcor
 
@@ -337,6 +332,7 @@ if __name__ == '__main__':
     # ---------- Now do the test
     # Abs Mag of SN Ia in required band at peak
     absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
+    #absmag = -19.0  # assumed abs mag of SN Ia in HST ACS/F814W
 
     app_mag_arr = np.arange(16.0, 27.51, 0.01)
     matched_redshifts = np.zeros(len(app_mag_arr))

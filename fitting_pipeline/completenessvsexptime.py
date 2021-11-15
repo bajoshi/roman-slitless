@@ -39,15 +39,19 @@ def main():
 
     # ---------------------------- Completeness plot
     # Create arrays for plotting
-    deltamag = 0.25
-    low_maglim = 19.0
+    deltamag = 0.2
+    low_maglim = 18.6
     high_maglim = 30.0
+
+    classification_eff = 0.95
 
     mag_bins = np.arange(low_maglim, high_maglim, deltamag)  # left edges of mag bins
     mags = [(mag_bins[m] + mag_bins[m+1])/2 for m in range(len(mag_bins) - 1)]
 
-    z_tol1 = 0.01  # abs val of delta-z/(1+z)
-    z_tol2 = 0.001
+    print('{:.2f}'.format(np.min(cat['Y106mag'])), 
+          '{:.2f}'.format(np.max(cat['Y106mag'])))
+
+    z_tol = 0.01  # abs val of delta-z/(1+z)
 
     # Do this for each exposure time separately
     exptime_labels = ['z10800', 'z3600', 'z1200', 'z400']
@@ -63,8 +67,7 @@ def main():
         et = exptime_labels[e]
 
         total_counts = np.zeros(len(mag_bins) - 1)
-        ztol_counts1 = np.zeros(len(mag_bins) - 1)
-        ztol_counts2 = np.zeros(len(mag_bins) - 1)
+        ztol_counts  = np.zeros(len(mag_bins) - 1)
 
         for i in range(len(cat)):
 
@@ -77,31 +80,29 @@ def main():
 
             mag_idx = int((mag - low_maglim) / deltamag)
 
-            #print(i, mag_idx, mag)
+            #if mag >= 29.0:
+            #    print('\n', i, mag_idx, mag, temp_z_true, temp_z, z_acc)
+            #    #sys.exit(0)
 
             total_counts[mag_idx] += 1
 
-            if z_acc <= z_tol1:
-                ztol_counts1[mag_idx] += 1
+            if z_acc <= z_tol:
+                ztol_counts[mag_idx] += 1
 
-            if z_acc <= z_tol2:
-                ztol_counts2[mag_idx] += 1
+        percent_complete = ztol_counts / total_counts
+        effective_completeness = percent_complete * classification_eff
 
-        percent_complete1 = ztol_counts1 / total_counts
-        percent_complete2 = ztol_counts2 / total_counts
-
-        ax.plot(mags, percent_complete1, 'o-',  markersize=3, color=colors[e])
-        #ax.plot(mags, percent_complete2, 'x', markersize=5, color=colors[e])
+        ax.plot(mags, effective_completeness, 'o-',  markersize=3, color=colors[e])
 
         # ----------- Fit sigmoid curves and plot
         # fix nan to zero
-        percent_complete1[np.isnan(percent_complete1)] = 0.0
-        # init guess
-        p0 = [1.0, 25.0, 0.05]  # in order: T, mc, s
-        popt, pcov = curve_fit(sigmoid, mags, percent_complete1, p0)
+        #percent_complete1[np.isnan(percent_complete1)] = 0.0
+        ## init guess
+        #p0 = [1.0, 25.0, 0.05]  # in order: T, mc, s
+        #popt, pcov = curve_fit(sigmoid, mags, percent_complete1, p0)
 
-        print('----'*3)
-        print(popt)
+        #print('----'*3)
+        #print(popt)
 
         #ax.plot(mags, sigmoid(mags, popt[0], popt[1], popt[2]), lw=2.0, color=colors[e])
 

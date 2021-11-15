@@ -133,7 +133,11 @@ exptime3 = '_3600s'
 exptime4 = '_10800s'
 
 res_hdr = ( '#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + 
-            'Y106mag  SNR300  SNR1200  SNR3600  SNR6000  ' + 
+            'Y106mag  SNR20  SNR400  SNR1200  SNR3600  SNR10800  ' + 
+            'z20  z20_lowerr  z20_uperr  ' + 
+            'phase20  phase20_lowerr  phase20_uperr  ' + 
+            'Av20  Av20_lowerr  Av20_uperr  ' + 
+
             'z400  z400_lowerr  z400_uperr  ' + 
             'phase400  phase400_lowerr  phase400_uperr  ' + 
             'Av400  Av400_lowerr  Av400_uperr  ' + 
@@ -178,6 +182,9 @@ for pt in pointings:
             sedlst = np.genfromtxt(sedlst_path, dtype=None, names=sedlst_header, encoding='ascii')
 
             # ----- Read in x1d file to get spectra for SNR
+            ext_spec_filename0 = ext_spectra_dir + ext_root + img_suffix + exptime0 + '_x1d.fits'
+            ext_hdu0 = fits.open(ext_spec_filename0)
+
             ext_spec_filename1 = ext_spectra_dir + ext_root + img_suffix + exptime1 + '_x1d.fits'
             ext_hdu1 = fits.open(ext_spec_filename1)
 
@@ -224,6 +231,7 @@ for pt in pointings:
                 true_av    = template_inputs[2]
 
                 # ----- Get SNR
+                snr0 = get_correct_snr(ext_hdu0, segid)
                 snr1 = get_correct_snr(ext_hdu1, segid)
                 snr2 = get_correct_snr(ext_hdu2, segid)
                 snr3 = get_correct_snr(ext_hdu3, segid)
@@ -243,12 +251,16 @@ for pt in pointings:
                 fh.write('{:.3f}'.format(true_z) + '  ' + str(true_phase) + '  ')
                 fh.write('{:.3f}'.format(true_av) + '  ')
                 fh.write('{:.2f}'.format(mag)  + '  ')
+                fh.write('{:.2f}'.format(snr0) + '  ')
                 fh.write('{:.2f}'.format(snr1) + '  ')
                 fh.write('{:.2f}'.format(snr2) + '  ')
                 fh.write('{:.2f}'.format(snr3) + '  ')
                 fh.write('{:.2f}'.format(snr4) + '  ')
 
                 # ----- Construct the filenames for this segid
+                snstr0 = str(segid) + '_' + img_suffix + exptime0
+                emcee_savefile0 = results_dir + 'emcee_sampler_sn' + snstr0 + '.h5'
+
                 snstr1 = str(segid) + '_' + img_suffix + exptime1
                 emcee_savefile1 = results_dir + 'emcee_sampler_sn' + snstr1 + '.h5'
 
@@ -262,12 +274,14 @@ for pt in pointings:
                 emcee_savefile4 = results_dir + 'emcee_sampler_sn' + snstr4 + '.h5'
 
                 # ----------------
+                check_and_write(fh, emcee_savefile0)
                 check_and_write(fh, emcee_savefile1)
                 check_and_write(fh, emcee_savefile2)
                 check_and_write(fh, emcee_savefile3)
                 check_and_write(fh, emcee_savefile4)
                 fh.write('\n')
 
+            ext_hdu0.close()
             ext_hdu1.close()
             ext_hdu2.close()
             ext_hdu3.close()

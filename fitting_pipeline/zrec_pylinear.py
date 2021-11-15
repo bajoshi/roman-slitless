@@ -16,8 +16,8 @@ resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
 cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
 # Remove invalid measures
-z300 = cat['z300']
-z300[z300 == -9999.0] = np.nan
+z400 = cat['z400']
+z400[z400 == -9999.0] = np.nan
 
 z1200 = cat['z1200']
 z1200[z1200 == -9999.0] = np.nan
@@ -25,12 +25,12 @@ z1200[z1200 == -9999.0] = np.nan
 z3600 = cat['z3600']
 z3600[z3600 == -9999.0] = np.nan
 
-z6000 = cat['z6000']
-z6000[z6000 == -9999.0] = np.nan
+z10800 = cat['z10800']
+z10800[z10800 == -9999.0] = np.nan
 
 # ---
-phase300 = cat['phase300']
-phase300[phase300 == -9999.0] = np.nan
+phase400 = cat['phase400']
+phase400[phase400 == -9999.0] = np.nan
 
 phase1200 = cat['phase1200']
 phase1200[phase1200 == -9999.0] = np.nan
@@ -38,8 +38,8 @@ phase1200[phase1200 == -9999.0] = np.nan
 phase3600 = cat['phase3600']
 phase3600[phase3600 == -9999.0] = np.nan
 
-phase6000 = cat['phase6000']
-phase6000[phase6000 == -9999.0] = np.nan
+phase10800 = cat['phase10800']
+phase10800[phase10800 == -9999.0] = np.nan
 
 # ---
 #av900 = cat['Av900']
@@ -288,8 +288,8 @@ plt.close(fig)
 ###########################################
 # -------------------- Plot SNR vs % accuracy
 # get error and accuracy
-z6000err = np.vstack((cat['z6000_lowerr'], cat['z6000_uperr']))
-z6000acc = (z6000 - cat['z_true']) / (1 + cat['z_true'])
+z3600err = np.vstack((cat['z3600_lowerr'], cat['z3600_uperr']))
+z3600acc = (z3600 - cat['z_true']) / (1 + cat['z_true'])
 
 fig = plt.figure(figsize=(9, 5))
 
@@ -306,10 +306,10 @@ ax2.set_ylabel(r'$\Delta \mathrm{Phase}$', fontsize=15)
 ax2.set_xlabel(r'$\mathrm{SNR}$', fontsize=15)
 
 # Plotting
-ax1.scatter(cat['SNR6000'], z6000acc, s=7, color='k',  zorder=2)
+ax1.scatter(cat['SNR3600'], z3600acc, s=7, color='k',  zorder=2)
 ax1.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
-ax2.scatter(cat['SNR6000'], phase6000 - cat['phase_true'], s=7, color='k',  zorder=2)
+ax2.scatter(cat['SNR3600'], phase3600 - cat['phase_true'], s=7, color='k',  zorder=2)
 ax2.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
 #ax3.scatter(cat['SNR6000'], av6000 - cat['Av_true'], s=7, color='k',  zorder=2)

@@ -147,7 +147,7 @@ def assign_spectra(dir_img_name, sn_prop, visit):
                     sn_idx = int(sn_idx)
                 elif len(sn_idx) > 1:
                     sn_idx = int(sn_idx[0])
-                    
+
                 sn_z = sn_prop['redshift'][sn_idx]
                 starting_phase = sn_prop['phase'][sn_idx]
                 cosmic_time_dilation_rest_frame = 5 / (1 + sn_z)
@@ -209,7 +209,7 @@ def assign_spectra(dir_img_name, sn_prop, visit):
 # Function to update the inserted SNe mags according to LC evolution
 def update_sn_visit_mag(visit, sn_prop, dir_img_name):
 
-    for i in range(insert_num):
+    for i in range(len(sn_prop)):
     
         sn_z = sn_prop['redshift'][i]
         starting_phase = sn_prop['phase'][i]
@@ -468,6 +468,7 @@ with open(config_flname, 'r') as fh:
 print('Received the following configuration for the simulation:')
 pprint(cfg)
 
+
 ################################################################################
 ################################################################################
 # Insert SNe in visit 1
@@ -499,11 +500,11 @@ detector = cfg['detector']
 ins_low_lim = cfg['insert']['numlow']
 ins_high_lim = cfg['insert']['numhigh']
 
-insert_num = np.random.randint(low=ins_low_lim, high=ins_high_lim)
+#insert_num = np.random.randint(low=ins_low_lim, high=ins_high_lim)
 
-print(f'{bcolors.CYAN}')
-print("Will insert " + str(insert_num) + " SNe in detector " + str(detector))
-print(f'{bcolors.ENDC}')
+#print(f'{bcolors.CYAN}')
+#print("Will insert " + str(insert_num) + " SNe in detector " + str(detector))
+#print(f'{bcolors.ENDC}')
 
 # Open dir image
 img_basename = cfg['img']['basename']
@@ -569,6 +570,7 @@ model_img += np.random.normal(loc=0.0, scale=back_scale, size=model_img.shape)
 orig_model_img = model_img
 # Keeping a copy because it will be needed for visits beyond 1
 
+"""
 # ---------------
 # Get a list of x-y coords to insert SNe at
 x_ins, y_ins = get_insertion_coords(insert_num)
@@ -658,6 +660,11 @@ run_sim(img_savefile, visit=1, config=cfg)
 # Force cd to survey dir because running sim 
 # above was done in result dir
 os.chdir(survey_dir)
+"""
+
+# Read in the SN properties file just created
+sn_prop1 = np.genfromtxt('inserted_sn_props_visit1.txt', 
+    dtype=None, names=True, encoding='ascii')
 
 # Read in the updated SN properties file after the previous visit
 sn_prop_new = np.genfromtxt('inserted_sn_props_updated.txt', 
@@ -666,7 +673,7 @@ sn_prop_new = np.genfromtxt('inserted_sn_props_updated.txt',
 for vt in np.arange(2, 10, 1):
     # ---------------
     # Update image with new SN mags
-    update_sn_visit_mag(visit, sn_prop1)
+    update_sn_visit_mag(vt, sn_prop1, dir_img_name)
     
     print('Ensure Av mag taken into account for dir img')
     
