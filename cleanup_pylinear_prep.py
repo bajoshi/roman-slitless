@@ -60,6 +60,7 @@ if __name__ == '__main__':
 
     # ---- Txt files with inserted SN props in survey
     os.chdir(survey_dir)
+    print('Working on deleting survey inserted SNe txt files.')
     for fl in glob.glob('inserted_sn_*.txt'):
         os.remove(fl)
 
