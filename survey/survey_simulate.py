@@ -231,8 +231,8 @@ def update_sn_visit_mag(visit, sn_prop, dir_img_name):
         new_cutout = ref_data * scale_fac
     
         # Now get coords
-        xi = sn_prop['xc'][i]
-        yi = sn_prop['yc'][i]
+        xi = int(sn_prop['xc'][i])
+        yi = int(sn_prop['yc'][i])
     
         r = yi
         c = xi
