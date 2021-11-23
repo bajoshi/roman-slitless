@@ -539,7 +539,7 @@ def gen_sed_lst():
 
             cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
             'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
-            'FWHM_IMAGE']
+            'FWHM_IMAGE', 'CLASS_STAR']
             cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, 
                 encoding='ascii')
             tqdm.write(f"{bcolors.GREEN}" + str(len(cat)) + " objects in catalog." + f"{bcolors.ENDC}")

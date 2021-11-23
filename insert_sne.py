@@ -439,7 +439,8 @@ def main():
                 model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
 
                 tqdm.write(str(xi) + "  " + str(yi) + "    " + \
-                    "{:.3f}".format(snmag) + "    " + "{:.3f}".format(sncounts))
+                    "{:.3f}".format(snmag) + "    " + "{:.3f}".format(sncounts) + \
+                    "{:.3f}".format(host_mags[i]))
 
             # Save the locations and SN mag as a numpy array
             added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
