@@ -445,15 +445,10 @@ def get_sn_z(snmag, scatter=False):
 def gen_sed_lst():
 
     print(f"{bcolors.WARNING}")
-    print("TODO: 1. What about the case in Y106_0_3 where there are 3 SN")
-    print("but only two end up in the SED lst file? Probably the code checking")
-    print("<if id_fetch in hostids> should be <for i in hostids> and loop instead of checking.")
-    print("2. Make this code run on multiple cores.")
-    print("3. How is the simulated magnitude taken into account?")
-    print("i.e., if the SN mag is known and the redshift is known then")
-    print("the SN phase is also a known quantity (so it shouldn't be randomized)?")
-    print("4. Why are so many SNe matches not found?")
-    print("5. Ask Kevin why some objects are missing from the truth files.")
+    print("TODO: ")
+    print("1. Make this code run on multiple cores.")
+    print("2. Use the improved algorithm in the survey gen_sed_lst.")
+    print("3. Ensure that SN and host get unique SegIDs.")
     print(f"{bcolors.ENDC}")
 
     # Set image and truth params
