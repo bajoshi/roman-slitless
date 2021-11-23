@@ -443,7 +443,7 @@ def main():
                     "{:.3f}".format(host_mags[i]))
 
             # Save the locations and SN mag as a numpy array
-            added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
+            added_sn_data = np.c_[x_ins, y_ins, snmag_arr, host_mags]
             snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
             np.save(snadd_fl, added_sn_data)
             tqdm.write('Saved: ' + snadd_fl)
