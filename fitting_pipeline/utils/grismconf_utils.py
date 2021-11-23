@@ -256,10 +256,10 @@ def roman_prism_dispersion():
 
     import matplotlib.pyplot as plt
 
-    pp = np.polyfit(x=tarr, y=wav, deg=4)
+    pp = np.polyfit(x=tarr, y=wav, deg=2)
     pol = np.poly1d(pp)
 
-    new_pol = np.poly1d([pp[0], pp[1], pp[2], pp[3], 7500.0])
+    new_pol = np.poly1d([pp[0], pp[1], 7500.0])
     
     print(pol)
 
@@ -328,8 +328,8 @@ def roman_prism_dispersion():
         # --------------------- Dispersion plot
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.set_xlabel('Wavelength [Angstoms]', fontsize=18)
-        ax.set_ylabel('Dispersion [Angstoms per pixel]', fontsize=18)
+        ax.set_xlabel('Wavelength [Angstroms]', fontsize=18)
+        ax.set_ylabel('Dispersion [Angstroms per pixel]', fontsize=18)
 
         ax.plot(wavmean, disp, color='k', lw=1.5, label='Original prism dispersion')
         #ax.plot(wavmean, pol(wavmean), color='seagreen', lw=1.5, label='np polyfit to orig disp')

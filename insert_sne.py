@@ -6,6 +6,8 @@ import sys
 import socket
 import subprocess
 from tqdm import tqdm
+import pdb
+import warnings
 
 import matplotlib.pyplot as plt
 
@@ -47,15 +49,175 @@ back_scale = 0.001  # standard deviation for background to be added.
 # ----------------------
 
 
-def get_insertion_coords(num_to_insert, img_cat=None):
+def get_insertion_coords(num_to_insert, 
+    img_cat=None, img_segmap=None, imdat=None, checkplot=False):
 
     x_ins = np.zeros(num_to_insert)
     y_ins = np.zeros(num_to_insert)
 
-    x_ins = np.random.randint(low=110, high=3985, size=num_to_insert)
-    y_ins = np.random.randint(low=110, high=3985, size=num_to_insert)
+    if img_cat is None:  # i.e., insert SNe randomly
 
-    return x_ins, y_ins
+        x_ins = np.random.randint(low=110, high=3985, size=num_to_insert)
+        y_ins = np.random.randint(low=110, high=3985, size=num_to_insert)
+
+        return x_ins, y_ins
+
+    else:  # i.e., insert SNe next to galaxies
+
+        # Empty array for hsot galaxy magnitudes
+        host_galaxy_mags = np.zeros(num_to_insert)
+
+        # Read in catalog
+        cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+        'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
+        'FWHM_IMAGE', 'CLASS_STAR']
+        cat = np.genfromtxt(img_cat, dtype=None, names=cat_header, 
+            encoding='ascii')
+
+        # Read in segmap
+        segmap = fits.getdata(img_segmap)
+
+        # Now insert each SN next to another object with 
+        # at least 20 pixels in the segmap, as long as that 
+        # many galaxies exist, otherwise move on to smaller
+        # hosts.
+        # First get the number of pixels for each source,
+        # and sort in descending order.
+        num_src_pix_array = np.zeros(len(cat))
+        for i in tqdm(range(len(cat)), desc='Computing total src pix'):
+
+            src_segid = cat['NUMBER'][i]
+            # Get source indices in segmap
+            # and count them. Indices will be 2d.
+            src_idx = np.where(segmap == src_segid)[0]
+            # The [0] here is okay. It simply counts the 
+            # x coords of the pixels. The total number 
+            # of pix is simply the total number of x coords.
+
+            num_src_pix_array[i] = src_idx.size
+
+        # Now sort the num_src_pix array in descending
+        # order and keep track of source seg IDs
+        num_src_pix_array_desc = np.sort(num_src_pix_array)[::-1]
+        argsort_idx = np.argsort(num_src_pix_array)
+        argsort_idx = argsort_idx[::-1]
+
+        desc_src_segids = cat['NUMBER'][argsort_idx]
+        class_star = cat['CLASS_STAR'][argsort_idx]
+        mag_arr = cat['MAG_AUTO'][argsort_idx]
+
+        # NOw loop over total SNe required
+        count = 0
+        for j in range(len(cat)):
+
+            num_src_pix = num_src_pix_array_desc[j]
+            src_segid = desc_src_segids[j]
+
+            # Now insert SN close to the other object if all okay
+            if num_src_pix >= 20:
+
+                src_x, src_y = np.where(segmap == src_segid)
+
+                # Get a bounding box for the source
+                top    = np.max(src_y)
+                bottom = np.min(src_y)
+
+                right  = np.max(src_x)
+                left   = np.min(src_x)
+
+                # Put the SN shifted out 1 pix away from one 
+                # of hte four corners of the bounding box
+                xsn = np.random.choice([left, right]) + 1
+                ysn = np.random.choice([top, bottom]) + 1
+
+                # Put the SN somewhere within the bounding box
+                # xsn = np.random.choice(np.arange(left, right))
+                # ysn = np.random.choice(np.arange(bottom, top))
+
+                # Check if it is a star
+                star = class_star[j]
+                if star > 0.25:
+                    continue
+
+                # Now we make sure that not all SNe are associated
+                # with bright galaxies. Because we've sorted the 
+                # num_src_pix array in descending order we're likely
+                # to have all the brightest galaxies show up first
+                # (stars are being filtered out above). So we need
+                # to ensure that all SNe don't preferentially go to 
+                # brighter galaxies.
+                galaxy_mag = mag_arr[j]
+                pow_prob = np.random.power(2.0, size=None)
+                gmag = (galaxy_mag - 17) / (27 - 17)
+                sn_prob = gmag * pow_prob
+                # i.e., 17th mag is approx brightest galaxy
+                # and 27th mag is approx faintest galaxy
+                # Explanation: the first line picking the random
+                # number from the power distribution will pick
+                # a number between 0 and 1 according to the power law.
+                # The second line will assign an updated probability
+                # by saying that the galaxies that get assigned SNe
+                # follow the power law distribution. 
+                if sn_prob < 0.3:  # this limit was determined by trial and error
+                    continue
+
+                print(j, src_segid, num_src_pix, xsn, ysn, star, 
+                    '{:.2f}'.format(sn_prob), galaxy_mag)
+
+                x_ins[count] = xsn
+                y_ins[count] = ysn
+                host_galaxy_mags[count] = galaxy_mag
+
+                count += 1
+                if count >= num_to_insert: break
+
+                # Check cutout of inserted SN and galaxy
+                if checkplot:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+
+                        fig = plt.figure()
+                        ax = fig.add_subplot(111)
+
+                        # Get cutout
+                        im_cutout = imdat[left-10:right+10, bottom-10:top+10]
+
+                        # Image extent
+                        ext = [left-10, right+10, bottom-10, top+10]
+
+                        # Ensure square extent
+                        x_extent = right+10 - left-10
+                        y_extent = top+10 - bottom-10
+
+                        if x_extent > y_extent:
+                            ext_diff = x_extent - y_extent
+                            ext = [left-10, right+10, bottom-10-int(ext_diff/2), top+10+int(ext_diff/2)]
+                        elif y_extent > x_extent:
+                            ext_diff = y_extent - x_extent
+                            ext = [left-10-int(ext_diff/2), right+10+int(ext_diff/2), bottom-10, top+10]
+
+                        ax.imshow(np.log10(im_cutout), extent=ext, origin='lower')
+                        ax.scatter(xsn, ysn, marker='x', lw=5.0, s=60, color='red')
+
+                        plt.show()
+
+                    if j > 50: sys.exit(0)
+
+            else:
+                continue
+
+        # Plot distribution of host galaxy magnitudes
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.hist(host_galaxy_mags, 20, color='k', 
+            range=(17.0, 27.0), histtype='step')
+
+        plt.show()
+        sys.exit(0)
+
+        return x_ins, y_ins, host_galaxy_mags
+
 
 def gen_reference_cutout(showref=False):
 
@@ -130,6 +292,7 @@ def gen_reference_cutout(showref=False):
 
     return None
 
+
 def main():
 
     # ---------------
@@ -164,7 +327,7 @@ def main():
 
             # ---------------
             # Determine number of SNe to insert and open dir img
-            num_to_insert = np.random.randint(low=200, high=300)
+            num_to_insert = np.random.randint(low=90, high=100)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
             dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
@@ -225,7 +388,8 @@ def main():
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
-            x_ins, y_ins = get_insertion_coords(num_to_insert)
+            x_ins, y_ins = get_insertion_coords(num_to_insert, 
+                img_cat=cat_filename, img_segmap=checkimage, imdat=cps_sci_arr)
 
             # ---------------
             # Now insert as many SNe as required
@@ -284,7 +448,8 @@ def main():
                 # Add in the new SN
                 model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
 
-                tqdm.write(str(xi) + "  " + str(yi) + "    " + "{:.3f}".format(snmag) + "    " + "{:.3f}".format(sncounts))
+                tqdm.write(str(xi) + "  " + str(yi) + "    " + \
+                    "{:.3f}".format(snmag) + "    " + "{:.3f}".format(sncounts))
 
             # Save the locations and SN mag as a numpy array
             added_sn_data = np.c_[x_ins, y_ins, snmag_arr]
