@@ -144,7 +144,7 @@ def get_insertion_coords(num_to_insert,
             # Ensure that host galaxy is not too close to the edge
             if (top > 3985) or (right > 3985) or \
                (left < 110) or (bottom < 110):
-                print('SKIPPING HOST TOO CLOSE TO EDGE.')
+                #print('SKIPPING HOST TOO CLOSE TO EDGE.')
                 continue
 
             # Now insert SN close to the other object if all okay
