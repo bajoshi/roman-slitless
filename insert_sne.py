@@ -52,8 +52,8 @@ back_scale = 0.001  # standard deviation for background to be added.
 def get_insertion_coords(num_to_insert, 
     img_cat=None, img_segmap=None, imdat=None, checkplot=False):
 
-    x_ins = np.zeros(num_to_insert)
-    y_ins = np.zeros(num_to_insert)
+    x_ins = np.zeros(num_to_insert, dtype=np.int64)
+    y_ins = np.zeros(num_to_insert, dtype=np.int64)
 
     if img_cat is None:  # i.e., insert SNe randomly
 
