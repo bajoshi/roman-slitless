@@ -134,15 +134,21 @@ def get_insertion_coords(num_to_insert,
                 #print('SKIPPING STAR.')
                 continue
 
+            # Get a bounding box for the source
+            top    = np.max(src_y)
+            bottom = np.min(src_y)
+
+            right  = np.max(src_x)
+            left   = np.min(src_x)
+
+            # Ensure that host galaxy is not too close to the edge
+            if (top > 3985) or (right > 3985) or \
+               (left < 110) or (bottom < 110):
+                print('SKIPPING HOST TOO CLOSE TO EDGE.')
+                continue
+
             # Now insert SN close to the other object if all okay
             if num_src_pix >= 15:
-
-                # Get a bounding box for the source
-                top    = np.max(src_y)
-                bottom = np.min(src_y)
-
-                right  = np.max(src_x)
-                left   = np.min(src_x)
 
                 # Put the SN shifted out 1 pix away from one 
                 # of hte four corners of the bounding box
