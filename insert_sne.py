@@ -66,6 +66,7 @@ def get_insertion_coords(num_to_insert,
 
         # Empty array for hsot galaxy magnitudes
         host_galaxy_mags = np.zeros(num_to_insert)
+        host_galaxy_ids  = np.zeros(num_to_insert, dtype=np.int64)
 
         # Read in catalog
         cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
@@ -74,49 +75,67 @@ def get_insertion_coords(num_to_insert,
         cat = np.genfromtxt(img_cat, dtype=None, names=cat_header, 
             encoding='ascii')
 
+        # PUll out mags
+        cat_mags = cat['MAG_AUTO']
+
         # Read in segmap
         segmap = fits.getdata(img_segmap)
 
         # Now insert each SN next to another object with 
-        # at least 20 pixels in the segmap, as long as that 
+        # at least 15 pixels in the segmap, as long as that 
         # many galaxies exist, otherwise move on to smaller
         # hosts.
-        # First get the number of pixels for each source,
-        # and sort in descending order.
-        num_src_pix_array = np.zeros(len(cat))
-        for i in tqdm(range(len(cat)), desc='Computing total src pix'):
+        sn_added_count = 0
+        while sn_added_count < num_to_insert:
 
-            src_segid = cat['NUMBER'][i]
+            # First find a galaxy close to a chosen magnitude
+            # This magnitude is drawn from a power law distribution
+            # similar to the distribution for SNe below. This 
+            # ensures that SNe are not preferentially inserted
+            # into faint/bright galaxies.
+            pow_prob = np.random.power(2.0, size=None)
+            galaxy_mag_to_match = pow_prob * (27 - 17) + 17.0
+            # This line above assumes 17th mag is approx brightest galaxy
+            # and 27th mag is approx faintest galaxy
+
+            # Now find a galaxy in the catalog that is within
+            # +- 0.2 mags of this above mag
+            # 0.2 mag is initial search width
+            mag_search_width = 0.2
+            all_cat_idx = \
+            np.where((cat_mags >= galaxy_mag_to_match - mag_search_width) & \
+                    (cat_mags <= galaxy_mag_to_match + mag_search_width))[0]
+            
+            # Randomly pick a galaxy that is within this range
+            while not all_cat_idx.size:  # ie., no galaxies found in mag range
+                mag_search_width += 0.05
+                all_cat_idx = \
+                np.where((cat_mags >= galaxy_mag_to_match - mag_search_width) &\
+                        (cat_mags <= galaxy_mag_to_match + mag_search_width))[0]
+
+            cat_idx = np.random.choice(all_cat_idx)
+
+            # Keep track of the host_galaxy IDS so there are no repeats
+            src_segid = cat['NUMBER'][cat_idx]
+
+            if src_segid in host_galaxy_ids:
+                #print('SKIPPING REPEAT SOURCE.')
+                continue
+
             # Get source indices in segmap
             # and count them. Indices will be 2d.
-            src_idx = np.where(segmap == src_segid)[0]
-            # The [0] here is okay. It simply counts the 
-            # x coords of the pixels. The total number 
-            # of pix is simply the total number of x coords.
+            src_x, src_y = np.where(segmap == src_segid)
 
-            num_src_pix_array[i] = src_idx.size
+            num_src_pix = src_x.size
 
-        # Now sort the num_src_pix array in descending
-        # order and keep track of source seg IDs
-        num_src_pix_array_desc = np.sort(num_src_pix_array)[::-1]
-        argsort_idx = np.argsort(num_src_pix_array)
-        argsort_idx = argsort_idx[::-1]
-
-        desc_src_segids = cat['NUMBER'][argsort_idx]
-        class_star = cat['CLASS_STAR'][argsort_idx]
-        mag_arr = cat['MAG_AUTO'][argsort_idx]
-
-        # NOw loop over total SNe required
-        count = 0
-        for j in range(len(cat)):
-
-            num_src_pix = num_src_pix_array_desc[j]
-            src_segid = desc_src_segids[j]
+            # Check if it is a star
+            star = cat['CLASS_STAR'][cat_idx]
+            if star > 0.25:
+                #print('SKIPPING STAR.')
+                continue
 
             # Now insert SN close to the other object if all okay
-            if num_src_pix >= 20:
-
-                src_x, src_y = np.where(segmap == src_segid)
+            if num_src_pix >= 15:
 
                 # Get a bounding box for the source
                 top    = np.max(src_y)
@@ -134,42 +153,16 @@ def get_insertion_coords(num_to_insert,
                 # xsn = np.random.choice(np.arange(left, right))
                 # ysn = np.random.choice(np.arange(bottom, top))
 
-                # Check if it is a star
-                star = class_star[j]
-                if star > 0.25:
-                    continue
+                galaxy_mag = cat['MAG_AUTO'][cat_idx]
 
-                # Now we make sure that not all SNe are associated
-                # with bright galaxies. Because we've sorted the 
-                # num_src_pix array in descending order we're likely
-                # to have all the brightest galaxies show up first
-                # (stars are being filtered out above). So we need
-                # to ensure that all SNe don't preferentially go to 
-                # brighter galaxies.
-                galaxy_mag = mag_arr[j]
-                pow_prob = np.random.power(2.0, size=None)
-                gmag = (galaxy_mag - 17) / (27 - 17)
-                sn_prob = gmag * pow_prob
-                # i.e., 17th mag is approx brightest galaxy
-                # and 27th mag is approx faintest galaxy
-                # Explanation: the first line picking the random
-                # number from the power distribution will pick
-                # a number between 0 and 1 according to the power law.
-                # The second line will assign an updated probability
-                # by saying that the galaxies that get assigned SNe
-                # follow the power law distribution. 
-                if sn_prob < 0.3:  # this limit was determined by trial and error
-                    continue
+                #print(sn_added_count, src_segid, num_src_pix, xsn, ysn, star, galaxy_mag)
 
-                print(j, src_segid, num_src_pix, xsn, ysn, star, 
-                    '{:.2f}'.format(sn_prob), galaxy_mag)
+                x_ins[sn_added_count] = xsn
+                y_ins[sn_added_count] = ysn
+                host_galaxy_mags[sn_added_count] = galaxy_mag
+                host_galaxy_ids[sn_added_count] = src_segid
 
-                x_ins[count] = xsn
-                y_ins[count] = ysn
-                host_galaxy_mags[count] = galaxy_mag
-
-                count += 1
-                if count >= num_to_insert: break
+                sn_added_count += 1
 
                 # Check cutout of inserted SN and galaxy
                 if checkplot:
@@ -196,25 +189,15 @@ def get_insertion_coords(num_to_insert,
                             ext_diff = y_extent - x_extent
                             ext = [left-10-int(ext_diff/2), right+10+int(ext_diff/2), bottom-10, top+10]
 
+                        # Show image of galaxy and mark SN location
                         ax.imshow(np.log10(im_cutout), extent=ext, origin='lower')
                         ax.scatter(xsn, ysn, marker='x', lw=5.0, s=60, color='red')
 
                         plt.show()
 
-                    if j > 50: sys.exit(0)
-
             else:
+                #print('SKIPPING TOO SMALL SOURCE.')
                 continue
-
-        # Plot distribution of host galaxy magnitudes
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.hist(host_galaxy_mags, 20, color='k', 
-            range=(17.0, 27.0), histtype='step')
-
-        plt.show()
-        sys.exit(0)
 
         return x_ins, y_ins, host_galaxy_mags
 
@@ -384,11 +367,12 @@ def main():
             # By trial and error I found that this works best for
             # SExtractor being able to detect sources down to 27.0
             # Not sure why it needs to be that much lower...
-            model_img += np.random.normal(loc=0.0, scale=back_scale, size=model_img.shape)
+            model_img += np.random.normal(loc=0.0, scale=back_scale, 
+                size=model_img.shape)
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
-            x_ins, y_ins = get_insertion_coords(num_to_insert, 
+            x_ins, y_ins, host_mags = get_insertion_coords(num_to_insert, 
                 img_cat=cat_filename, img_segmap=checkimage, imdat=cps_sci_arr)
 
             # ---------------
