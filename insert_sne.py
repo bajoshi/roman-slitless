@@ -49,6 +49,44 @@ back_scale = 0.001  # standard deviation for background to be added.
 # ----------------------
 
 
+def get_ref_segpix(snmag):
+
+    # Get the closest mag to snmag in reference imgs
+    ref_mag_idx = np.argmin(abs(ref_mag_array - snmag))
+    rmag = ref_mag_array[ref_mag_idx]
+
+    # Read segmap
+    segmap = img_sim_dir + 'ref_cutout_' + '{:.1f}'.format(rmag) + '.fits'
+    segdata = fits.getdata(segmap)
+
+    # ---------
+    # Get the segmentation pixels
+    segpix = np.where(segdata == 1)
+    # since there is only one detected object
+    # in all the reference segmaps.
+
+    # Ensure that when the counts in the segpix for 
+    # this supernova are summed you get the scaled 
+    # reference counts. You cannot simply do np.sum()
+    # on the new cutout because it adds everything, 
+    # including pixels that won't be included in the
+    # segpix and will therefore be an overestimate.
+
+    # This can be done by up scaling the sncounts
+    # from above such that it satifies the above condition.
+    segcounts = np.sum(segdata[segpix[0], segpix[1]])
+
+    
+
+
+
+    return segpix
+
+
+
+sys.exit(0)
+
+
 def get_insertion_coords(num_to_insert, 
     img_cat=None, img_segmap=None, imdat=None, checkplot=False):
 
@@ -124,9 +162,9 @@ def get_insertion_coords(num_to_insert,
 
             # Get source indices in segmap
             # and count them. Indices will be 2d.
-            src_x, src_y = np.where(segmap == src_segid)
+            src_rows, src_cols = np.where(segmap == src_segid)
 
-            num_src_pix = src_x.size
+            num_src_pix = src_rows.size
 
             # Check if it is a star
             star = cat['CLASS_STAR'][cat_idx]
@@ -135,11 +173,11 @@ def get_insertion_coords(num_to_insert,
                 continue
 
             # Get a bounding box for the source
-            top    = np.max(src_y)
-            bottom = np.min(src_y)
+            top    = np.max(src_rows)
+            bottom = np.min(src_rows)
 
-            right  = np.max(src_x)
-            left   = np.min(src_x)
+            right  = np.max(src_cols)
+            left   = np.min(src_cols)
 
             # Ensure that host galaxy is not too close to the edge
             if (top > 3985) or (right > 3985) or \
@@ -150,10 +188,10 @@ def get_insertion_coords(num_to_insert,
             # Now insert SN close to the other object if all okay
             if num_src_pix >= 15:
 
-                # Put the SN shifted out 1 pix away from one 
+                # Put the SN shifted out some pix away from one 
                 # of hte four corners of the bounding box
-                xsn = np.random.choice([left, right]) + 1
-                ysn = np.random.choice([top, bottom]) + 1
+                xsn = np.random.choice([left, right]) + 3
+                ysn = np.random.choice([top, bottom]) + 3
 
                 # Put the SN somewhere within the bounding box
                 # xsn = np.random.choice(np.arange(left, right))
@@ -179,7 +217,7 @@ def get_insertion_coords(num_to_insert,
                         ax = fig.add_subplot(111)
 
                         # Get cutout
-                        im_cutout = imdat[left-10:right+10, bottom-10:top+10]
+                        im_cutout = imdat[bottom-10:top+10, left-10:right+10]
 
                         # Image extent
                         ext = [left-10, right+10, bottom-10, top+10]
@@ -200,6 +238,8 @@ def get_insertion_coords(num_to_insert,
                         ax.scatter(xsn, ysn, marker='x', lw=5.0, s=60, color='red')
 
                         plt.show()
+
+                        if sn_added_count > 10: sys.exit(0)
 
             else:
                 #print('SKIPPING TOO SMALL SOURCE.')
@@ -287,9 +327,7 @@ def main():
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
-    ref_mag = 15.9180
     ref_counts = 13753.24  # read in mag and counts from SExtractor catalog on dir img
-    ref_segid = 630
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
 
@@ -309,7 +347,7 @@ def main():
     # ---------------
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(1, 2, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -366,6 +404,10 @@ def main():
             model_img = gen_model_img(model_img_name, checkimage)
 
             # ---------------
+            # Read in segmap. Will be used later
+            segdata = fits.getdata(checkimage)
+
+            # ---------------
             # Add a small amount of background
             # The mean is zero and the standard deviation is
             # is about 80 times lower than the expected counts
@@ -415,18 +457,10 @@ def main():
                 # See result of test_for_zp.py
                 #snmag_eff -= 0.25
 
-                # Now scale reference
-                delta_m = ref_mag - snmag
-                sncounts = ref_counts * (1 / 10**(-0.4*delta_m) )
+                sncounts, segpix = get_ref_counts_segpix(snmag)
 
                 scale_fac = sncounts / ref_counts
                 new_cutout = ref_data * scale_fac
-
-                if verbose:
-                    tqdm.write('Inserted SN mag: ' + "{:.3f}".format(snmag))
-                    tqdm.write('delta_m: ' + "{:.3f}".format(delta_m))
-                    tqdm.write('Added SN counts: ' + "{:.3f}".format(sncounts))
-                    tqdm.write('Scale factor: ' + "{:.3f}".format(scale_fac))
 
                 # Now get coords
                 xi = x_ins[i]
@@ -435,11 +469,21 @@ def main():
                 r = yi
                 c = xi
 
-                # Add in the new SN
+                # Add in the new SN in the direct image
                 model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
 
+                # Also add it into the segmap
+                # First update segpix to reference the larger
+                # 4096 x 4096 grid
+                segpix_big = get_fullgrid_segpix(segpix)
+
+                # Now update segid and add
+                new_segid = last_segid + 1
+                segdata[segpix_big[0], segpix_big[1]] = new_segid
+
                 tqdm.write(str(xi) + "  " + str(yi) + "    " + \
-                    "{:.3f}".format(snmag) + "    " + "{:.3f}".format(sncounts) + \
+                    "{:.3f}".format(snmag) + "    " + \
+                    "{:.3f}".format(sncounts) + "    " + \
                     "{:.3f}".format(host_mags[i]))
 
             # Save the locations and SN mag as a numpy array
@@ -448,11 +492,15 @@ def main():
             np.save(snadd_fl, added_sn_data)
             tqdm.write('Saved: ' + snadd_fl)
 
-            # Save and check with ds9
+            # Save direct image and check with ds9
             new_hdu = fits.PrimaryHDU(header=cps_hdr, data=model_img)
             savefile = dir_img_name.replace('.fits', '_SNadded.fits')
             new_hdu.writeto(savefile, overwrite=True)
             tqdm.write('Saved: ' + savefile)
+
+            # Also save the edited segmentation map.
+            # No more need to run SExtractor again on the same image.
+            new_segmap = 
 
             # Also add a regions file for the added SNe
             snadd_regfl = dir_img_name.replace('.fits', '_SNadded.reg')

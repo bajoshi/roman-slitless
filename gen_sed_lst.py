@@ -4,7 +4,8 @@ from astropy.io import fits
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
-astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
+astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, 
+    Tcmb0=2.725 * u.K, Om0=0.3)
 
 import os
 import sys
@@ -61,23 +62,28 @@ from get_obj_pix import get_obj_pix
 salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", 
     dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
 
-model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", mmap_mode='r')
-model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", mmap_mode='r')
+model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", 
+    mmap_mode='r')
+model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", 
+    mmap_mode='r')
 
 all_m62_models = []
 tau_low = 0
 tau_high = 20
 for t in range(tau_low, tau_high, 1):
     tau_str = "{:.3f}".format(t).replace('.', 'p')
-    a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m62_chab.npy', mmap_mode='r')
+    a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m62_chab.npy', 
+        mmap_mode='r')
     all_m62_models.append(a)
     del a
 
 # load models with large tau separately
-all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', mmap_mode='r'))
+all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', 
+    mmap_mode='r'))
 
 # Also load in lookup table for luminosity distance
-dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table_Ksum.txt', dtype=None, names=True)
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table_Ksum.txt', 
+    dtype=None, names=True)
 # Get arrays 
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
@@ -442,7 +448,7 @@ def get_sn_z(snmag, scatter=False):
 
     return sn_z
 
-def gen_sed_lst():
+def gen_sed_lst_with_truth():
 
     print(f"{bcolors.WARNING}")
     print("TODO: ")
@@ -466,7 +472,7 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(1, 2, 1)
 
     for pt in tqdm(pointings, desc="Pointing"):
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -586,7 +592,7 @@ def gen_sed_lst():
 
             """
             # -----------
-            ***** Short explaination of the code flow below. *****
+            ***** Short explanation of the code flow below. *****
             # -----------
 
             GOAL: Every object in the SExtractor catalog must be assigned a spectrum.
@@ -953,10 +959,60 @@ def add_faint_sne_sedlst():
 
     return None
 
+def gen_sed_lst():
+
+    # Set image and truth params
+    dir_img_part = 'part1'
+
+    img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
+    img_basename = '5deg_'
+    img_filt = 'Y106_'
+
+    # Arrays to loop over
+    pointings = np.arange(0, 1)
+    detectors = np.arange(1, 2, 1)
+
+    for pt in tqdm(pointings, desc="Pointing"):
+        for det in tqdm(detectors, desc="Detector", leave=False):
+
+            img_suffix = img_filt + str(pt) + '_' + str(det)
+            dir_img_path = img_sim_dir + \
+                           img_basename + img_suffix + '_SNadded.fits'
+
+            sedlst_filename = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+
+            # Open an empty file for writing sed lst
+            with open(sedlst_filename, 'w') as fh:
+
+                # ------------ Write header
+                fh.write("# 1: SEGMENTATION ID" + "\n")
+                fh.write("# 2: SED FILE" + "\n")
+
+                # ------------ Read in SExtractor catalog
+                # This assumes that SExtractor has been run already
+                # by insert_sne.py
+                # and the SNe have been inserted in the direct image
+                # and also the segmentation map.
+                cat_filename = dir_img_path.replace('.fits', '.cat')
+
+                cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 
+                'DELTA_J2000', 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 
+                'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE', 'CLASS_STAR']
+                cat = np.genfromtxt(cat_filename, dtype=None, 
+                    names=cat_header, encoding='ascii')
+
+                # ------------ Now loop over all objects
+                for i in tqdm(range(len(cat)), desc="Object SegID"):
+
+
+
+
+    return None
+
 if __name__ == '__main__':
 
     gen_sed_lst()
-    remove_duplicates()
+    #remove_duplicates()
     #add_faint_sne_sedlst()
 
     sys.exit(0)
