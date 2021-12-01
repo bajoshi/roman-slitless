@@ -50,9 +50,16 @@ back_scale = 0.001  # standard deviation for background to be added.
 
 
 def get_ref_segpix(snmag):
+    # Also see notes in ref_cutout_segpix.py
 
     # Get the closest mag to snmag in reference imgs
-    ref_mag_idx = np.argmin(abs(ref_mag_array - snmag))
+    ref_mag_array = np.arange(17.0, 28.4, 0.2)  
+    # ref mag array copied from ref_cutout_segpix.py
+    if snmag >= 28.2:
+        ref_mag_idx = -1
+    else:
+        ref_mag_idx = np.argmin(abs(ref_mag_array - snmag))
+    
     rmag = ref_mag_array[ref_mag_idx]
 
     # Read segmap
@@ -65,6 +72,11 @@ def get_ref_segpix(snmag):
     # since there is only one detected object
     # in all the reference segmaps.
 
+    return segpix
+
+
+def get_upscaled_counts(imgdat, segpix, snmag)
+
     # Ensure that when the counts in the segpix for 
     # this supernova are summed you get the scaled 
     # reference counts. You cannot simply do np.sum()
@@ -74,17 +86,9 @@ def get_ref_segpix(snmag):
 
     # This can be done by up scaling the sncounts
     # from above such that it satifies the above condition.
-    segcounts = np.sum(segdata[segpix[0], segpix[1]])
+    segcounts = np.sum(imgdat[segpix[0], segpix[1]])
 
-    
-
-
-
-    return segpix
-
-
-
-sys.exit(0)
+    return segcounts
 
 
 def get_insertion_coords(num_to_insert, 

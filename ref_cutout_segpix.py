@@ -53,7 +53,7 @@ def gen_ref_segmap(snmag):
 
     # Add some background to ensure that not too many
     # pixels are associated with the central source.
-    # 
+    # This is needed in addition to the minpix set below.
     new_cutout += np.random.normal(loc=0.0, scale=0.001, 
         size=new_cutout.shape)
 
@@ -99,13 +99,10 @@ def gen_ref_segmap(snmag):
     cat = np.genfromtxt(img_sim_dir + 'ref_dir/test.cat', 
         dtype=None, names=test_cat_hdr, encoding='ascii')
 
-    segdata = fits.getdata(checkimage)
-    seg_idx = np.where(segdata == 1)
-
     magdiff = abs(cat['MAG_AUTO'] - snmag)
 
     print('============================')
-    print(cat.size, len(seg_idx[0]))
+    print(cat.size)
     print(cat['MAG_AUTO'], snmag, '{:.4f}'.format(magdiff))
     print('============================')
 
@@ -131,8 +128,36 @@ if __name__ == '__main__':
     # For magnitudes fainter than 28.2 we can just use the
     # seg pix for 28.2
 
+    checkplot = True
+
     for m in mags:
         gen_ref_segmap(m)
+
+        # Check plot for segmap quickly
+        if checkplot:
+            # First read direct img and segmap
+            ref_name = 'ref_cutout_' + '{:.1f}'.format(m) + '.fits'
+            scaled_ref_path = img_sim_dir + 'ref_dir/' + ref_name
+            dirimg = fits.getdata(scaled_ref_path)
+
+            checkimage = scaled_ref_path.replace('.fits', '_segmap.fits')
+            segdata = fits.getdata(checkimage)
+            seg_idx = np.where(segdata == 1)
+            npix = len(seg_idx[0])
+
+            fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(8,5))
+
+            ax1.imshow(np.log10(dirimg), origin='lower', 
+                vmin=0.0001, vmax=2.0)
+            # forcing the scale for apples ot apples comparsion of different mags
+            ax2.imshow(segdata, origin='lower')
+
+            ax1.set_title('m=' + '{:.2f}'.format(m), color='k', fontsize=15)
+            ax2.set_title('Npix = ' + str(npix),     color='k', fontsize=15)
+
+            plt.pause(1)
+            fig.clear()
+            plt.close(fig)
 
     sys.exit(0)
 
