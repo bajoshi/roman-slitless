@@ -19,12 +19,15 @@ def gen_model_img(dirimg_path, segmap_path, save=False, data_ext=0):
     # Get indices where no sources are detected
     backidx = np.where(sdat == 0)
 
-    # Estimate background. Just to see the value. Not actually used.
+    # Estimate background. 
+    # Just to see the value. Not actually used.
     backest = np.mean(ddat[backidx])
     print('Estimated (mean) background:', backest)
 
-    # Force background pix to exactly zero
+    # Force pix at less than 5 times backest 
+    # to exactly zero
     model_img = ddat
+    #zeroidx = np.where(model_img < 5 * backest)
     model_img[backidx] = 0.0
 
     if save:

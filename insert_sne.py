@@ -46,10 +46,12 @@ from make_model_dirimg import gen_model_img
 dirimg_scaling = 10**(-0.4 * (31.7956 - 26.264))
 # ----------------------
 back_scale = 0.001  # standard deviation for background to be added.
+ref_counts = 13753.24  # read in mag and counts from SExtractor catalog on dir img
+ref_mag = 15.9180
 # ----------------------
 
 
-def get_ref_segpix(snmag):
+def get_ref_segpix_counts(snmag):
     # Also see notes in ref_cutout_segpix.py
 
     # Get the closest mag to snmag in reference imgs
@@ -63,7 +65,8 @@ def get_ref_segpix(snmag):
     rmag = ref_mag_array[ref_mag_idx]
 
     # Read segmap
-    segmap = img_sim_dir + 'ref_cutout_' + '{:.1f}'.format(rmag) + '.fits'
+    segmap = img_sim_dir + 'ref_dir/ref_cutout_' + \
+             '{:.1f}'.format(rmag) + '_segmap.fits'
     segdata = fits.getdata(segmap)
 
     # ---------
@@ -71,11 +74,6 @@ def get_ref_segpix(snmag):
     segpix = np.where(segdata == 1)
     # since there is only one detected object
     # in all the reference segmaps.
-
-    return segpix
-
-
-def get_upscaled_counts(imgdat, segpix, snmag)
 
     # Ensure that when the counts in the segpix for 
     # this supernova are summed you get the scaled 
@@ -86,9 +84,29 @@ def get_upscaled_counts(imgdat, segpix, snmag)
 
     # This can be done by up scaling the sncounts
     # from above such that it satifies the above condition.
-    segcounts = np.sum(imgdat[segpix[0], segpix[1]])
+    refimgfile = segmap.replace('_segmap.fits', '.fits')
+    refimgdat = fits.getdata(refimgfile)
+    segcounts = np.sum(refimgdat[segpix[0], segpix[1]])
 
-    return segcounts
+    delta_m = ref_mag - snmag
+    sncounts = ref_counts * (1 / 10**(-0.4*delta_m) )
+
+    # Now determine scaling and scale ref img to check
+    sf = sncounts / segcounts
+    new_ref_dat = refimgdat * sf
+    new_segcounts = np.sum(new_ref_dat[segpix[0], segpix[1]])
+
+    #fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(10,4))
+    #ax1.imshow(np.log10(refimgdat), origin='lower', vmin=-0.01, vmax=2.0)
+    #ax2.imshow(segdata)
+    #ax3.imshow(np.log10(new_ref_dat), origin='lower', vmin=-0.01, vmax=2.0)
+    #plt.show()
+    #print('\nCounts from refimgdat:', segcounts)
+    #print('Required SN mag and counts:', snmag, sncounts)
+    #print('New scaled counts:', new_segcounts, sf, '\n')
+
+
+    return sncounts, segpix
 
 
 def get_insertion_coords(num_to_insert, 
@@ -326,12 +344,20 @@ def gen_reference_cutout(showref=False):
     return None
 
 
+def get_fullgrid_segpix(segpix, row, col):
+
+    fullgrid_segpix_rows = row - 50 + segpix[0]
+    fullgrid_segpix_cols = col - 50 + segpix[1]
+
+    fullgrid_segpix = np.array([fullgrid_segpix_rows, fullgrid_segpix_cols])
+
+    return fullgrid_segpix
+
 def main():
 
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
-    ref_counts = 13753.24  # read in mag and counts from SExtractor catalog on dir img
     s = 50  # same as the size of the cutout stamp  # cutout is 100x100; need half that here
     verbose = False
 
@@ -434,6 +460,8 @@ def main():
             tqdm.write("--"*16)
             snmag_arr = np.zeros(num_to_insert)
 
+            last_segid = np.max(segdata)
+
             for i in range(num_to_insert):
 
                 # Decide some random mag for the SN
@@ -443,28 +471,14 @@ def main():
                 snmag = snmag * (highmag - lowmag) + lowmag
                 snmag_arr[i] = snmag
 
-                # Hack because Sextractor for some reason assigns 
-                # fainter mags to these SNe # by about ~0.1 to 0.3 mag
-                # depending on the inserted magnitude.
-                #snmag -= 0.3
-                # I think this problem is because when SExtractor is 
-                # run again on the SNadded images the flux is summed 
-                # within a smaller area NOT the whole cutout area (like
-                # np.sum below in the new_cutout). Therefore the 
-                # SExtractor count and consequently mag falls short i.e., fainter.
-                # Hacked for now, will have to figure out some fix later.
-
-                # Another hack because we know that SExtractor 
-                # mags are fainter than truth mags by about 0.25 mag.
-                # NOT just for SNe but for all objects.
-                # This hack works only the SNe for now.
-                # See result of test_for_zp.py
-                #snmag_eff -= 0.25
-
-                sncounts, segpix = get_ref_counts_segpix(snmag)
+                sncounts, segpix = get_ref_segpix_counts(snmag)
 
                 scale_fac = sncounts / ref_counts
                 new_cutout = ref_data * scale_fac
+
+                # Now update counts to recover the required mag
+                # from summing only the segpix in the scaled ref data
+                #cutout_sum = np.sum(new_cutout[segpix[0], segpix[1]])
 
                 # Now get coords
                 xi = x_ins[i]
@@ -477,12 +491,11 @@ def main():
                 model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
 
                 # Also add it into the segmap
-                # First update segpix to reference the larger
-                # 4096 x 4096 grid
-                segpix_big = get_fullgrid_segpix(segpix)
+                # First update segpix to reference the larger 4096 x 4096 grid
+                segpix_big = get_fullgrid_segpix(segpix, r, c)
 
                 # Now update segid and add
-                new_segid = last_segid + 1
+                new_segid = last_segid + i + 1
                 segdata[segpix_big[0], segpix_big[1]] = new_segid
 
                 tqdm.write(str(xi) + "  " + str(yi) + "    " + \
@@ -504,7 +517,10 @@ def main():
 
             # Also save the edited segmentation map.
             # No more need to run SExtractor again on the same image.
-            new_segmap = 
+            new_segmap = fits.PrimaryHDU(data=segdata, header=cps_hdr)
+            new_segmap_file = savefile.replace('.fits', '_segmap.fits')
+            new_segmap.writeto(new_segmap_file, overwrite=True)
+            tqdm.write('Saved: ' + new_segmap_file)
 
             # Also add a regions file for the added SNe
             snadd_regfl = dir_img_name.replace('.fits', '_SNadded.reg')
