@@ -55,7 +55,7 @@ def get_ref_segpix_counts(snmag):
     # Also see notes in ref_cutout_segpix.py
 
     # Get the closest mag to snmag in reference imgs
-    ref_mag_array = np.arange(17.0, 28.4, 0.2)  
+    ref_mag_array = np.arange(15.0, 28.4, 0.2)
     # ref mag array copied from ref_cutout_segpix.py
     if snmag >= 28.2:
         ref_mag_idx = -1
@@ -379,22 +379,25 @@ def main():
     pointings = np.arange(0, 1)
     detectors = np.arange(1, 2, 1)
 
-    for pt in tqdm(pointings, desc="Pointing"):
-        for det in tqdm(detectors, desc="Detector", leave=False):
+    for pt in pointings:
+        for det in detectors:
 
             # ---------------
             # Determine number of SNe to insert and open dir img
             num_to_insert = np.random.randint(low=90, high=100)
+            # Also decide number of stars
+            # randomly insert approx 10 stars in each detector
+            num_to_insert_stars = np.random.randint(low=8, high=12)
 
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
             dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
 
-            tqdm.write("Working on: " + dir_img_name)
-            tqdm.write("Will insert " + str(num_to_insert) + " SNe in " + os.path.basename(dir_img_name))
+            print("Working on: " + dir_img_name)
+            print("Will insert " + str(num_to_insert) + " SNe in " + os.path.basename(dir_img_name))
 
             # First check that the files have been unzipped
             if not os.path.isfile(dir_img_name):
-                tqdm.write("Unzipping file: " + dir_img_name + ".gz")
+                print("Unzipping file: " + dir_img_name + ".gz")
                 subprocess.run(['gzip', '-fd', dir_img_name + '.gz'])
 
             # Open dir image
@@ -453,23 +456,26 @@ def main():
             x_ins, y_ins, host_mags = get_insertion_coords(num_to_insert, 
                 img_cat=cat_filename, img_segmap=checkimage, imdat=cps_sci_arr)
 
-            # ---------------
+            # ================================================
             # Now insert as many SNe as required
-            tqdm.write("--"*16)
-            tqdm.write("  x      y           mag")
-            tqdm.write("--"*16)
-            snmag_arr = np.zeros(num_to_insert)
+            #print("--"*16)
+            #print("  x      y           mag")
+            #print("--"*16)
+
+            insert_mag = np.zeros(num_to_insert + num_to_insert_stars)
+            object_type = np.empty(num_to_insert + num_to_insert_stars, 
+                dtype='<U4')
 
             last_segid = np.max(segdata)
 
-            for i in range(num_to_insert):
+            for i in tqdm(range(num_to_insert), desc='Inserting SNe'):
 
                 # Decide some random mag for the SN
                 # This is a power law # previously uniform dist
                 pow_idx = 1.5  # power law index # PDF given by: P(x;a) = a * x^(a-1)
                 snmag = np.random.power(pow_idx, size=None)
                 snmag = snmag * (highmag - lowmag) + lowmag
-                snmag_arr[i] = snmag
+                insert_mag[i] = snmag
 
                 sncounts, segpix = get_ref_segpix_counts(snmag)
 
@@ -498,13 +504,67 @@ def main():
                 new_segid = last_segid + i + 1
                 segdata[segpix_big[0], segpix_big[1]] = new_segid
 
-                tqdm.write(str(xi) + "  " + str(yi) + "    " + \
-                    "{:.3f}".format(snmag) + "    " + \
-                    "{:.3f}".format(sncounts) + "    " + \
-                    "{:.3f}".format(host_mags[i]))
+                # Now assign an object type. Used in gen_sed_lst
+                # to assign spectra.
+                object_type[i] = 'SNIa'
+
+                # Print info to screen
+                #print(str(xi) + "  " + str(yi) + "    " + \
+                #    "{:.3f}".format(snmag) + "    " + \
+                #    "{:.3f}".format(sncounts) + "    " + \
+                #    "{:.3f}".format(host_mags[i]))
+
+
+            # ================================================
+            # Now insert some bright stars. Same process as SNe.
+            print('Inserting', num_to_insert_stars, 'stars...')
+            stellar_mag_array = np.arange(15.0, 19.0, 0.1)
+
+            last_segid = new_segid  # i.e., last segid from SNe
+
+            star_x = np.zeros(num_to_insert_stars)
+            star_y = np.zeros(num_to_insert_stars)
+
+            for j in range(num_to_insert_stars):
+
+                # Decide mag to insert
+                stellar_mag = np.random.choice(stellar_mag_array)
+                insert_mag[i+j+1] = stellar_mag
+
+                # Decide location to insert
+                xs = np.random.randint(low=110, high=3985, size=1)
+                ys = np.random.randint(low=110, high=3985, size=1)
+
+                r = int(xs)
+                c = int(ys)
+
+                star_x[j] = xs
+                star_y[j] = ys
+
+                # Now get the segpix and counts
+                starcounts, segpix = get_ref_segpix_counts(stellar_mag)
+
+                # Scale and add
+                scale_fac = starcounts / ref_counts
+                new_cutout = ref_data * scale_fac
+                model_img[r-s:r+s, c-s:c+s] = model_img[r-s:r+s, c-s:c+s] + new_cutout
+
+                # Also add it into the segmap
+                segpix_big = get_fullgrid_segpix(segpix, r, c)
+                new_segid = last_segid + j + 1
+                segdata[segpix_big[0], segpix_big[1]] = new_segid
+
+                # Now assign an object type.
+                object_type[i+j+1] = 'STAR'
+
+            # Append star data to the SN data and save
+            x_ins = np.append(x_ins, star_x)
+            y_ins = np.append(y_ins, star_y)
+            host_mags = np.append(host_mags, 
+                np.ones(num_to_insert_stars)*-99.0)
 
             # Save the locations and SN mag as a numpy array
-            added_sn_data = np.c_[x_ins, y_ins, snmag_arr, host_mags]
+            added_sn_data = np.c_[x_ins, y_ins, insert_mag, host_mags, object_type]
             snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
             np.save(snadd_fl, added_sn_data)
             tqdm.write('Saved: ' + snadd_fl)

@@ -121,14 +121,14 @@ if __name__ == '__main__':
     # For a range of SN magnitudes scale the reference
     # to get counts and run SExtractor to get source pixels.
     # These pixels will later be assigned a spectrum.
-    mags = np.arange(17.0, 28.4, 0.2)  # last mag considered is 28.2
+    mags = np.arange(15.0, 28.4, 0.2)  # last mag considered is 28.2
     # The exact magnitudes don't really matter.
     # It is the approx scaling of mag to number and pattern 
     # of segmentation pixels that we really need.
     # For magnitudes fainter than 28.2 we can just use the
     # seg pix for 28.2
 
-    checkplot = True
+    checkplot = False
 
     for m in mags:
         gen_ref_segmap(m)
