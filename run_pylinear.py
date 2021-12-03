@@ -409,7 +409,7 @@ def main():
         os.chdir(result_path)
 
         # ---------------------- Define list files and other preliminary stuff
-        segfile = dir_img_path + dir_img_name.replace('.fits', '_segmap.fits')
+        segfile = img_sim_dir + dir_img_name.replace('.fits', '_segmap.fits')
         obslst = pylinear_lst_dir + 'obs_' + img_suffix + obsstr + '.lst'
         sedlst = pylinear_lst_dir + 'sed_' + img_suffix + obsstr + '.lst'
         wcslst = pylinear_lst_dir + 'wcs_' + img_suffix + '.lst'
