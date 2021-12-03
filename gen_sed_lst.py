@@ -36,6 +36,8 @@ if 'plffsn2' in socket.gethostname():
     roman_slitless_dir = extdir + "GitHub/roman-slitless/"
     fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
+    pickles_path = extdir + 'Pickles_stellar_library/for_romansim/'
+
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
@@ -47,6 +49,8 @@ else:
     home = os.getenv("HOME")
     roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
     fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
+
+    pickles_path = '/Volumes/Joshi_external_HDD/Pickles_stellar_library/for_romansim/'
 
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_sims_seds)
@@ -959,6 +963,45 @@ def add_faint_sne_sedlst():
 
     return None
 
+def get_stellar_spec_path():
+    # Randomly choses a stellar spectrum
+    all_stars = ['a5v', 'b5iii', 'f0v', 'g2v', 'k3i', 'm4v', 'o5v']
+    star_chosen = np.random.choice(all_stars)
+
+    pickles_spec_path = pickles_path + 'uk' + star_chosen + '.dat'
+    
+    # Rewrite the SED to the pylinear SED dir.
+    # The pickles spectra have a wav col and 4 other cols.
+    # We need the first col (normalized flux) and wav.
+    # Also truncate the spectra to somewhat closer to prism
+    # coverage.
+    star_spec_path = roman_sims_seds + star_chosen + '.txt'
+
+    if not os.path.isfile(star_spec_path):
+
+        # First read in the spectrum from pickles
+        stellar_spec = np.genfromtxt(pickles_spec_path, dtype=None, 
+                names=['wav','flux'], usecols=(0,1))
+
+        # Now truncate
+        stellar_wav  = stellar_spec['wav']
+        stellar_flux = stellar_spec['flux']
+
+        wav_idx = np.where((stellar_wav >= 7000) & (stellar_wav <= 19000))[0]
+
+        stellar_wav  = stellar_wav[wav_idx]
+        stellar_flux = stellar_flux[wav_idx]
+
+        # Write to file
+        with open(star_spec_path, 'w') as fh:
+
+            for i in range(len(stellar_wav)):
+                fh.write("{:.2f}".format(stellar_wav[i]) \
+                       + " " + str(stellar_flux[i]))
+                fh.write("\n")
+
+    return star_spec_path
+
 def gen_sed_lst():
 
     # Set image and truth params
@@ -970,9 +1013,9 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(1, 19, 1)
 
-    for pt in tqdm(pointings, desc="Pointing"):
+    for pt in pointings:
         for det in tqdm(detectors, desc="Detector", leave=False):
 
             img_suffix = img_filt + str(pt) + '_' + str(det)
@@ -988,24 +1031,60 @@ def gen_sed_lst():
                 fh.write("# 1: SEGMENTATION ID" + "\n")
                 fh.write("# 2: SED FILE" + "\n")
 
-                # ------------ Read in SExtractor catalog
-                # This assumes that SExtractor has been run already
-                # by insert_sne.py
-                # and the SNe have been inserted in the direct image
-                # and also the segmentation map.
-                cat_filename = dir_img_path.replace('.fits', '.cat')
+                # ------------
+                # Read in the Segmentation map and 
+                # get the total number of objects
+                segmap = dir_img_path.replace('.fits', '_segmap.fits')
+                segdata = fits.getdata(segmap)
 
-                cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 
-                'DELTA_J2000', 'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 
-                'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE', 'CLASS_STAR']
-                cat = np.genfromtxt(cat_filename, dtype=None, 
-                    names=cat_header, encoding='ascii')
+                total_objects = np.max(segdata)
+
+                # ------------
+                # Also assign SN spectra to our added SN
+                insert_cat = np.load(dir_img_path.replace('.fits', '.npy'))
+                insert_segid = np.array(insert_cat[:, -1], dtype=np.int64)
+                host_segids = np.array(insert_cat[:, 4])
+                host_segids = host_segids.astype(np.float64)
+                host_segids = host_segids.astype(np.int64)
+
+                # Keep track of assigned redshifts
+                all_redshifts = np.zeros(total_objects)
 
                 # ------------ Now loop over all objects
-                for i in tqdm(range(len(cat)), desc="Object SegID"):
+                for i in tqdm(range(total_objects), desc="Object SegID"):
 
+                    current_segid = i+1
 
+                    # ------------ First get hte type of the object
+                    if i in insert_segid:
+                        obj_idx = int(np.where(insert_segid == current_segid)[0])
+                        object_type = insert_cat[:, -2][obj_idx]
+                    else:
+                        object_type = 'GLXY'
 
+                    # ------------ Now assign the spectrum depending on the type 
+                    if object_type == 'GLXY':
+                        z = np.random.uniform(low=0.2, high=3.0)
+                        spec_path = get_gal_spec_path(z)
+                        # Append redshift
+                        all_redshifts[i] = z
+
+                    elif object_type == 'SNIa':
+                        # Check the host id and get its redshift
+                        current_host_segid = host_segids[obj_idx]
+                        host_idx = int(current_host_segid - 1)
+
+                        host_z = all_redshifts[host_idx]
+
+                        spec_path = get_sn_spec_path(host_z)
+                        # Append redshift
+                        all_redshifts[i] = host_z
+
+                    elif object_type == 'STAR':
+                        spec_path = get_stellar_spec_path()
+
+                    # ------------ Write to file
+                    fh.write(str(current_segid) + " " + spec_path + "\n")
 
     return None
 

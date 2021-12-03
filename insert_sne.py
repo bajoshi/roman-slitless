@@ -267,7 +267,7 @@ def get_insertion_coords(num_to_insert,
                 #print('SKIPPING TOO SMALL SOURCE.')
                 continue
 
-        return x_ins, y_ins, host_galaxy_mags
+        return x_ins, y_ins, host_galaxy_mags, host_galaxy_ids
 
 
 def gen_reference_cutout(showref=False):
@@ -377,7 +377,7 @@ def main():
     # ---------------
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -453,7 +453,7 @@ def main():
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
-            x_ins, y_ins, host_mags = get_insertion_coords(num_to_insert, 
+            x_ins, y_ins, host_mags, host_segids = get_insertion_coords(num_to_insert, 
                 img_cat=cat_filename, img_segmap=checkimage, imdat=cps_sci_arr)
 
             # ================================================
@@ -465,6 +465,8 @@ def main():
             insert_mag = np.zeros(num_to_insert + num_to_insert_stars)
             object_type = np.empty(num_to_insert + num_to_insert_stars, 
                 dtype='<U4')
+            insert_segid = np.zeros(num_to_insert + num_to_insert_stars, 
+                dtype=int)
 
             last_segid = np.max(segdata)
 
@@ -503,6 +505,8 @@ def main():
                 # Now update segid and add
                 new_segid = last_segid + i + 1
                 segdata[segpix_big[0], segpix_big[1]] = new_segid
+
+                insert_segid[i] = new_segid
 
                 # Now assign an object type. Used in gen_sed_lst
                 # to assign spectra.
@@ -554,6 +558,8 @@ def main():
                 new_segid = last_segid + j + 1
                 segdata[segpix_big[0], segpix_big[1]] = new_segid
 
+                insert_segid[i+j+1] = new_segid
+
                 # Now assign an object type.
                 object_type[i+j+1] = 'STAR'
 
@@ -562,9 +568,12 @@ def main():
             y_ins = np.append(y_ins, star_y)
             host_mags = np.append(host_mags, 
                 np.ones(num_to_insert_stars)*-99.0)
+            host_segids = np.append(host_segids, 
+                np.ones(num_to_insert_stars)*-99.0)
 
             # Save the locations and SN mag as a numpy array
-            added_sn_data = np.c_[x_ins, y_ins, insert_mag, host_mags, object_type]
+            added_sn_data = np.c_[x_ins, y_ins, insert_mag, \
+                            host_mags, host_segids, object_type, insert_segid]
             snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
             np.save(snadd_fl, added_sn_data)
             tqdm.write('Saved: ' + snadd_fl)
