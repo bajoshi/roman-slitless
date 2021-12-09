@@ -40,15 +40,16 @@ else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     modeldir = extdir + 'bc03_output_dir/m62/'
     
-    roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
-    pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
+    roman_sims_seds = extdir + "roman_slitless_sims_seds/"
+    pylinear_lst_dir = extdir + "pylinear_lst_files/"
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
     home = os.getenv("HOME")
     roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
     fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
-    pickles_path = '/Volumes/Joshi_external_HDD/Pickles_stellar_library/for_romansim/'
+    pickles_path = '/Volumes/Joshi_external_HDD/' + \
+        'Pickles_stellar_library/for_romansim/'
 
 assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_sims_seds)
@@ -56,17 +57,18 @@ assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
 
 sys.path.append(fitting_utils)
-import dust_utils as du
-from get_obj_pix import get_obj_pix
+import dust_utils as du  # noqa: E402
+from get_obj_pix import get_obj_pix  # noqa: E402
 
 # Read in SALT2 SN IA file  from Lou
 salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", 
-    dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
+                           dtype=None, names=['day', 'lam', 'llam'], 
+                           encoding='ascii')
 
 model_lam = np.load(extdir + "bc03_output_dir/bc03_models_wavelengths.npy", 
-    mmap_mode='r')
+                    mmap_mode='r')
 model_ages = np.load(extdir + "bc03_output_dir/bc03_models_ages.npy", 
-    mmap_mode='r')
+                     mmap_mode='r')
 
 all_m62_models = []
 tau_low = 0
@@ -74,17 +76,18 @@ tau_high = 20
 for t in range(tau_low, tau_high, 1):
     tau_str = "{:.3f}".format(t).replace('.', 'p')
     a = np.load(modeldir + 'bc03_all_tau' + tau_str + '_m62_chab.npy', 
-        mmap_mode='r')
+                mmap_mode='r')
     all_m62_models.append(a)
     del a
 
 # load models with large tau separately
 all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy', 
-    mmap_mode='r'))
+                      mmap_mode='r'))
 
 # Also load in lookup table for luminosity distance
 dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table_Ksum.txt', 
-    dtype=None, names=True)
+                       dtype=None, names=True)
+
 # Get arrays 
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
@@ -92,9 +95,11 @@ dl_K_sum_arr = np.asarray(dl_cat['dl_K_sum'], dtype=np.float64)
 
 del dl_cat
 
-# This class came from stackoverflow
-# SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
+
 class bcolors:
+    # This class came from stackoverflow
+    # SEE: 
+    # https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
     HEADER = '\033[95m'
     BLUE = '\033[94m'
     CYAN = '\033[96m'
@@ -114,6 +119,7 @@ def get_dl_at_z(z):
 
     return dl
 
+
 def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     dl = get_dl_at_z(redshift)
@@ -123,18 +129,20 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     return redshifted_wav, redshifted_flux
 
+
 def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     """
-    This function will assign a random spectrum from the basic SALT2 spectrum form Lou.
-    Equal probability is given to any day relative to maximum. This will change for the
-    final version. 
+    This function will assign a random spectrum from 
+    the basic SALT2 spectrum form Lou.
+    Equal probability is given to any day relative 
+    to maximum. This will change for the final version. 
 
-    The spectrum file contains a type 1A spectrum from -20 to +50 days relative to max.
-    Since the -20 spectrum is essentially empty, I won't choose that spectrum.
+    The spectrum file contains a type 1A spectrum from 
+    -20 to +50 days relative to max. Since the -20 spectrum 
+    is essentially empty, I won't choose that spectrum.
     """
 
     # Create array for days relative to max
-    #days_arr = np.arange(-19, 51, 1)
     days_arr = np.arange(-5, 6, 1)
 
     # choose a random day relative to max
@@ -153,22 +161,25 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
         rng = default_rng()
         chosen_av = rng.exponential(0.5)
         # the argument above is the scaling factor for the exponential
-        # see: https://numpy.org/doc/stable/reference/random/generated/numpy.random.exponential.html
+        # see: 
+        # https://numpy.org/doc/stable/reference/random/generated/numpy.random.exponential.html
         # higher beta values give "flatter" exponentials
         # I want a fairly steep exponential decline toward high Av values
-        if chosen_av > 3.0: chosen_av = 3.0
+        if chosen_av > 3.0:
+            chosen_av = 3.0
 
-    sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, chosen_av)
+    sn_dusty_llam = du.get_dust_atten_model(sn_spec_lam, sn_spec_llam, 
+                                            chosen_av)
 
     # Apply redshift
     sn_wav_z, sn_flux = apply_redshift(sn_spec_lam, sn_dusty_llam, redshift)
 
     # Save individual spectrum file if it doesn't already exist
     sn_spec_path = roman_sims_seds \
-                   + "salt2_spec_day" + str(day_chosen) \
-                   + "_z" + "{:.3f}".format(redshift).replace('.', 'p') \
-                   + "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') \
-                   + ".txt"
+        + "salt2_spec_day" + str(day_chosen) \
+        + "_z" + "{:.3f}".format(redshift).replace('.', 'p') \
+        + "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') \
+        + ".txt"
 
     if not os.path.isfile(sn_spec_path):
 
@@ -181,18 +192,9 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
             fh_sn.write("\n")
 
         fh_sn.close()
-    #print("Saved:", sn_spec_path)
-
-    #print('#####################')
-    #print('Write code here that will confirm that the SN spec being')
-    #print('passed with the specified redshift when convolved with')
-    #print('the filter curve for F105W gives the expected mag.')
-    #print('\nDo the same for the output spectra from pyLINEAR.')
-    #print('\nAlso check the ETC with SN Ia spectra passed to it.')
-    #print('DO NOT remove sys.exit prior to writing this block.')
-    #sys.exit(0)
 
     return sn_spec_path
+
 
 def get_bc03_spec(age, logtau):
 
@@ -202,9 +204,10 @@ def get_bc03_spec(age, logtau):
 
         tau_int_idx = int((tau - int(np.floor(tau))) * 1e3)
         age_idx = np.argmin(abs(model_ages - age*1e9))
-        model_idx = tau_int_idx * len(model_ages)  +  age_idx
+        model_idx = tau_int_idx * len(model_ages) + age_idx
 
-        models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) - int(np.floor(tau))))
+        models_taurange_idx = np.argmin(abs(np.arange(tau_low, tau_high, 1) 
+                                        - int(np.floor(tau))))
         models_arr = all_m62_models[models_taurange_idx]
 
     elif tau >= 20.0:
@@ -220,6 +223,7 @@ def get_bc03_spec(age, logtau):
     model_llam = models_arr[model_idx]
 
     return np.array(model_llam, dtype=np.float64)
+
 
 def get_gal_spec_path(redshift):
     """
@@ -242,7 +246,8 @@ def get_gal_spec_path(redshift):
     log_stellar_mass_arr = np.linspace(10.0, 11.5, 100)
     log_stellar_mass_chosen = np.random.choice(log_stellar_mass_arr)
 
-    log_stellar_mass_str = "{:.2f}".format(log_stellar_mass_chosen).replace('.', 'p')
+    log_stellar_mass_str = \
+        "{:.2f}".format(log_stellar_mass_chosen).replace('.', 'p')
 
     # --------- Age
     age_arr = np.arange(0.1, 13.0, 0.005)  # in Gyr
@@ -260,7 +265,8 @@ def get_gal_spec_path(redshift):
     # --------- SFH
     # Choose SFH form from a few different models
     # and then choose params for the chosen SFH form
-    sfh_forms = ['instantaneous', 'constant', 'exponential', 'linearly_declining']
+    # sfh_forms = \
+    #     ['instantaneous', 'constant', 'exponential', 'linearly_declining']
 
     # choose_sfh(sfh_forms[2])
 
@@ -268,31 +274,31 @@ def get_gal_spec_path(redshift):
     chosen_tau = np.random.choice(tau_arr)
 
     # --------- Metallicity
-    metals_arr = np.array([0.0001, 0.0004, 0.004, 0.008, 0.02, 0.05])
+    # metals_arr = np.array([0.0001, 0.0004, 0.004, 0.008, 0.02, 0.05])
     # While the newer 2016 version has an additional metallicity
     # referred to as "m82", the documentation never specifies the 
     # actual metallicity associated with it. So I'm ignoring that one.
-    metals = 0.02 # np.random.choice(metals_arr)
+    metals = 0.02  # np.random.choice(metals_arr)
 
     # Get hte metallicity string
-    if metals == 0.0001:
-        metallicity = 'm22'
-    elif metals == 0.0004:
-        metallicity = 'm32'
-    elif metals == 0.004:
-        metallicity = 'm42'
-    elif metals == 0.008:
-        metallicity = 'm52'
-    elif metals == 0.02:
-        metallicity = 'm62'
-    elif metals == 0.05:
-        metallicity = 'm72'
+    # if metals == 0.0001:
+    #     metallicity = 'm22'
+    # elif metals == 0.0004:
+    #     metallicity = 'm32'
+    # elif metals == 0.004:
+    #     metallicity = 'm42'
+    # elif metals == 0.008:
+    #     metallicity = 'm52'
+    # elif metals == 0.02:
+    #     metallicity = 'm62'
+    # elif metals == 0.05:
+    #     metallicity = 'm72'
 
     # ----------- CALL BC03 -----------
     # The BC03 generated spectra will always be at redshift=0 and dust free.
     # This code will apply dust extinction and redshift effects manually
-    #outdir = home + '/Documents/bc03_output_dir/'
-    #gen_bc03_spectrum(chosen_tau, metals, outdir)
+    # outdir = home + '/Documents/bc03_output_dir/'
+    # gen_bc03_spectrum(chosen_tau, metals, outdir)
     logtau = np.log10(chosen_tau)
     bc03_spec_wav = np.array(model_lam, dtype=np.float64)
     bc03_spec_llam = get_bc03_spec(chosen_age, logtau)
@@ -301,7 +307,8 @@ def get_gal_spec_path(redshift):
     av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
     chosen_av = np.random.choice(av_arr)
 
-    bc03_dusty_llam = du.get_dust_atten_model(bc03_spec_wav, bc03_spec_llam, chosen_av)
+    bc03_dusty_llam = du.get_dust_atten_model(bc03_spec_wav, bc03_spec_llam, 
+                                              chosen_av)
 
     # Multiply flux by stellar mass
     bc03_dusty_llam = bc03_dusty_llam * 10**log_stellar_mass_chosen
@@ -321,10 +328,11 @@ def get_gal_spec_path(redshift):
     # Do your model galaxies follow other scaling relations?
 
     # Apply IGM depending on boolean flag
-    #if apply_igm:
-    #    pass
+    # if apply_igm:
+    #     pass
 
-    bc03_wav_z, bc03_flux = apply_redshift(bc03_spec_wav, bc03_dusty_llam, redshift)
+    bc03_wav_z, bc03_flux = apply_redshift(bc03_spec_wav, bc03_dusty_llam, 
+                                           redshift)
 
     if plot_tocheck:
         
@@ -332,11 +340,13 @@ def get_gal_spec_path(redshift):
         ax = fig.add_subplot(111)
         
         ax.set_xlabel(r'$\lambda\ \mathrm{[\AA]}$', fontsize=14)
-        ax.set_ylabel(r'$f_\lambda\ \mathrm{[erg\, s^{-1}\, cm^{-2}\, \AA]}$', fontsize=14)
+        ax.set_ylabel(r'$f_\lambda\ \mathrm{[erg\, s^{-1}\, cm^{-2}\, \AA]}$', 
+                      fontsize=14)
         
-        #ax.plot(bc03_spec_wav, bc03_spec_llam, label='Orig model')
-        #ax.plot(bc03_spec_wav, bc03_dusty_llam, label='Dusty model')
-        ax.plot(bc03_wav_z, bc03_flux, label='Redshfited dusty model with chosen Ms')
+        # ax.plot(bc03_spec_wav, bc03_spec_llam, label='Orig model')
+        # ax.plot(bc03_spec_wav, bc03_dusty_llam, label='Dusty model')
+        ax.plot(bc03_wav_z, bc03_flux, 
+                label='Redshfited dusty model with chosen Ms')
 
         ax.legend(loc=0)
 
@@ -346,13 +356,13 @@ def get_gal_spec_path(redshift):
 
     # Save file
     gal_spec_path = roman_sims_seds + 'bc03_template' + \
-    "_z" + "{:.3f}".format(redshift).replace('.', 'p') + \
-    "_ms" + log_stellar_mass_str + \
-    "_age" + "{:.3f}".format(chosen_age).replace('.', 'p') + \
-    "_tau" + "{:.3f}".format(chosen_tau).replace('.', 'p') + \
-    "_met" + "{:.4f}".format(metals).replace('.', 'p') + \
-    "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') + \
-    ".txt"
+        "_z" + "{:.3f}".format(redshift).replace('.', 'p') + \
+        "_ms" + log_stellar_mass_str + \
+        "_age" + "{:.3f}".format(chosen_age).replace('.', 'p') + \
+        "_tau" + "{:.3f}".format(chosen_tau).replace('.', 'p') + \
+        "_met" + "{:.4f}".format(metals).replace('.', 'p') + \
+        "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') + \
+        ".txt"
 
     # Print info to screen
     # print("\n")
@@ -376,26 +386,27 @@ def get_gal_spec_path(redshift):
 
         for j in range(len(bc03_flux)):
 
-            fh_gal.write("{:.2f}".format(bc03_wav_z[j]) + " " + str(bc03_flux[j]))
+            fh_gal.write("{:.2f}".format(bc03_wav_z[j]) + " "
+                         + str(bc03_flux[j]))
             fh_gal.write("\n")
 
         fh_gal.close()
 
     return gal_spec_path
 
+
 def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
     # Matching tolerance
-    tol = tol_arcsec/3600  # arcseconds expressed in degrees since our ra-decs are in degrees
+    tol = tol_arcsec/3600  
+    # arcseconds expressed in degrees since our ra-decs are in degrees
 
     radiff = ra_arr - ra_to_check
     decdiff = dec_arr - dec_to_check
-    idx = np.where( (np.abs(radiff) < tol) & (np.abs(decdiff) < tol) )[0]
+    idx = np.where((np.abs(radiff) < tol) & (np.abs(decdiff) < tol))[0]
 
     # Find closest match in case of multiple matches
     if len(idx) > 1:
-        #tqdm.write(f"{bcolors.WARNING}")
-        #tqdm.write("Multiple matches found. Picking closest one." + f"{bcolors.ENDC}")
 
         ra_two = ra_to_check
         dec_two = dec_to_check
@@ -406,9 +417,11 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
             ra_one = ra_arr[idx][v]
             dec_one = ra_arr[idx][v]
 
-            dist = np.arccos(np.cos(dec_one*np.pi/180) * \
-                np.cos(dec_two*np.pi/180) * np.cos(ra_one*np.pi/180 - ra_two*np.pi/180) + \
-                np.sin(dec_one*np.pi/180) * np.sin(dec_two*np.pi/180))
+            dist = np.arccos(np.cos(dec_one*np.pi/180) 
+                             * np.cos(dec_two*np.pi/180) 
+                             * np.cos(ra_one*np.pi/180 - ra_two*np.pi/180) 
+                             + np.sin(dec_one*np.pi/180) 
+                             * np.sin(dec_two*np.pi/180))
             dist_list.append(dist)
 
         dist_list = np.asarray(dist_list)
@@ -419,14 +432,10 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
 
     # Increase tolerance if no match found at first
     elif len(idx) == 0:
-        #tqdm.write(f"{bcolors.WARNING}" + "No matches found.")
-        #tqdm.write("Redoing search within greater radius.")
-        #tqdm.write("CAUTION: This method needs a LOT more testing." + f"{bcolors.ENDC}")
-        #tqdm.write("Search centered on " + str(ra_to_check) + "   " + str(dec_to_check))
-        #idx = get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=tol_arcsec+0.1)
         idx = -99
 
     return idx
+
 
 def get_sn_z(snmag, scatter=False):
 
@@ -448,6 +457,7 @@ def get_sn_z(snmag, scatter=False):
         sn_z = np.random.normal(loc=sn_z, scale=0.001, size=None)
 
     return sn_z
+
 
 def gen_sed_lst_with_truth():
 
@@ -479,7 +489,7 @@ def gen_sed_lst_with_truth():
         for det in tqdm(detectors, desc="Detector", leave=False):
 
             img_suffix = img_filt + str(pt) + '_' + str(det)
-            dir_img_name = img_basename + img_suffix + '_SNadded.fits' #_nonoise.fits'
+            dir_img_name = img_basename + img_suffix + '_SNadded.fits'
 
             # Because some direct images are missing
             try:
@@ -493,9 +503,9 @@ def gen_sed_lst_with_truth():
 
             # Open empty file for saving sed.lst
             sed_filename = pylinear_lst_dir + \
-            'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
-            tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " + \
-                sed_filename + f"{bcolors.ENDC}")
+                'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst'
+            tqdm.write(f"{bcolors.CYAN}" + "\nWill generate SED file: " +
+                       sed_filename + f"{bcolors.ENDC}")
 
             fh = open(sed_filename, 'w')
 
@@ -505,27 +515,30 @@ def gen_sed_lst_with_truth():
 
             # Read in catalog from SExtractor
             cat_filename = img_sim_dir + img_basename + img_filt + \
-                           str(pt) + '_' + str(det) + '_SNadded.cat'
+                str(pt) + '_' + str(det) + '_SNadded.cat'
             tqdm.write("Read catalog: " + cat_filename)
             tqdm.write("Checking for catalog: " + cat_filename)
             
             if not os.path.isfile(cat_filename):
-                tqdm.write("Cannot find object catalog. SExtractor will be run automatically.")
+                tqdm.write("Cannot find object catalog."
+                           + "SExtractor will be run automatically.")
 
                 # Now run SExtractor automatically
                 # Set up sextractor
                 img_filename = img_basename + img_filt + \
-                               str(pt) + '_' + str(det) + '_SNadded.fits'
+                    str(pt) + '_' + str(det) + '_SNadded.fits'
                 checkimage = img_basename + img_filt + \
-                               str(pt) + '_' + str(det) + '_segmap.fits'
+                    str(pt) + '_' + str(det) + '_segmap.fits'
 
                 # Change directory to images directory
                 os.chdir(img_sim_dir)
 
-                tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " + \
-                    img_filename + " -c" + " roman_sims_sextractor_config.txt" + \
-                    " -CATALOG_NAME " + os.path.basename(cat_filename) + \
-                    " -CHECKIMAGE_NAME " + checkimage + f"{bcolors.ENDC}")
+                tqdm.write(f"{bcolors.GREEN}" + "Running: " + "sex " +
+                           img_filename + " -c" + 
+                           " roman_sims_sextractor_config.txt" +
+                           " -CATALOG_NAME " + os.path.basename(cat_filename) +
+                           " -CHECKIMAGE_NAME " + checkimage + 
+                           f"{bcolors.ENDC}")
 
                 # Use subprocess to call sextractor.
                 # The args passed MUST be passed in this way.
@@ -534,56 +547,40 @@ def gen_sed_lst_with_truth():
                 # It will not work if you join all of these args in a 
                 # string with spaces where they are supposed to be; 
                 # even if the command looks right when printed out.
-                sextractor = subprocess.run(['sex', img_filename, 
-                    '-c', 'roman_sims_sextractor_config.txt', 
-                    '-CATALOG_NAME', os.path.basename(cat_filename), 
-                    '-CHECKIMAGE_NAME', checkimage], check=True)
+                subprocess.run(['sex', img_filename, 
+                                '-c', 'roman_sims_sextractor_config.txt', 
+                                '-CATALOG_NAME', 
+                                os.path.basename(cat_filename),
+                                '-CHECKIMAGE_NAME', checkimage], check=True)
                 
-                tqdm.write("Finished SExtractor run. Check cat and segmap if needed.")
+                tqdm.write("Finished SExtractor run." 
+                           + "Check cat and segmap if needed.")
 
                 # Go back to roman-slitless directory
                 os.chdir(roman_slitless_dir)
 
-            cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-            'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
-            'FWHM_IMAGE', 'CLASS_STAR']
+            cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 
+                          'DELTA_J2000', 'FLUX_AUTO', 'FLUXERR_AUTO', 
+                          'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
+                          'FWHM_IMAGE', 'CLASS_STAR']
             cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, 
-                encoding='ascii')
-            tqdm.write(f"{bcolors.GREEN}" + str(len(cat)) + " objects in catalog." + f"{bcolors.ENDC}")
+                                encoding='ascii')
+            tqdm.write(f"{bcolors.GREEN}" + str(len(cat)) + 
+                       " objects in catalog." + f"{bcolors.ENDC}")
 
             # Loop over all objects and assign spectra
             # Read in the truth files first
-            truth_hdu_gal = fits.open(truth_dir + truth_basename + \
-                            img_filt + str(pt) + '_' + str(det) + '.fits')
-            truth_hdu_sn = fits.open(truth_dir + truth_basename + \
-                            img_filt + str(pt) + '_' + str(det) + '_sn.fits')
-
-            #print(repr(truth_hdu_gal[1].header))
-            #print("-------------------------------------")
-            #print(repr(truth_hdu_sn[1].header))
-            
-            #print("-------------------------------------")
-            #print(truth_hdu_sn[1].data)
-
-            #print("SN RAs:", truth_hdu_sn[1].data['ra'] * 180/np.pi)
-            #print("SN DECs:", truth_hdu_sn[1].data['dec'] * 180/np.pi)
-
-            #hostids = truth_hdu_sn[1].data['hostid']
-            #print("Host galaxy IDs (corresponding to Kevin's IDs NOT SExtractor ID):")
-            #print(hostids)
-
-            #for hi in hostids:
-            #    t = np.where(truth_hdu_gal[1].data['ind'] == hi)[0]
-            #    print("Host index:", t)
-            #    print("Host RA", truth_hdu_gal[1].data['ra'][t] * 180/np.pi)
-            #    print("Host DEC", truth_hdu_gal[1].data['dec'][t] * 180/np.pi)
-
-            #sys.exit(0)
+            truth_hdu_gal = fits.open(truth_dir + truth_basename +
+                                      img_filt + str(pt) + '_' + 
+                                      str(det) + '.fits')
+            truth_hdu_sn = fits.open(truth_dir + truth_basename +
+                                     img_filt + str(pt) + '_' + 
+                                     str(det) + '_sn.fits')
 
             hostids = truth_hdu_sn[1].data['hostid']
 
             # assign arrays
-            ra_gal  = truth_hdu_gal[1].data['ra']  * 180/np.pi
+            ra_gal = truth_hdu_gal[1].data['ra'] * 180/np.pi
             dec_gal = truth_hdu_gal[1].data['dec'] * 180/np.pi
 
             # Also assign SN spectra to our added SN
@@ -596,7 +593,8 @@ def gen_sed_lst_with_truth():
             ***** Short explanation of the code flow below. *****
             # -----------
 
-            GOAL: Every object in the SExtractor catalog must be assigned a spectrum.
+            GOAL: Every object in the SExtractor catalog 
+                  must be assigned a spectrum.
 
             Steps:
               1. Check for match with truth galaxy catalog.
@@ -616,16 +614,17 @@ def gen_sed_lst_with_truth():
                 3B: Is it a host galaxy?
                     Yes --> Find corresponding SN and assign SN and host galaxy
                             spectrum to the same redshift.
-                        --> Ensure that when the SN ID is encountered in the loop
-                            it is skipped.
+                        --> Ensure that when the SN ID is encountered in 
+                            the loop it is skipped.
                         --> Must also ensure that the SN ID wasn't previously 
-                            assigned a galaxy spectrum when a match wasn't found.
+                            assigned a galaxy spectrum when 
+                            a match wasn't found.
                     No  --> Assign galaxy spectrum
             """
 
             assigned_sne = []
             assigned_gal = []
-            assigned_z   = []
+            assigned_z = []
 
             for i in tqdm(range(len(cat)), desc="Object SegID", leave=False):
 
@@ -633,7 +632,8 @@ def gen_sed_lst_with_truth():
                 current_sextractor_id = int(cat['NUMBER'][i])
 
                 if current_sextractor_id in assigned_sne:
-                    tqdm.write("\nSN spectrum already assigned to " + str(current_sextractor_id))
+                    tqdm.write("\nSN spectrum already assigned to " + 
+                               str(current_sextractor_id))
                     tqdm.write("Skipping.")
                     continue
     
@@ -642,9 +642,10 @@ def gen_sed_lst_with_truth():
                 ra_to_check = cat['ALPHA_J2000'][current_sextractor_id - 1]
                 dec_to_check = cat['DELTA_J2000'][current_sextractor_id - 1]
     
-                # Now match and get corresponding entry in the larger truth file
+                # Now match and get corresponding entry in the 
+                # larger truth file
                 idx = get_match(ra_gal, dec_gal, ra_to_check, dec_to_check)
-                #tqdm.write("Matched idx: " + str(idx))
+                # tqdm.write("Matched idx: " + str(idx))
 
                 if idx == -99:
                     tqdm.write("\nObjID:" + str(current_sextractor_id))
@@ -653,67 +654,78 @@ def gen_sed_lst_with_truth():
                     z_nomatch_gal = np.random.uniform(low=0.0, high=3.0)
 
                     # There are some galaxies that have no matches in the truth
-                    # files. I'm assigning a random redshift and spectrum to them.
+                    # files. I'm assigning a random redshift and 
+                    # spectrum to them.
                     # They need to be given a spectrum otherwise the extraction
-                    # is likely to be messed up since we'd then have objects that
-                    # should have had dispersed light on the detector but didn't.
+                    # is likely to be messed up since we'd then have 
+                    # objects that should have had dispersed light 
+                    # on the detector but didn't.
                     # Not sure what that would do to the extraction.
                     # ie. can't skip them like before.
-                    # The SNe added through insert_sne.py should however be given
-                    # SNe spectra.
+                    # The SNe added through insert_sne.py should 
+                    # however be given SNe spectra.
                     current_x = cat['X_IMAGE'][i]
                     current_y = cat['Y_IMAGE'][i]
-                    added_match = np.where((np.abs(xi - current_x) <= 3.0) & \
+                    added_match = np.where((np.abs(xi - current_x) <= 3.0) & 
                                            (np.abs(yi - current_y) <= 3.0))[0]
                     if len(added_match) < 1:
-                        tqdm.write('Assigning galaxy spectrum to object with no match in truth')
-                        tqdm.write('and is not an object added through insert_sne.py')
+                        tqdm.write('Assigning galaxy spectrum to object' +
+                                   ' with no match in truth')
+                        tqdm.write('and is not an object added through ' +
+                                   'insert_sne.py')
                         spec_path = get_gal_spec_path(z_nomatch_gal)
-                        fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
+                        fh.write(str(current_sextractor_id) + " " + 
+                                 spec_path + "\n")
 
                         assigned_gal.append(current_sextractor_id)
                         assigned_z.append(z_nomatch_gal)
                         continue
 
                     else:
-                        tqdm.write(f'{bcolors.CYAN}' + 'Assigning random redshift to added fake SN.' + f'{bcolors.ENDC}')
+                        tqdm.write(f'{bcolors.CYAN}' + 
+                                   'Assigning random redshift to inserted SN.'
+                                   + f'{bcolors.ENDC}')
                         # SN z must be consistent with cosmological dimming
                         z_nomatch_sn = get_sn_z(cat['MAG_AUTO'][i])
                         sn_spec_path = get_sn_spec_path(z_nomatch_sn)
-                        fh.write(str(current_sextractor_id) + " " + sn_spec_path + "\n")
+                        fh.write(str(current_sextractor_id) + " " + 
+                                 sn_spec_path + "\n")
 
                         assigned_sne.append(current_sextractor_id)
                         assigned_z.append(z_nomatch_sn)
                         continue
 
                 id_fetch = int(truth_hdu_gal[1].data['ind'][idx])
-                #tqdm.write("ID to fetch from truth file: " + str(id_fetch))
 
-                truth_idx = np.where(truth_match[1].data['gind'] == id_fetch)[0]
+                truth_idx = np.where(truth_match[1].data['gind'] 
+                                     == id_fetch)[0]
                 # -------------- Matching done -------------- #
 
                 # -------------- Get object redshift
                 z = float(truth_match[1].data['z'][truth_idx])
-                #tqdm.write("Object z: " + str(z))
 
                 # -------------- Check if it is a SN host galaxy or SN itself
                 # If it is then also call the sn SED path generation
                 if id_fetch in hostids:
-                    # Now you must find the corresponding SExtractor ID for the SN
+                    # Now you must find the corresponding 
+                    # SExtractor ID for the SN
 
                     sn_idx0 = np.where(hostids == id_fetch)[0]
 
                     sn_ra = truth_hdu_sn[1].data['ra'][sn_idx0] * 180/np.pi
                     sn_dec = truth_hdu_sn[1].data['dec'][sn_idx0] * 180/np.pi
 
-                    sn_idx = get_match(cat['ALPHA_J2000'], cat['DELTA_J2000'], sn_ra, sn_dec)
+                    sn_idx = get_match(cat['ALPHA_J2000'], cat['DELTA_J2000'], 
+                                       sn_ra, sn_dec)
                     if sn_idx == -99:
                         tqdm.write(f"{bcolors.FAIL}")
-                        tqdm.write("Matching SN not found for hostid " + str(id_fetch))
+                        tqdm.write("Matching SN not found for hostid " + 
+                                   str(id_fetch))
                         tqdm.write("Assigning GALAXY spectrum.")
                         tqdm.write(f"{bcolors.ENDC}")
                         spec_path = get_gal_spec_path(z)
-                        fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
+                        fh.write(str(current_sextractor_id) + " " + 
+                                 spec_path + "\n")
 
                         assigned_gal.append(current_sextractor_id)
                         assigned_z.append(z)
@@ -721,13 +733,15 @@ def gen_sed_lst_with_truth():
 
                     snid = cat['NUMBER'][sn_idx]
 
-                    # This means that the SN and host matched to the same location
+                    # This means that the SN and host matched to 
+                    # the same location
                     # i.e., the SN is bright enough that it outshines the host 
                     z_sn = get_sn_z(cat['MAG_AUTO'][i])
                     if snid == current_sextractor_id:
                         sn_spec_path = get_sn_spec_path(z_sn)
                         fh.write(str(snid) + " " + sn_spec_path + "\n")
-                        tqdm.write("Only SN detected. SN SExtractor ID: " + str(snid))
+                        tqdm.write("Only SN detected. SN SExtractor ID: " 
+                                   + str(snid))
                         tqdm.write("SN mag: " + str(cat['MAG_AUTO'][sn_idx]))
 
                         assigned_sne.append(current_sextractor_id)
@@ -738,20 +752,24 @@ def gen_sed_lst_with_truth():
                         gal_spec_path = get_gal_spec_path(z_sn)
 
                         fh.write(str(snid) + " " + sn_spec_path + "\n")
-                        fh.write(str(current_sextractor_id) + " " + gal_spec_path + "\n")
+                        fh.write(str(current_sextractor_id) + " " 
+                                 + gal_spec_path + "\n")
 
                         assigned_sne.append(snid)
                         assigned_gal.append(current_sextractor_id)
                         assigned_z.append(z_sn)
 
                         tqdm.write("SN SExtractor ID: " + str(snid))
-                        tqdm.write("HOST SExtractor ID: " + str(current_sextractor_id))
-                        tqdm.write("SN and HOST mags respectively: " + \
-                                str(cat['MAG_AUTO'][sn_idx]) + "   " + str(cat['MAG_AUTO'][i]))
+                        tqdm.write("HOST SExtractor ID: " + 
+                                   str(current_sextractor_id))
+                        tqdm.write("SN and HOST mags respectively: " + 
+                                   str(cat['MAG_AUTO'][sn_idx]) + "   " 
+                                   + str(cat['MAG_AUTO'][i]))
 
                 else:  # i.e., for a generic galaxy
                     spec_path = get_gal_spec_path(z)
-                    fh.write(str(current_sextractor_id) + " " + spec_path + "\n")
+                    fh.write(str(current_sextractor_id) + " " + 
+                             spec_path + "\n")
 
                     assigned_gal.append(current_sextractor_id)
                     assigned_z.append(z)
@@ -760,14 +778,16 @@ def gen_sed_lst_with_truth():
 
             # ----- Assert that each object got a spectrum
             sedlst = np.genfromtxt(sed_filename, dtype=None, 
-                names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
+                                   names=['SegID', 'sed_path'], 
+                                   encoding='ascii', skip_header=2)
             try:
                 assert len(cat) == len(sedlst)
             except AssertionError:
                 tqdm.write(f'{bcolors.FAIL}')
                 
                 tqdm.write('Lengths of catalog and SED lst not consistent.')
-                tqdm.write('Need to manually remove one of the following repeated SegIDs:')
+                tqdm.write('Need to manually remove one of the '
+                           + 'following repeated SegIDs:')
 
                 assigned_gal = np.asarray(assigned_gal)
                 assigned_sne = np.asarray(assigned_sne)
@@ -776,6 +796,7 @@ def gen_sed_lst_with_truth():
                 tqdm.write(f'{bcolors.ENDC}')
 
     return None
+
 
 def remove_duplicates():
 
@@ -789,7 +810,8 @@ def remove_duplicates():
         for det in tqdm(detectors, desc="Removing duplicates"):
 
             sed_filename = (pylinear_lst_dir + 
-                           'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst')
+                            'sed_' + img_filt + str(pt) + '_' 
+                            + str(det) + '.lst')
 
             # Get all lines
             alllines = open(sed_filename, 'r').readlines()
@@ -819,17 +841,22 @@ def remove_duplicates():
 
                 assert len(all_unique_ids) < len(all_ids)
 
-                duplicate_idx = np.where(counts>1)[0]
-                # This could be either the SN or the galaxy spectrum that numpy counted (with counts>1)
-                # i.e, this corresponds to the index of the second appearance of the ID
-                # Therefore, we'll look for both IDs that match and then decide to keep the SN spectrum
+                duplicate_idx = np.where(counts > 1)[0]
+                # This could be either the SN or the galaxy 
+                # spectrum that numpy counted (with counts>1)
+                # i.e, this corresponds to the index of 
+                # the second appearance of the ID
+                # Therefore, we'll look for both IDs that match and 
+                # then decide to keep the SN spectrum
                 assert len(duplicate_idx) == 1  
-                # typically only one duplicate # we could turn code below into a for loop if needed
+                # typically only one duplicate # we could turn 
+                # code below into a for loop if needed
                 
-                duplicate_id_idx = np.where(all_ids == all_ids[duplicate_idx[0]])[0]
+                duplicate_id_idx = np.where(all_ids == 
+                                            all_ids[duplicate_idx[0]])[0]
 
                 # Find duplicate spectra and choose the SN spectra
-                duplicate_IDs = all_ids[duplicate_id_idx]
+                # duplicate_IDs = all_ids[duplicate_id_idx]
                 duplicate_spectra = all_spectra[duplicate_id_idx]
                 for s, spec in enumerate(duplicate_spectra):
                     if 'bc03' in spec:
@@ -844,12 +871,14 @@ def remove_duplicates():
                     fh.write(alllines[1])
 
                     for i in range(len(ids_to_write)):
-                        fh.write(str(ids_to_write[i]) + ' ' + spectra_to_write[i] + '\n')
+                        fh.write(str(ids_to_write[i]) + ' ' 
+                                 + spectra_to_write[i] + '\n')
 
             else:
                 continue
 
     return None
+
 
 def add_faint_sne_sedlst():
 
@@ -870,7 +899,8 @@ def add_faint_sne_sedlst():
         for det in tqdm(detectors, desc="Adding faint SNe manually"):
 
             # Read in segmentation map
-            segmap = img_sim_dir + img_basename + img_filt + str(pt) + '_' + str(det) + '_segmap.fits'
+            segmap = img_sim_dir + img_basename + img_filt + \
+                str(pt) + '_' + str(det) + '_segmap.fits'
             segdata, seghdr = fits.getdata(segmap, header=True)
 
             # Name of direct image
@@ -878,13 +908,15 @@ def add_faint_sne_sedlst():
 
             # Name of catalog
             cat_filename = img_sim_dir + img_basename + img_filt + \
-                           str(pt) + '_' + str(det) + '_SNadded.cat'
+                str(pt) + '_' + str(det) + '_SNadded.cat'
 
             # Read in current sedlst
             sed_filename = (pylinear_lst_dir + 
-                           'sed_' + img_filt + str(pt) + '_' + str(det) + '.lst')
+                            'sed_' + img_filt + str(pt) + '_' + 
+                            str(det) + '.lst')
             sedlst = np.genfromtxt(sed_filename, dtype=None, 
-                names=['SegID', 'sed_path'], encoding='ascii', skip_header=2)
+                                   names=['SegID', 'sed_path'], 
+                                   encoding='ascii', skip_header=2)
 
             # Read in list of artificially inserted SNe
             snadd_cat = np.load(segmap.replace('_segmap.fits', '_SNadded.npy'))
@@ -924,7 +956,8 @@ def add_faint_sne_sedlst():
                 xpos = xi[faint_mag_idx][i]
                 ypos = yi[faint_mag_idx][i]
 
-                #print(faint_mag, faint_z, new_id, os.path.basename(new_spectrum), xpos, ypos)
+                # print(faint_mag, faint_z, new_id, 
+                #       os.path.basename(new_spectrum), xpos, ypos)
 
                 # Get all pix to associate with the SN
                 faint_sn_pix = get_obj_pix(xpos, ypos, dir_img_name)
@@ -960,6 +993,7 @@ def add_faint_sne_sedlst():
 
     return None
 
+
 def get_stellar_spec_path():
     # Randomly choses a stellar spectrum
     all_stars = ['a5v', 'b5iii', 'f0v', 'g2v', 'k3i', 'm4v', 'o5v']
@@ -978,26 +1012,27 @@ def get_stellar_spec_path():
 
         # First read in the spectrum from pickles
         stellar_spec = np.genfromtxt(pickles_spec_path, dtype=None, 
-                names=['wav','flux'], usecols=(0,1))
+                                     names=['wav', 'flux'], usecols=(0, 1))
 
         # Now truncate
-        stellar_wav  = stellar_spec['wav']
+        stellar_wav = stellar_spec['wav']
         stellar_flux = stellar_spec['flux']
 
         wav_idx = np.where((stellar_wav >= 7000) & (stellar_wav <= 19000))[0]
 
-        stellar_wav  = stellar_wav[wav_idx]
+        stellar_wav = stellar_wav[wav_idx]
         stellar_flux = stellar_flux[wav_idx]
 
         # Write to file
         with open(star_spec_path, 'w') as fh:
 
             for i in range(len(stellar_wav)):
-                fh.write("{:.2f}".format(stellar_wav[i]) \
-                       + " " + str(stellar_flux[i]))
+                fh.write("{:.2f}".format(stellar_wav[i])
+                         + " " + str(stellar_flux[i]))
                 fh.write("\n")
 
     return star_spec_path
+
 
 def gen_sed_lst():
 
@@ -1017,7 +1052,7 @@ def gen_sed_lst():
 
             img_suffix = img_filt + str(pt) + '_' + str(det)
             dir_img_path = img_sim_dir + \
-                           img_basename + img_suffix + '_SNadded.fits'
+                img_basename + img_suffix + '_SNadded.fits'
 
             sedlst_filename = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
 
@@ -1054,12 +1089,14 @@ def gen_sed_lst():
 
                     # ------------ First get hte type of the object
                     if i in insert_segid:
-                        obj_idx = int(np.where(insert_segid == current_segid)[0])
+                        obj_idx = int(np.where(insert_segid 
+                                      == current_segid)[0])
                         object_type = insert_cat[:, -2][obj_idx]
                     else:
                         object_type = 'GLXY'
 
-                    # ------------ Now assign the spectrum depending on the type 
+                    # ------------ Now assign the spectrum 
+                    # depending on the type 
                     if object_type == 'GLXY':
                         z = np.random.uniform(low=0.2, high=3.0)
                         spec_path = get_gal_spec_path(z)
@@ -1085,12 +1122,11 @@ def gen_sed_lst():
 
     return None
 
+
 if __name__ == '__main__':
 
     gen_sed_lst()
-    #remove_duplicates()
-    #add_faint_sne_sedlst()
+    # remove_duplicates()
+    # add_faint_sne_sedlst()
 
     sys.exit(0)
-
-
