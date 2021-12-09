@@ -4,9 +4,6 @@ class Config(object):
     """
     def __init__(self, configfilename):
         
-        #super(Config, self).__init__()
+        # super(Config, self).__init__()
         
         self.configfilename = configfilename
-
-
-        

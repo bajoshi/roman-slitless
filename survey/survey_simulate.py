@@ -1,7 +1,6 @@
 import numpy as np
 from astropy.io import fits
 from astropy.cosmology import FlatLambdaCDM
-cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 import pylinear
 
 import yaml
@@ -9,10 +8,11 @@ import os
 import sys
 import socket
 import subprocess
-import pdb
 
 from pprint import pprint
 from tqdm import tqdm
+
+cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
 # -----------------
 if 'plffsn2' in socket.gethostname():

@@ -365,7 +365,7 @@ def main():
     exptime3 = '_1200s'
     exptime4 = '_400s'
 
-    all_exptimes = [exptime_a, exptime1, exptime2, exptime3, exptime4]
+    all_exptimes = [exptime1, exptime2, exptime3, exptime4]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -384,7 +384,7 @@ def main():
     # ----------------------- Loop over all simulated and extracted SN spectra ----------------------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(4, 6, 1)
+    detectors = np.arange(1, 2, 1)
 
     for pt in pointings:
         for det in detectors:

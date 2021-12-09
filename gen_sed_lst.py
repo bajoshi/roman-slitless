@@ -4,17 +4,12 @@ from astropy.io import fits
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
-astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, 
-    Tcmb0=2.725 * u.K, Om0=0.3)
 
 import os
 import sys
 import subprocess
 from tqdm import tqdm
-import time
 import socket
-
-from numba import jit
 
 import matplotlib.pyplot as plt
 
@@ -23,6 +18,9 @@ Lsol = 3.826e33
 # Define scaling factor
 # Check sn_scaling.py in same folder as this code
 sn_scalefac = 1.734e40
+
+astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, 
+                              Tcmb0=2.725 * u.K, Om0=0.3)
 
 # -----------------
 if 'plffsn2' in socket.gethostname():
@@ -58,7 +56,6 @@ assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
 
 sys.path.append(fitting_utils)
-import proper_and_lum_dist as cosmo
 import dust_utils as du
 from get_obj_pix import get_obj_pix
 

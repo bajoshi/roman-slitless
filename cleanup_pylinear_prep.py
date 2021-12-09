@@ -30,6 +30,7 @@ assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
 
 if __name__ == '__main__':
+    # This code will: 
     # 1. Remove lst files
     # 2. Remove all sed txt files
     # 3. Remove all segmap, SNadded, npy, reg, and cat files

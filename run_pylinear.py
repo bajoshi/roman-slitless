@@ -5,14 +5,12 @@ import numpy as np
 import os
 import sys
 import time
-import datetime as dt
 import glob
 import shutil
 import socket
 
 import logging
 
-import matplotlib.pyplot as plt
 
 def get_dithered_locations(ra_cen, dec_cen, nobs):
     """
@@ -51,30 +49,31 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     ra_list, dec_list = [ra_cen], [dec_cen]
 
     if nobs == 2:
-        ra_list.append(ra_cen   + 3.5*pix_to_deg)
+        ra_list.append(ra_cen + 3.5*pix_to_deg)
         dec_list.append(dec_cen + 3.5*pix_to_deg)
 
     if nobs == 3:
-        ra_list.append(ra_cen   + 3.33*pix_to_deg)
+        ra_list.append(ra_cen + 3.33*pix_to_deg)
         dec_list.append(dec_cen + 3.33*pix_to_deg)
 
-        ra_list.append(ra_cen   + 6.67*pix_to_deg)
+        ra_list.append(ra_cen + 6.67*pix_to_deg)
         dec_list.append(dec_cen + 6.67*pix_to_deg)
 
     if nobs == 4:
-        ra_list.append(ra_cen   + 4.0*pix_to_deg)
+        ra_list.append(ra_cen + 4.0*pix_to_deg)
         dec_list.append(dec_cen + 1.5*pix_to_deg)
 
-        ra_list.append(ra_cen   + 2.5*pix_to_deg)
+        ra_list.append(ra_cen + 2.5*pix_to_deg)
         dec_list.append(dec_cen + 4.0*pix_to_deg)
 
-        ra_list.append(ra_cen   - 1.5*pix_to_deg)
+        ra_list.append(ra_cen - 1.5*pix_to_deg)
         dec_list.append(dec_cen + 2.5*pix_to_deg)
 
     return ra_list, dec_list
 
-def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
-    simroot, ra_cen, dec_cen, disp_elem, exptime_list):
+
+def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
+                   simroot, ra_cen, dec_cen, disp_elem, exptime_list):
 
     # Format the ra dec
     ra_cen_fmt = "{:.7f}".format(ra_cen)
@@ -95,8 +94,8 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
             roll_angle = "{:.1f}".format(roll_angle_list[r])
 
             str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
-            '  ' + ra_cen_fmt + '  ' + dec_cen_fmt + \
-            '  ' + roll_angle + '  ' + disp_elem
+                           '  ' + ra_cen_fmt + '  ' + dec_cen_fmt + \
+                           '  ' + roll_angle + '  ' + disp_elem
             
             fh.write(str_to_write)
 
@@ -104,8 +103,9 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, \
 
     return None
 
-def create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name, \
-    img_suffix, machine):
+
+def create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name, 
+                   img_suffix, machine):
 
     # Write list
     obs_filename = 'obs_' + img_suffix + machine + '.lst'
@@ -119,6 +119,7 @@ def create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name, \
     print("Written OBS LST:", obs_filename)
 
     return None
+
 
 def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
 
@@ -145,11 +146,11 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
     fh.write("# 1: SEGMENTATION ID" + "\n")
     fh.write("# 2: SED FILE" + "\n")
 
-    for l in fh0.readlines():
+    for line in fh0.readlines():
 
-        if 'roman_slitless_sims_seds' in l:
+        if 'roman_slitless_sims_seds' in line:
 
-            la = l.split('/')
+            la = line.split('/')
             ln = la[0] + seds_path + la[-1]
 
             fh.write(ln)
@@ -161,8 +162,9 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
 
     return None
 
-def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
-    machine, roll_angle_list):
+
+def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, 
+                   machine, roll_angle_list):
 
     # There is a unique flt lst for each exptime
     # Also unique to machine and direct image
@@ -172,17 +174,12 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, \
 
         e = exptime_list[t]
 
-        #for num_coadds in range(3,8):
-
         # Assign name and write list
         flt_filename = 'flt_' + img_suffix + '_' + str(e) + 's' + machine + '.lst'
-                       #str(num_coadds) + 'coadds' + 
 
         with open(lst_dir + flt_filename, 'w') as fh:
             fh.write("# Path to each flt image" + "\n")
             fh.write("# This has to be a simulated or observed dispersed image" + "\n")
-
-            #roll_count = 0
 
             for r in range(len(roll_angle_list)):
 
@@ -479,7 +476,7 @@ def main():
             npix = 4096 * 4096
     
             dark = 0.005   # e/s/pix
-            read = 10      # electrons per pixel
+            read = 10      # electrons per read
     
             exptime = exptime_list[e]  # seconds
             
