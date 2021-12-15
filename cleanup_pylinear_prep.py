@@ -17,8 +17,8 @@ if 'plffsn2' in socket.gethostname():
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
     
-    roman_sims_seds = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_seds/"
-    pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
+    roman_sims_seds = extdir + "roman_slitless_sims_seds/"
+    pylinear_lst_dir = extdir + "pylinear_lst_files/"
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
     home = os.getenv("HOME")
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     # ---- Txt files with inserted SN props in survey
     os.chdir(survey_dir)
-    print('Working on deleting survey inserted SNe txt files.')
+    print('Working on deleting inserted SNe txt files in survey.')
     for fl in glob.glob('inserted_sn_*.txt'):
         os.remove(fl)
 

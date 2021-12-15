@@ -34,8 +34,8 @@ assert os.path.isdir(roman_direct_dir)
 dir_img_part = 'part1'
 img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
 
-sys.path.append(utils_dir)
-from make_model_dirimg import gen_model_img  # noqa: E402
+# sys.path.append(utils_dir)
+# from make_model_dirimg import gen_model_img  # noqa: E402
 
 # ---------------------- GLOBAL DEFS
 # Scaling factor for direct images
@@ -46,32 +46,54 @@ DIRIMAGE_SCALING = 10**(-0.4 * (31.7956 - 26.264))
 # ----------------------
 BACK_SCALE = 0.001  # standard deviation for background to be added.
 # read in mag and counts from SExtractor catalog on dir img
-REF_COUNTS = 13753.24
-REF_MAG = 15.9180
+REF_COUNTS = 13696.77
+REF_MAG = 15.9225
+
+CUTOUT_SIZE = 50
 # ----------------------
 
 
+def get_segpix(snmag):
+
+    blank_smap = np.zeros((CUTOUT_SIZE*2, CUTOUT_SIZE*2), dtype=np.int64)
+
+    if snmag > 26.0:
+        # central 3x3 grid
+        blank_smap[49:52, 49:52] = 1
+    elif snmag > 24.0 and snmag <= 26.0:
+        # central 4x4 grid
+        blank_smap[48:52, 48:52] = 1
+    elif snmag > 22.0 and snmag <= 24.0:
+        # central 4x4 grid
+        blank_smap[48:52, 48:52] = 1
+        # add 4 "spokes"
+        blank_smap[50, 47] = 1
+        blank_smap[50, 52] = 1
+        blank_smap[47, 50] = 1
+        blank_smap[52, 50] = 1
+    elif snmag > 19.0 and snmag <= 22.0:
+        # central 6x6 grid
+        blank_smap[47:53, 47:53] = 1
+        # add 4 "spokes"
+        blank_smap[50, 46] = 1
+        blank_smap[50, 53] = 1
+        blank_smap[46, 50] = 1
+        blank_smap[53, 50] = 1
+    else:  # STARS
+        # central 10x10 grid
+        blank_smap[45:55, 45:55] = 1
+
+    segpix = np.where(blank_smap == 1)
+
+    return segpix
+
+
 def get_ref_segpix_counts(snmag):
-    # Also see notes in ref_cutout_segpix.py
-
-    # Get the closest mag to snmag in reference imgs
-    ref_mag_array = np.arange(15.0, 28.4, 0.2)
-    # ref mag array copied from ref_cutout_segpix.py
-    if snmag >= 28.2:
-        ref_mag_idx = -1
-    else:
-        ref_mag_idx = np.argmin(abs(ref_mag_array - snmag))
-    
-    rmag = ref_mag_array[ref_mag_idx]
-
-    # Read segmap
-    segmap = img_sim_dir + 'ref_dir/ref_cutout_' + \
-        '{:.1f}'.format(rmag) + '_segmap.fits'
-    segdata = fits.getdata(segmap)
+    # OLD method: See notes in ref_cutout_segpix.py
 
     # ---------
     # Get the segmentation pixels
-    segpix = np.where(segdata == 1)
+    segpix = get_segpix(snmag)
     # since there is only one detected object
     # in all the reference segmaps.
 
@@ -131,9 +153,10 @@ def get_insertion_coords(num_to_insert,
         # Read in catalog
         cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 
                       'ALPHA_J2000', 'DELTA_J2000', 
-                      'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 
-                      'MAGERR_AUTO', 'FLUX_RADIUS', 
-                      'FWHM_IMAGE', 'CLASS_STAR']
+                      'FLUX_AUTO', 'FLUXERR_AUTO', 
+                      'MAG_AUTO', 'MAGERR_AUTO', 
+                      'FLUX_RADIUS', 'FWHM_IMAGE', 
+                      'CLASS_STAR']
         cat = np.genfromtxt(img_cat, dtype=None, names=cat_header, 
                             encoding='ascii')
 
@@ -302,51 +325,52 @@ def gen_reference_cutout(showref=False):
         cps_sci_arr = ddat * DIRIMAGE_SCALING
 
         # Save to be able to run sextractor to generate model image
-        mhdu = fits.PrimaryHDU(data=cps_sci_arr, header=dhdr)
-        model_img_name = dname.replace('.fits', '_scaled.fits')
-        mhdu.writeto(model_img_name) 
-
-        # ---------
-        # Run SExtractor on this scaled image
-        os.chdir(img_sim_dir)
-
-        cat_filename = model_img_name.replace('.fits', '.cat')
-        checkimage = model_img_name.replace('.fits', '_segmap.fits')
-
-        subprocess.run(['sex', model_img_name, 
-                        '-c', 'roman_sims_sextractor_config.txt', 
-                        '-CATALOG_NAME', 
-                        os.path.basename(cat_filename), 
-                        '-CHECKIMAGE_NAME', checkimage], 
-                       check=True)
-
-        # Go back to roman-slitless directory
-        os.chdir(roman_slitless_dir)
-
-        # ---------
-        # Now turn it into a model image
-        # and add a small amount of background. See notes below on this.
-        model_img = gen_model_img(model_img_name, checkimage)
-        model_img += np.random.normal(loc=0.0, scale=BACK_SCALE, 
-                                      size=model_img.shape)
-
-        # Save
-        pref = fits.PrimaryHDU(data=model_img, header=dhdr)
-        pref.writeto(dir_img_name)
+        rhdu = fits.PrimaryHDU(data=cps_sci_arr, header=dhdr)
+        rhdu.writeto(dir_img_name)
 
     img_arr = fits.getdata(dir_img_name)
 
     r = yloc
     c = xloc
 
-    s = 50
-
-    ref_img = img_arr[r-s:r+s, c-s:c+s]
+    ref_img = img_arr[r-CUTOUT_SIZE:r+CUTOUT_SIZE, c-CUTOUT_SIZE:c+CUTOUT_SIZE]
 
     # Save
     rhdu = fits.PrimaryHDU(data=ref_img)
-    rhdu.writeto(img_sim_dir + 'ref_cutout_psf.fits', overwrite=True)
+    ref_name = img_sim_dir + 'ref_cutout_psf.fits'
+    rhdu.writeto(ref_name, overwrite=True)
 
+    # --------------
+    # Run SExtractor on the reference cutout
+    os.chdir(img_sim_dir)
+
+    cat_filename = ref_name.replace('.fits', '.cat')
+    checkimage = ref_name.replace('.fits', '_segmap.fits')
+
+    subprocess.run(['sex', ref_name, 
+                    '-c', 'roman_sims_sextractor_config.txt', 
+                    '-CATALOG_NAME', 
+                    os.path.basename(cat_filename), 
+                    '-CHECKIMAGE_NAME', checkimage], 
+                   check=True)
+
+    # Go back to roman-slitless directory
+    os.chdir(roman_slitless_dir)
+
+    # --------------
+    # Now read in the catalog just created to get
+    # the reference's counts and magnitude
+    ref_cat_hdr = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 
+                   'DELTA_J2000', 'FLUX_AUTO', 'FLUXERR_AUTO', 
+                   'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
+                   'FWHM_IMAGE', 'CLASS_STAR']
+    ref_cat = np.genfromtxt(cat_filename, dtype=None,
+                            names=ref_cat_hdr, encoding='ascii')
+    assert ref_cat.size == 1
+    print('Counts for reference star:', ref_cat['FLUX_AUTO'])
+    print('MAG for reference star:', ref_cat['MAG_AUTO'])
+
+    # --------------
     if showref:
 
         fig = plt.figure()
@@ -367,7 +391,7 @@ def get_fullgrid_segpix(segpix, row, col):
     return fullgrid_segpix
 
 
-def main():
+if __name__ == '__main__':
 
     # ---------------
     # some preliminary settings
@@ -378,6 +402,8 @@ def main():
     # Mag limits for choosing random SN mag
     lowmag = 19.0
     highmag = 30.0
+
+    s = CUTOUT_SIZE
 
     # ---------------
     # Read in the reference image of the star from 
@@ -391,7 +417,7 @@ def main():
     # ---------------
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(1, 2, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -449,13 +475,14 @@ def main():
 
             # ---------------
             # Convert to model image
-            model_img = gen_model_img(model_img_name, checkimage)
+            # model_imgdat = gen_model_img(model_img_name, checkimage)
 
             # ---------------
             # Read in segmap. Will be used later
             segdata = fits.getdata(checkimage)
 
             # ---------------
+            """
             # Add a small amount of background
             # The mean is zero and the standard deviation is
             # is about 80 times lower than the expected counts
@@ -463,8 +490,9 @@ def main():
             # By trial and error I found that this works best for
             # SExtractor being able to detect sources down to 27.0
             # Not sure why it needs to be that much lower...
-            model_img += np.random.normal(loc=0.0, scale=BACK_SCALE, 
-                                          size=model_img.shape)
+            model_imgdat += np.random.normal(loc=0.0, scale=BACK_SCALE, 
+                                          size=model_imgdat.shape)
+            """
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
@@ -505,7 +533,17 @@ def main():
 
                 # Now update counts to recover the required mag
                 # from summing only the segpix in the scaled ref data
-                # cutout_sum = np.sum(new_cutout[segpix[0], segpix[1]])
+                cutout_sum = np.sum(new_cutout[segpix[0], segpix[1]])
+                eps = sncounts / cutout_sum
+                new_cutout_scaled = eps * new_cutout
+
+                # scaled_cutout_sum = np.sum(new_cutout_scaled[segpix[0], 
+                #                                              segpix[1]])
+                # inferred_mag = -2.5 * np.log10(scaled_cutout_sum) + 26.264
+                # print(i, 
+                #       '{:.3f}'.format(snmag), 
+                #       '{:.3f}'.format(inferred_mag),
+                #       '{:.3f}'.format(snmag - inferred_mag))
 
                 # Now get coords
                 xi = x_ins[i]
@@ -515,8 +553,8 @@ def main():
                 c = xi
 
                 # Add in the new SN in the direct image
-                model_img[r-s:r+s, c-s:c+s] = \
-                    model_img[r-s:r+s, c-s:c+s] + new_cutout
+                cps_sci_arr[r-s:r+s, c-s:c+s] = \
+                    cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout_scaled
 
                 # Also add it into the segmap
                 # First update segpix to reference the larger 4096 x 4096 grid
@@ -570,8 +608,13 @@ def main():
                 # Scale and add
                 scale_fac = starcounts / REF_COUNTS
                 new_cutout = ref_data * scale_fac
-                model_img[r-s:r+s, c-s:c+s] = \
-                    model_img[r-s:r+s, c-s:c+s] + new_cutout
+
+                # NOT DOING THE ADDITIONAL SCALING HERE
+                # Not really needed because these stars are
+                # already quite bright.
+
+                cps_sci_arr[r-s:r+s, c-s:c+s] = \
+                    cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout
 
                 # Also add it into the segmap
                 segpix_big = get_fullgrid_segpix(segpix, r, c)
@@ -600,7 +643,7 @@ def main():
             tqdm.write('Saved: ' + snadd_fl)
 
             # Save direct image and check with ds9
-            new_hdu = fits.PrimaryHDU(header=cps_hdr, data=model_img)
+            new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
             savefile = dir_img_name.replace('.fits', '_SNadded.fits')
             new_hdu.writeto(savefile, overwrite=True)
             tqdm.write('Saved: ' + savefile)
@@ -639,12 +682,7 @@ def main():
 
             # Clean up intermediate files
             os.remove(checkimage)
-            os.remove(cat_filename)
+            # os.remove(cat_filename) 
             os.remove(model_img_name)
 
-    return None
-
-
-if __name__ == '__main__':
-    main()
-    sys.exit(0)
+    sys.exit(0)    
