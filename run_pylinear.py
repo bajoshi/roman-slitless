@@ -360,7 +360,7 @@ def main():
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [20, 400, 1200, 3600, 10800]
+    exptime_list = [400, 1200, 3600, 10800]
     roll_angle_list = [0.0, 70.0, 140.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
