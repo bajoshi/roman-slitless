@@ -287,7 +287,7 @@ def get_truth_sn(roman_direct_dir, img_suffix):
     return num_truth_sn
 
 
-def main():
+if __name__ == '__main__':
 
     # ---------------------- Preliminary stuff
     logger = logging.getLogger('Running pylinear wrapper')
@@ -489,9 +489,13 @@ def main():
             # npix = 4096 * 4096
     
             dark = 0.005   # e/s/pix
-            read = 10      # electrons per read
-    
+            rdnoise = 10      # electrons per read
+
             exptime = exptime_list[e]  # seconds
+    
+            # Number of reads
+            nreads = int(np.ceil(exptime/900))
+            read_total = nreads * rdnoise
             
             for i in range(len(roll_angle_list)):
 
@@ -526,7 +530,7 @@ def main():
                     # Randomly vary signal about its mean. 
                     # Assuming Gaussian distribution
                     # first get the uncertainty
-                    variance = signal + read**2
+                    variance = signal + read_total**2
                     sigma = np.sqrt(variance)
                     new_sig = np.random.normal(loc=signal, 
                                                scale=sigma, size=size)
@@ -656,9 +660,4 @@ def main():
     logger.info("Total time taken: " + 
                 "{:.2f}".format(time.time() - start) + " seconds.")
 
-    return None
-
-
-if __name__ == '__main__':
-    main()
     sys.exit(0)

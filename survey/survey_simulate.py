@@ -382,10 +382,10 @@ def run_sim(dir_img_name, visit, config):
             # sci image originally in electrons/s
             signal = signal * exptime  # this is now in electrons
     
-            # Randomly vary signal about its mean. Assuming Gaussian distribution
-            # first get the uncertainty
+            # Randomly vary signal about its mean. Assuming Gaussian 
+            # distribution first get the uncertainty
             # Number of reads
-            nreads = int(exptime/900)
+            nreads = int(np.ceil(exptime/900))
             read_total = nreads * rdnoise
 
             variance = signal + read_total**2

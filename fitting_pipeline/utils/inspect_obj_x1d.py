@@ -1,4 +1,7 @@
+
+
 import matplotlib.pyplot as plt
+
 
 def display_sn_spec(ext_hdu, sn_segid):
     # Get extracted 1d spec 
