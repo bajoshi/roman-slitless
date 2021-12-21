@@ -68,6 +68,7 @@ print('Total SNe in pointing: ', total_sne1)
 print('-------'*5)
 
 # ------------------------------------
+"""
 # TEST 2:
 # For the inserted SNe esure that SExtractor magnitude
 # is same (or almost the same) as the inserted magnitude.
@@ -135,6 +136,7 @@ fig.savefig(roman_slitless_dir + 'figures/check_inserted_sn_mag.pdf', dpi=200,
 
 fig.clear()
 plt.close(fig)
+"""
 
 # ------------------------------------
 """
@@ -279,15 +281,16 @@ for i in range(18):
     # Set filenames
     sed_filename = pylinear_lst_dir + 'sed_Y106_' + pt + '_' \
         + str(i+1) + '.lst'
-    cat_filename = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' \
-        + pt + '_' + str(i+1) + '_SNadded.cat'
+    insert_cat_name = roman_direct_dir + 'K_5degimages_part1/' + '5deg_Y106_' \
+        + pt + '_' + str(i+1) + '_SNadded.npy'
 
     # Read in the files
     sed = np.genfromtxt(sed_filename, dtype=None, 
                         names=['SegID', 'sed_path'], 
                         encoding='ascii', skip_header=2)
-    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, 
-                        encoding='ascii')
+    cat = np.load(insert_cat_name)
+
+    all_inserted_segids = np.array(cat[:, -1], dtype=np.int64)
 
     # ----- Now get each SN mag and z
     for j in range(len(sed)):
@@ -297,15 +300,13 @@ for i in range(18):
             z = salt_pth[3][1:]
             z = float(z.replace('p', '.'))
 
-            segid = sed['SegID'][j]
-            segid_idx = np.where(cat['NUMBER'] == segid)[0]
+            sn_segid = sed['SegID'][j]
+            sn_idx = int(np.where(all_inserted_segids == sn_segid)[0])
+            mag = float(cat[sn_idx, 2])
 
-            if segid_idx.size:
-                mag = float(cat['MAG_AUTO'][segid_idx])
-
-                # append
-                all_sn_mags.append(mag)
-                all_sn_z.append(z)
+            # append
+            all_sn_mags.append(mag)
+            all_sn_z.append(z)
                 
             total_sne2 += 1
 

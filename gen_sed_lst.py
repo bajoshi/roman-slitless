@@ -1088,7 +1088,7 @@ def gen_sed_lst():
                     current_segid = i+1
 
                     # ------------ First get hte type of the object
-                    if i in insert_segid:
+                    if current_segid in insert_segid:
                         obj_idx = int(np.where(insert_segid 
                                       == current_segid)[0])
                         object_type = insert_cat[:, -2][obj_idx]
@@ -1098,7 +1098,19 @@ def gen_sed_lst():
                     # ------------ Now assign the spectrum 
                     # depending on the type 
                     if object_type == 'GLXY':
-                        z = np.random.uniform(low=0.2, high=3.0)
+
+                        # You also need to know if it is a host-galaxy
+                        # because if it is then we need to ensure 
+                        # that the SN that it hosts follows the 
+                        # correct cosmology.
+                        if current_segid in host_segids:
+                            insert_sn_idx = \
+                                np.where(host_segids == current_segid)[0]
+                            snmag = float(insert_cat[insert_sn_idx, 2])
+                            z = get_sn_z(snmag)
+                        else:
+                            z = np.random.uniform(low=0.2, high=3.0)
+                        
                         spec_path = get_gal_spec_path(z)
                         # Append redshift
                         all_redshifts[i] = z
@@ -1107,7 +1119,6 @@ def gen_sed_lst():
                         # Check the host id and get its redshift
                         current_host_segid = host_segids[obj_idx]
                         host_idx = int(current_host_segid - 1)
-
                         host_z = all_redshifts[host_idx]
 
                         spec_path = get_sn_spec_path(host_z)
