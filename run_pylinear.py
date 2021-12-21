@@ -508,16 +508,6 @@ if __name__ == '__main__':
                 with fits.open(oldf) as hdul:
                     sci = hdul[('SCI', 1)].data    # the science image
                     size = sci.shape              # dimensionality of the image
-
-                    # add a small pedestal value to ensure that 
-                    # no negative values exist in the signal
-                    # bkg = np.min(sci)
-                    # logger.info("Background pedestal value:" + 
-                    #             "{:.3f}".format(np.abs(bkg)))
-                    # logger.info("Mean and median of entire sci img:")
-                    # logger.info("{:.3f}".format(np.mean(sci, axis=None)))
-                    # logger.info("{:.3f}".format(np.median(sci, axis=None)))
-                    # sci = sci + np.abs(bkg)
     
                     # update the science extension with sky background 
                     # and dark current
@@ -532,6 +522,14 @@ if __name__ == '__main__':
                     # first get the uncertainty
                     variance = signal + read_total**2
                     sigma = np.sqrt(variance)
+
+                    # Replace any NaNs in the sigma array
+                    # with the mean sigma value
+                    sigma_nan_idx = np.where(np.isnan(sigma))
+                    sigma_nan_idx = np.asarray(sigma_nan_idx)
+                    if sigma_nan_idx.size:
+                        sigma[sigma_nan_idx] = np.nanmean(sigma)
+
                     new_sig = np.random.normal(loc=signal, 
                                                scale=sigma, size=size)
     
