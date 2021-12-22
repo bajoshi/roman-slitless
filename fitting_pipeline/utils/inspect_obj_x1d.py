@@ -175,6 +175,10 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
     sn_sed_path = sedlst['sed_path'][sn_sed_idx]
     host_sed_path = sedlst['sed_path'][host_sed_idx]
 
+    print('SN template name:', os.path.basename(sn_sed_path))
+    print('HOST template name:', os.path.basename(host_sed_path))
+    print('\n')
+
     sn_template_wav, sn_template_flam = read_sed_scale(sn_sed_path, snmag)
     host_template_wav, host_template_flam = \
         read_sed_scale(host_sed_path, hostmag)
@@ -221,13 +225,14 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
     ax4.set_xlabel('Wavelength [Angstroms]', fontsize=15)
 
     ax4.plot(host_wav, host_flam, color='k', lw=1.5, 
-             label='pyLINEAR x1d spec host-galaxy')
+             label='pyLINEAR x1d spec host-galaxy', zorder=3)
     ax4.fill_between(host_wav, host_flam - host_ferr_lo, 
                      host_flam + host_ferr_hi,
-                     color='gray', alpha=0.5)
+                     color='gray', alpha=0.5, zorder=3)
 
     ax4.plot(host_template_wav, host_template_flam, 
-             color='dodgerblue', lw=2.0, label='HOST-galaxy template')
+             color='dodgerblue', lw=1.2, label='HOST-galaxy template',
+             alpha=0.9, zorder=2)
 
     # ---- Legend
     ax3.legend(loc=0, frameon=False, fontsize=14)
@@ -275,7 +280,7 @@ if __name__ == '__main__':
     # Info for code to plot
     sn_segid = int(sys.argv[1])
     detector = '1'
-    exptime = '1200s'
+    exptime = '400s'
 
     # THIS CODE IS INTENDED TO ONLY BE RUN AFTER 
     # PLFFSN2 FINISHES AND NOT ON PLFFSN2.
