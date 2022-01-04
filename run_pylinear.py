@@ -568,8 +568,6 @@ if __name__ == '__main__':
             logger.info("Time taken for simulation: " + 
                         "{:.2f}".format(ts - start) + " seconds.")
 
-            sys.exit(0)
-
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
                 str(exptime) + 's' + obsstr + '.lst'
