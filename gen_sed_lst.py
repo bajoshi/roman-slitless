@@ -1006,7 +1006,7 @@ def get_stellar_spec_path():
     # We need the first col (normalized flux) and wav.
     # Also truncate the spectra to somewhat closer to prism
     # coverage.
-    star_spec_path = roman_sims_seds + star_chosen + '.txt'
+    star_spec_path = roman_sims_seds + star_chosen + '_pickles.txt'
 
     if not os.path.isfile(star_spec_path):
 
@@ -1045,7 +1045,7 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(2, 19, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
         for det in tqdm(detectors, desc="Detector", leave=False):

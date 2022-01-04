@@ -568,6 +568,8 @@ if __name__ == '__main__':
             logger.info("Time taken for simulation: " + 
                         "{:.2f}".format(ts - start) + " seconds.")
 
+            sys.exit(0)
+
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
                 str(exptime) + 's' + obsstr + '.lst'
@@ -641,11 +643,25 @@ if __name__ == '__main__':
         sedcat = np.genfromtxt(sedlst, dtype=None, names=['segid', 'sedpath'], 
                                delimiter=' ', encoding='ascii', skip_header=2)
         for f in range(len(sedcat)):
-            try:
-                os.remove(sedcat['sedpath'][f])
-                logger.info('Deleted SED file: ' + sedcat['sedpath'][f])
-            except FileNotFoundError:
+            sed_fl_to_remove = sedcat['sedpath'][f]
+            # Dont trash the stellar spectra
+            # i.e., because there are so few that they repeat
+            # from one detector to another and the next 
+            # detector simulation will fail if it doesn't 
+            # find the stellar spectrum.
+            # In case of the galaxy and salt2 SN spectra,
+            # it is also possible BUT HIGHLY UNLIKELY that
+            # a spectrum is repeated between detectors. 
+            # If the repeat happens then the next detector sim
+            # will definitely fail.
+            if 'pickles' in sed_fl_to_remove:
                 continue
+            else:
+                try:
+                    os.remove(sed_fl_to_remove)
+                    logger.info('Deleted SED file: ' + sed_fl_to_remove)
+                except FileNotFoundError:
+                    continue
     
         # ----------------------
         # Increment simulation counter
