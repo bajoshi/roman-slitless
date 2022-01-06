@@ -309,6 +309,8 @@ if __name__ == '__main__':
     dist_mod_lcdm = np.zeros(len(zarr))
     dist_mod_infer = np.zeros(len(zarr))
 
+    appmag_infer = np.zeros(len(zarr))
+
     for i in range(len(zarr)):
         redshift = zarr[i]
         kcor = get_kcorr_Hogg(day0_lnu, day0_nu, redshift, f435, f105)
@@ -333,6 +335,8 @@ if __name__ == '__main__':
 
         dist_mod_infer[i] = appmag_f105 + 19.0 - kcor
 
+        appmag_infer[i] = appmag_f105
+
         print(i, 
               '{:.2f}'.format(redshift), 
               '{:.2f}'.format(kcor), 
@@ -343,15 +347,22 @@ if __name__ == '__main__':
     fig = plt.figure(figsize=(8, 5))
     ax = fig.add_subplot(111)
     
-    ax.set_xlabel('Redshift', fontsize=14)
-    ax.set_ylabel('Distance Modulus', fontsize=14)
+    ax.set_xlabel('Redshift', fontsize=15)
+    ax.set_ylabel('Distance Modulus', fontsize=15)
 
-    ax.scatter(zarr, dist_mod_infer, s=15, color='k', 
+    ax.scatter(zarr, dist_mod_infer, s=10, color='k', 
                facecolors='None', label='Inferred DM for SNe in sim', zorder=1)
     ax.plot(zarr, dist_mod_lcdm, lw=1.5, color='crimson', 
             label='LCDM DM', zorder=2)
 
     ax.legend(loc=0, frameon=False, fontsize=13)
+
+    # Twin axis for just the apparent mag
+    axt = ax.twinx()
+    axt.scatter(zarr, appmag_infer, s=10, facecolors='None',
+                color='dodgerblue')
+
+    axt.set_ylabel('Apparent magnitude', fontsize=15)
     
     plt.show()
 
