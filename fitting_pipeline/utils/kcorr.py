@@ -1,9 +1,15 @@
 import numpy as np
-from scipy.interpolate import griddata, interp1d
+from scipy.interpolate import griddata
+
+from astropy.cosmology import FlatLambdaCDM
+cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
+
+speed_of_light_ang = 3e18  # angstroms per second
+
 
 def get_kcorr_Kim1996(sed_llam, sed_lam, redshift, filt_curve_x, filt_curve_y):
 
-    #standard = 3631 * 1e-23  # in erg/s/Hz
+    # standard = 3631 * 1e-23  # in erg/s/Hz
     
     # Get wav and trans data from numpy record arrays
     x_wav = filt_curve_x['wav']
@@ -46,7 +52,9 @@ def get_kcorr_Kim1996(sed_llam, sed_lam, redshift, filt_curve_x, filt_curve_y):
 
     return kcorr
 
-def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbose=False):
+
+def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, 
+                   verbose=False):
     """
     Returns the K-correction given a redshift and observed and 
     restframe bandpasses in which object magnitudes are measured. 
@@ -95,20 +103,22 @@ def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbos
     filt_curve_Q_nu = np.divide(speed_of_light_ang, filt_curve_Q['wav'])
 
     # Find indices where filter and spectra frequencies match
-    R_nu_filt_idx = np.where((nu_obs <= filt_curve_R_nu[0]) & \
+    R_nu_filt_idx = np.where((nu_obs <= filt_curve_R_nu[0]) & 
                              (nu_obs >= filt_curve_R_nu[-1]))[0]
-    Q_nu_filt_idx = np.where((sed_nu <= filt_curve_Q_nu[0]) & \
+    Q_nu_filt_idx = np.where((sed_nu <= filt_curve_Q_nu[0]) & 
                              (sed_nu >= filt_curve_Q_nu[-1]))[0]
 
     # Make sure the filter curve and the SED are on the same wavelength grid.
     # Filter R is in obs frame
     # Filter Q is in rest frame
     filt_curve_R_interp_obs = griddata(points=filt_curve_R_nu, 
-        values=filt_curve_R['trans'], xi=nu_obs[R_nu_filt_idx], 
-        method='linear', fill_value=0.0)
+                                       values=filt_curve_R['trans'], 
+                                       xi=nu_obs[R_nu_filt_idx], 
+                                       method='linear', fill_value=0.0)
     filt_curve_Q_interp_rf = griddata(points=filt_curve_Q_nu, 
-        values=filt_curve_Q['trans'], xi=sed_nu[Q_nu_filt_idx], 
-        method='linear', fill_value=0.0)
+                                      values=filt_curve_Q['trans'], 
+                                      xi=sed_nu[Q_nu_filt_idx], 
+                                      method='linear', fill_value=0.0)
 
     # Define standard for AB magnitdues
     # i.e., 3631 Janskys in L_nu units
@@ -132,7 +142,7 @@ def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbos
     if verbose:
         import matplotlib.pyplot as plt
 
-        fig, (ax1, ax2) = plt.subplots(figsize=(12,4.5), nrows=1, ncols=2)
+        fig, (ax1, ax2) = plt.subplots(figsize=(12, 4.5), nrows=1, ncols=2)
 
         # ------------- Frequency space
         ax1t = ax1.twinx()
@@ -142,8 +152,10 @@ def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbos
         ax1.plot(nu_obs, lnu_obs, color='tab:red', label='Redshifted spectrum')
 
         # plot bandpasses
-        ax1t.plot(nu_obs[R_nu_filt_idx], filt_curve_R_interp_obs, color='tab:olive', label='WFC3/IR/F105W')
-        ax1t.plot(sed_nu[Q_nu_filt_idx], filt_curve_Q_interp_rf, color='royalblue', label='ACS/WFC/F435W')
+        ax1t.plot(nu_obs[R_nu_filt_idx], filt_curve_R_interp_obs, 
+                  color='tab:olive', label='WFC3/IR/F105W')
+        ax1t.plot(sed_nu[Q_nu_filt_idx], filt_curve_Q_interp_rf, 
+                  color='royalblue', label='ACS/WFC/F435W')
 
         # Labels, limits, and legend
         ax1.legend(loc='upper left', frameon=False, fontsize=12)
@@ -163,11 +175,14 @@ def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbos
         
         # plot spectra
         ax2.plot(sed_lam, sed_llam, color='k', label='Original spectrum')
-        ax2.plot(sed_lam*(1+redshift), sed_llam/(1+redshift), color='tab:red', label='Redshifted spectrum')
+        ax2.plot(sed_lam*(1+redshift), sed_llam/(1+redshift), 
+                 color='tab:red', label='Redshifted spectrum')
 
         # plot bandpasses
-        ax2t.plot(filt_curve_R['wav'], filt_curve_R['trans'], color='tab:olive', label='WFC3/IR/F105W')
-        ax2t.plot(filt_curve_Q['wav'], filt_curve_Q['trans'], color='royalblue', label='ACS/WFC/F435W')
+        ax2t.plot(filt_curve_R['wav'], filt_curve_R['trans'], 
+                  color='tab:olive', label='WFC3/IR/F105W')
+        ax2t.plot(filt_curve_Q['wav'], filt_curve_Q['trans'], 
+                  color='royalblue', label='ACS/WFC/F435W')
 
         # Labels, limits, and legend
         ax2.legend(loc='upper center', frameon=False, fontsize=12)
@@ -185,39 +200,93 @@ def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R, verbos
 
     return kcorr_qr
 
+
+def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
+
+    # First grid the spectrum wavelengths to the filter wavelengths
+    spec_on_filt_grid = griddata(points=spec_wav, values=spec_flam, 
+                                 xi=filter_wav)
+
+    # Remove NaNs
+    valid_idx = np.where(~np.isnan(spec_on_filt_grid))
+
+    filter_wav = filter_wav[valid_idx]
+    filter_thru = filter_thru[valid_idx]
+    spec_on_filt_grid = spec_on_filt_grid[valid_idx]
+
+    # Now do the two integrals
+    num = np.trapz(y=spec_on_filt_grid * filter_thru, x=filter_wav)
+    den = np.trapz(y=filter_thru, x=filter_wav)
+
+    filter_flux = num / den
+
+    return filter_flux
+
+
+def get_apparent_mag(redshift, sed_lam, sed_llam, band=None):
+    """
+    This func will redshift the provided SED and convolve it
+    with a bandpass to give an apparent AB magnitude.
+    Expects to get:
+      redshift -- float
+      sed_lam -- wavelengths in A
+      sed_llam -- luminosity density in erg/s/A
+      band -- numpy record array of the bandpass 
+              by reading in the bandpass txt file through 
+              np.genfromtxt(...)
+              Expects two cols: wavelength[A] and throughput
+    """
+
+    # First redshift the provided SED
+    lam_obs = sed_lam * (1+redshift)
+
+    dl_mpc = cosmo.luminosity_distance(redshift).value
+    mpc2cm = 3.086e24
+    dl = dl_mpc * mpc2cm
+    flam = sed_llam / (4 * np.pi * dl * dl * (1+redshift))
+
+    # Now convolve with the provided filter
+    flam_conv = filter_conv(band['wav'], band['trans'], lam_obs, flam)
+
+    # Convert to fnu and get AB mag
+    lam_pivot = 10552.0  # hardcoded for F105W
+
+    fnu_conv = lam_pivot**2 * flam_conv / speed_of_light_ang
+    appmag = -2.5 * np.log10(fnu_conv) - 48.6
+
+    return appmag
+
+
 if __name__ == '__main__':
     
     # This runs a couple tests on the above function
     # using a SN Ia spectrum at peak.
     import matplotlib.pyplot as plt
     import sys
-    import os
-
-    from astropy.cosmology import FlatLambdaCDM
-    cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
-
-    speed_of_light_ang = 3e18  # angstroms per second
 
     # SN Ia spectrum from Lou
     salt2_spec = np.genfromtxt("templates/salt2_template_0.txt", 
-        dtype=None, names=['day', 'lam', 'llam'], encoding='ascii')
+                               dtype=None, names=['day', 'lam', 'llam'], 
+                               encoding='ascii')
 
-    # Also load in lookup table for luminosity distance
-    dl_cat = np.genfromtxt('dl_lookup_table.txt', dtype=None, names=True)
-    # Get arrays 
-    dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
-    dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
-    age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
-    del dl_cat
+    sn_scaling_fac = 1.734e40
+
+    # # Also load in lookup table for luminosity distance
+    # dl_cat = np.genfromtxt('dl_lookup_table.txt', dtype=None, names=True)
+    # # Get arrays 
+    # dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
+    # dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
+    # age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
+    # del dl_cat
 
     # Get day 0 spectrum
     day0_idx = np.where(salt2_spec['day'] == 0)[0]
 
     day0_lam = salt2_spec['lam'][day0_idx]
-    day0_llam = salt2_spec['llam'][day0_idx]
+    day0_llam = salt2_spec['llam'][day0_idx] * sn_scaling_fac
 
     # Convert to l_nu and nu
-    day0_nu  = speed_of_light_ang / day0_lam
+    day0_nu = speed_of_light_ang / day0_lam
     day0_lnu = day0_lam**2 * day0_llam / speed_of_light_ang
 
     # Read in the two required filter curves
@@ -225,56 +294,68 @@ if __name__ == '__main__':
     # it is actually the throughput that we want.
     # I and Y band in this case
     f105 = np.genfromtxt('throughputs/F105W_IR_throughput.csv', 
-                         delimiter=',', dtype=None, names=['wav','trans'], 
-                         encoding='ascii', usecols=(1,2), skip_header=1)
+                         delimiter=',', dtype=None, names=['wav', 'trans'], 
+                         encoding='ascii', usecols=(1, 2), skip_header=1)
 
     f814 = np.genfromtxt('throughputs/HST_ACS_WFC.F814W.dat', 
-                         dtype=None, names=['wav','trans'], encoding='ascii')
+                         dtype=None, names=['wav', 'trans'], encoding='ascii')
 
     f435 = np.genfromtxt('throughputs/f435w_filt_curve.txt', 
-                         dtype=None, names=['wav','trans'], encoding='ascii')
+                         dtype=None, names=['wav', 'trans'], encoding='ascii')
 
     zarr = np.arange(0.01, 3.0, 0.01)
     kcor_arr = np.zeros(len(zarr))
-    dl_K_sum_arr = np.zeros(len(zarr))  # dl in Mpc
+
+    dist_mod_lcdm = np.zeros(len(zarr))
+    dist_mod_infer = np.zeros(len(zarr))
 
     for i in range(len(zarr)):
         redshift = zarr[i]
         kcor = get_kcorr_Hogg(day0_lnu, day0_nu, redshift, f435, f105)
+        # kcor = get_kcorr_Kim1996(day0_llam, day0_lam, redshift, f435, f105)
         kcor_arr[i] = kcor
 
-        # Now compute the sum of 5log(dl) at the z and K-correction
-        #z_idx = np.argmin(abs(dl_z_arr - redshift))
-        #dl_cm = dl_cm_arr[z_idx]
-        #dl_mpc = dl_cm / 3.086e24
+        # The Kim+1996 K-correction also gives the correct shape 
+        # but either the apparent mag or the K-correction 
+        # for some reason falls short of the LCDM prediction.
 
-        dl_mpc = cosmo.luminosity_distance(redshift).value  # using astropy # should give hte same result
+        # using astropy LCDM cosmo
+        dl_mpc = cosmo.luminosity_distance(redshift).value
+        mu = 5 * np.log10(dl_mpc) + 25.0
 
-        s = 5 * np.log10(dl_mpc) + kcor + 25.0
+        dist_mod_lcdm[i] = mu
 
-        dl_K_sum_arr[i] = s
+        # Now get the distance modulus using m - M + Kcor
+        # We will get the apparent mag by convolving the SED
+        # through the filter
+        appmag_f105 = get_apparent_mag(redshift, day0_lam, day0_llam, 
+                                       band=f105)
+
+        dist_mod_infer[i] = appmag_f105 + 19.0 - kcor
 
         print(i, 
-         '{:.2f}'.format(redshift), 
-         '{:.2f}'.format(kcor), 
-         '{:.2f}'.format(dl_mpc), 
-         '{:.2f}'.format(s))
+              '{:.2f}'.format(redshift), 
+              '{:.2f}'.format(kcor), 
+              '{:.2f}'.format(dl_mpc), 
+              '{:.2f}'.format(mu),
+              '{:.2f}'.format(appmag_f105))
 
-    fig = plt.figure(figsize=(8,5))
+    fig = plt.figure(figsize=(8, 5))
     ax = fig.add_subplot(111)
     
-    ax.set_title('K-correction for SN Ia spec at peak', fontsize=14)
     ax.set_xlabel('Redshift', fontsize=14)
-    ax.set_ylabel('K-correction [F105W;obs - F435W;rest]', fontsize=14)
+    ax.set_ylabel('Distance Modulus', fontsize=14)
 
-    ax.scatter(zarr, kcor_arr, s=5)
-    
-    axt = ax.twinx()
-    axt.scatter(zarr, dl_K_sum_arr, s=5, color='k')
+    ax.scatter(zarr, dist_mod_infer, s=15, color='k', 
+               facecolors='None', label='Inferred DM for SNe in sim', zorder=1)
+    ax.plot(zarr, dist_mod_lcdm, lw=1.5, color='crimson', 
+            label='LCDM DM', zorder=2)
 
-    axt.set_ylabel('m - M = 5log[dl(z)] + 25 + K(z)', fontsize=14)
+    ax.legend(loc=0, frameon=False, fontsize=13)
     
     plt.show()
+
+    sys.exit(0)
 
     # ----------------------
     # Another test: 
@@ -285,7 +366,7 @@ if __name__ == '__main__':
 
     # -------- Prep first
     # Need to save the dl and K-corr sum lookup
-    #zrange = np.arange(0.0001, 8.0001, 0.0001)
+    # zrange = np.arange(0.0001, 8.0001, 0.0001)
     zrange = np.arange(0.01, 5.01, 0.001)
     # K-correction starts giving nonsense beyond z~9.5
     # I'm stopping at z=5 which is the limit beyond which
@@ -323,16 +404,15 @@ if __name__ == '__main__':
             dl_K_sum_lookup[k] = s
 
             # Write to file
-            fh.write('{:.4f}'.format(z)     + '  ' 
+            fh.write('{:.4f}'.format(z) + '  ' 
                      '{:.8e}'.format(dl_cm) + '  '
                      '{:.5e}'.format(age_at_z) + '  '
                      '{:.3f}'.format(s) + '\n')
 
-
     # ---------- Now do the test
     # Abs Mag of SN Ia in required band at peak
     absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
-    #absmag = -19.0  # assumed abs mag of SN Ia in HST ACS/F814W
+    # absmag = -19.0  # assumed abs mag of SN Ia in HST ACS/F814W
 
     app_mag_arr = np.arange(16.0, 27.51, 0.01)
     matched_redshifts = np.zeros(len(app_mag_arr))
@@ -360,9 +440,3 @@ if __name__ == '__main__':
 
     plt.show()
     sys.exit(0)
-
-
-
-
-
-
