@@ -262,7 +262,11 @@ if __name__ == '__main__':
     # This runs a couple tests on the above function
     # using a SN Ia spectrum at peak.
     import matplotlib.pyplot as plt
+    import os
     import sys
+
+    home = os.getenv('HOME')
+    roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
 
     # SN Ia spectrum from Lou
     salt2_spec = np.genfromtxt("templates/salt2_template_0.txt", 
@@ -351,19 +355,24 @@ if __name__ == '__main__':
     ax.set_ylabel('Distance Modulus', fontsize=15)
 
     ax.scatter(zarr, dist_mod_infer, s=10, color='k', 
-               facecolors='None', label='Inferred DM for SNe in sim', zorder=1)
+               facecolors='None', 
+               label='Inferred DM for SNe in sim: mx - My + Kxy', 
+               zorder=1)
     ax.plot(zarr, dist_mod_lcdm, lw=1.5, color='crimson', 
-            label='LCDM DM', zorder=2)
+            label='LCDM DM: 5log(dl) + 25', zorder=2)
 
-    ax.legend(loc=0, frameon=False, fontsize=13)
+    ax.legend(loc=0, fontsize=14)
 
     # Twin axis for just the apparent mag
     axt = ax.twinx()
     axt.scatter(zarr, appmag_infer, s=10, facecolors='None',
-                color='dodgerblue')
+                color='dodgerblue', label=r'$m_{F106}$')
 
     axt.set_ylabel('Apparent magnitude', fontsize=15)
+    axt.legend(loc=0, fontsize=14)
     
+    fig.savefig(roman_slitless_dir + 'figures/kcorr_test.pdf', 
+                dpi=200, bbox_inches='tight')
     plt.show()
 
     sys.exit(0)
