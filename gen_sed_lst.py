@@ -85,15 +85,18 @@ all_m62_models.append(np.load(modeldir + 'bc03_all_tau20p000_m62_chab.npy',
                       mmap_mode='r'))
 
 # Also load in lookup table for luminosity distance
-dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table_Ksum.txt', 
-                       dtype=None, names=True)
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', 
+                       dtype=None, names=True, encoding='ascii')
 
 # Get arrays 
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
-dl_K_sum_arr = np.asarray(dl_cat['dl_K_sum'], dtype=np.float64)
 
 del dl_cat
+
+# And load table for SN Ia mF106 to z conversion
+sn_mag_z = np.genfromtxt(fitting_utils + 'sn_mag_z_lookup.txt',
+                         dtype=None, names=True, encoding='ascii')
 
 
 class bcolors:
@@ -437,24 +440,17 @@ def get_match(ra_arr, dec_arr, ra_to_check, dec_to_check, tol_arcsec=0.3):
     return idx
 
 
-def get_sn_z(snmag, scatter=False):
+def get_sn_z(snmag):
 
     # This function assumes that the utility code kcorr.py
     # has been run on its own. kcorr.py will do a couple 
-    # tests and save a file that is used to lookup the 
-    # sum 5log(dl) + 25 + K (i.e., the distance modulus) 
-    # to provide a redshift here.
+    # tests and print out two cols to the terminal -- 
+    # redshift and mF106 which are used here.
 
-    # Abs Mag of SN Ia in required band at peak
-    absmag = -19.5  # assumed abs mag of SN Ia in HST ACS/F435W
+    mag_arr = sn_mag_z['mF106']
+    z_idx = np.argmin(abs(snmag - mag_arr))
 
-    match_sum = snmag - absmag
-    z_idx = np.argmin(abs(dl_K_sum_arr - match_sum))
-
-    sn_z = dl_z_arr[z_idx]
-
-    if scatter:
-        sn_z = np.random.normal(loc=sn_z, scale=0.001, size=None)
+    sn_z = sn_mag_z['Redshift'][z_idx]
 
     return sn_z
 

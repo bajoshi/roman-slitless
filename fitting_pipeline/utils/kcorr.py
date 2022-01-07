@@ -137,7 +137,8 @@ def get_kcorr_Hogg(sed_lnu, sed_nu, redshift, filt_curve_Q, filt_curve_R,
     integral4 = np.trapz(y=y4, x=sed_nu[Q_nu_filt_idx])
 
     # Compute K-correction
-    kcorr_qr = -2.5 * np.log10((1+redshift) * integral1 * integral2 / (integral3 * integral4))
+    all_integrands = integral1 * integral2 / (integral3 * integral4)
+    kcorr_qr = -2.5 * np.log10((1+redshift) * all_integrands)
 
     if verbose:
         import matplotlib.pyplot as plt
@@ -341,12 +342,15 @@ if __name__ == '__main__':
 
         appmag_infer[i] = appmag_f105
 
-        print(i, 
-              '{:.2f}'.format(redshift), 
-              '{:.2f}'.format(kcor), 
-              '{:.2f}'.format(dl_mpc), 
-              '{:.2f}'.format(mu),
+        print(i, '  ', 
+              '{:.2f}'.format(redshift), '  ',
+              '{:.2f}'.format(kcor), '  ', 
+              '{:.2f}'.format(dl_mpc), '  ', 
+              '{:.2f}'.format(mu), '  ',
               '{:.2f}'.format(appmag_f105))
+
+        # print('{:.2f}'.format(redshift), '  ',
+        #       '{:.2f}'.format(appmag_f105))
 
     fig = plt.figure(figsize=(8, 5))
     ax = fig.add_subplot(111)
