@@ -35,12 +35,17 @@ assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_sims_seds)
 assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
+
+sys.path.append(fitting_utils)
+from kcorr import get_kcorr_Hogg
+
 # ------------------------------------
 # TEST 1:
 # Make sure that there are "enough" SNe inserted in each detector.
 # There should be greater than 200 SNe detected in each.
 
 pt = '0'  # Enter the pointing you want to test
+total_detectors = 18  # Enter up to 18 depending on how many you want to test
 
 
 def read_numsn(sedlst):
@@ -57,7 +62,7 @@ def read_numsn(sedlst):
 
 total_sne1 = 0
 num_sn_list = []
-for i in range(18):
+for i in range(total_detectors):
     s = pylinear_lst_dir + 'sed_Y106_' + pt + '_' + str(i+1) + '.lst'
     n = read_numsn(s)
     print(s, ' has ', n, 'SNe.')
@@ -270,12 +275,38 @@ if plot_magdiff:
 # Make sure that the inserted SNe follow cosmological dimming
 # as expected. This test simply plots SN magnitude vs redshift.
 
+f105 = np.genfromtxt(fitting_utils + 'throughputs/F105W_IR_throughput.csv', 
+                     delimiter=',', dtype=None, names=['wav', 'trans'], 
+                     encoding='ascii', usecols=(1, 2), skip_header=1)
+
+f435 = np.genfromtxt(fitting_utils + 'throughputs/f435w_filt_curve.txt', 
+                     dtype=None, names=['wav', 'trans'], encoding='ascii')
+
 all_sn_mags = []
 all_sn_z = []
+Kcor = []
 
 total_sne2 = 0
 
-for i in range(18):
+# SN Ia spectrum from Lou
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", 
+                           dtype=None, names=['day', 'lam', 'llam'], 
+                           encoding='ascii')
+
+sn_scaling_fac = 1.734e40
+speed_of_light_ang = 3e18
+
+# Get day 0 spectrum
+day0_idx = np.where(salt2_spec['day'] == 0)[0]
+
+day0_lam = salt2_spec['lam'][day0_idx]
+day0_llam = salt2_spec['llam'][day0_idx] * sn_scaling_fac
+
+# Convert to l_nu and nu
+day0_nu = speed_of_light_ang / day0_lam
+day0_lnu = day0_lam**2 * day0_llam / speed_of_light_ang
+
+for i in range(total_detectors):
 
     # ------ Read the SED lst and the corresponding SExtractor catalog
     # Set filenames
@@ -304,9 +335,13 @@ for i in range(18):
             sn_idx = int(np.where(all_inserted_segids == sn_segid)[0])
             mag = float(cat[sn_idx, 2])
 
+            # Get K-correction
+            kcorr = get_kcorr_Hogg(day0_lnu, day0_nu, z, f435, f105)
+
             # append
             all_sn_mags.append(mag)
             all_sn_z.append(z)
+            Kcor.append(kcorr)
                 
             total_sne2 += 1
 
@@ -320,7 +355,7 @@ ax.set_ylabel('Distance modulus', fontsize=14)
 
 # Plot dist mod vs z
 absmag = -19.5  # in B band
-dist_mod = np.asarray(all_sn_mags) - absmag  # + Kcor
+dist_mod = np.asarray(all_sn_mags) - absmag - Kcor
 
 ax.scatter(all_sn_z, dist_mod, s=15, color='k')
 
@@ -339,7 +374,7 @@ plt.close(fig)
 # TEST 5:
 all_sn_av = []
 
-for i in range(18):
+for i in range(total_detectors):
 
     # ------ Read the SED lst and the corresponding SExtractor catalog
     # Set filenames

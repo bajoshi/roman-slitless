@@ -400,8 +400,8 @@ if __name__ == '__main__':
     # cutout is 100x100; need half that here
 
     # Mag limits for choosing random SN mag
-    lowmag = 19.0
-    highmag = 27.0
+    lowmag = 21.0
+    highmag = 28.2
 
     s = CUTOUT_SIZE
 
