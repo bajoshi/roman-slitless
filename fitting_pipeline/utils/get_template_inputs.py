@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def get_template_inputs(template_name, verbose=False):
 
     # Read in the dummy template passed to pyLINEAR
@@ -8,9 +9,9 @@ def get_template_inputs(template_name, verbose=False):
     # Get template properties
     if 'salt' in template_name:
         
-        sn_av = float(template_name_list[-1].replace('p', '.').replace('av',''))
-        sn_z = float(template_name_list[-2].replace('p', '.').replace('z',''))
-        sn_day = int(template_name_list[-3].replace('day',''))
+        sn_av = float(template_name_list[-1].replace('p', '.').replace('av', ''))
+        sn_z = float(template_name_list[-2].replace('p', '.').replace('z', ''))
+        sn_day = int(template_name_list[-3].replace('day', ''))
 
         if verbose:
             print("Template file name:", template_name)

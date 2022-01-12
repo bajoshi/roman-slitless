@@ -8,6 +8,14 @@ from matplotlib.gridspec import GridSpec
 import os
 import sys
 
+from get_template_inputs import get_template_inputs
+
+home = os.getenv('HOME')
+roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
+
+sys.path.append(roman_slitless_dir)
+from gen_sed_lst import get_sn_spec_path, get_gal_spec_path  # noqa
+
 
 def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
 
@@ -35,6 +43,27 @@ def read_sed_scale(sed_path, obj_mag):
 
     # First fix the path
     sed_path = sed_path.replace('/astro/ffsn/Joshi/', extdir)
+
+    # Now check if it exists and if not then create it
+    if not os.path.isfile(sed_path):
+        template_inputs = get_template_inputs(sed_path, verbose=True)
+        if 'salt' in sed_path:
+            sn_z = template_inputs[0]
+            template_day = template_inputs[1]
+            template_av = template_inputs[2]
+            get_sn_spec_path(sn_z, day_chosen=template_day, 
+                             chosen_av=template_av)
+        else:
+            galaxy_z = template_inputs[0]
+            template_logms = template_inputs[1]
+            template_age = template_inputs[2]
+            template_tau = 10**(template_inputs[3])
+            template_av = template_inputs[4]
+            get_gal_spec_path(galaxy_z, 
+                              log_stellar_mass_chosen=template_logms,
+                              chosen_age=template_age, 
+                              chosen_tau=template_tau,
+                              chosen_av=template_av)
 
     # Read in SED
     sed = np.genfromtxt(sed_path, dtype=None,
@@ -264,8 +293,6 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
 
     # ---- Save figure
     # plt.show()
-    home = os.getenv('HOME')
-    roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
     figdir = roman_slitless_dir + 'figures/sn_spectra_inspect/'
     figname = figdir + 'sn_' + str(sn_segid) + '_Y106_0_' + \
         str(detector) + '.pdf'
@@ -280,7 +307,7 @@ if __name__ == '__main__':
     # Info for code to plot
     sn_segid = int(sys.argv[1])
     detector = '1'
-    exptime = '400s'
+    exptime = '1200s'
 
     # THIS CODE IS INTENDED TO ONLY BE RUN AFTER 
     # PLFFSN2 FINISHES AND NOT ON PLFFSN2.

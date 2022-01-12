@@ -133,7 +133,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
     return redshifted_wav, redshifted_flux
 
 
-def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
+def get_sn_spec_path(redshift, day_chosen=-99, chosen_av=None):
     """
     This function will assign a random spectrum from 
     the basic SALT2 spectrum form Lou.
@@ -145,11 +145,10 @@ def get_sn_spec_path(redshift, day_chosen=None, chosen_av=None):
     is essentially empty, I won't choose that spectrum.
     """
 
-    # Create array for days relative to max
-    days_arr = np.arange(-5, 6, 1)
-
     # choose a random day relative to max
-    if not day_chosen:
+    if day_chosen == -99:
+        # Create array for days relative to max
+        days_arr = np.arange(-5, 6, 1)
         day_chosen = np.random.choice(days_arr)
 
     # pull out spectrum for the chosen day
@@ -228,7 +227,9 @@ def get_bc03_spec(age, logtau):
     return np.array(model_llam, dtype=np.float64)
 
 
-def get_gal_spec_path(redshift):
+def get_gal_spec_path(redshift, log_stellar_mass_chosen=None,
+                      chosen_age=None, 
+                      chosen_tau=None, chosen_av=None):
     """
     This function will generate a template SED assuming
     a composite stellar population using BC03. 
@@ -246,24 +247,27 @@ def get_gal_spec_path(redshift):
     # ---------- Choosing stellar population parameters ----------- #
     # Choose stellar pop parameters at random
     # --------- Stellar mass
-    log_stellar_mass_arr = np.linspace(10.0, 11.5, 100)
-    log_stellar_mass_chosen = np.random.choice(log_stellar_mass_arr)
+    if not log_stellar_mass_chosen:
+        log_stellar_mass_arr = np.linspace(10.0, 11.5, 100)
+        log_stellar_mass_chosen = np.random.choice(log_stellar_mass_arr)
 
     log_stellar_mass_str = \
         "{:.2f}".format(log_stellar_mass_chosen).replace('.', 'p')
 
     # --------- Age
-    age_arr = np.arange(0.1, 13.0, 0.005)  # in Gyr
+    if not chosen_age:
+        age_arr = np.arange(0.1, 13.0, 0.005)  # in Gyr
 
-    # Now choose age consistent with given redshift
-    # i.e., make sure model is not older than the Universe
-    # Allowing at least 100 Myr for the first galaxies to form after Big Bang
-    age_at_z = astropy_cosmo.age(redshift).value  # in Gyr
-    age_lim = age_at_z - 0.1  # in Gyr
+        # Now choose age consistent with given redshift
+        # i.e., make sure model is not older than the Universe
+        # Allowing at least 100 Myr for the first 
+        # galaxies to form after Big Bang
+        age_at_z = astropy_cosmo.age(redshift).value  # in Gyr
+        age_lim = age_at_z - 0.1  # in Gyr
 
-    chosen_age = np.random.choice(age_arr)
-    while chosen_age > age_lim:
         chosen_age = np.random.choice(age_arr)
+        while chosen_age > age_lim:
+            chosen_age = np.random.choice(age_arr)
 
     # --------- SFH
     # Choose SFH form from a few different models
@@ -273,8 +277,9 @@ def get_gal_spec_path(redshift):
 
     # choose_sfh(sfh_forms[2])
 
-    tau_arr = np.arange(0.01, 15.0, 0.005)  # in Gyr
-    chosen_tau = np.random.choice(tau_arr)
+    if not chosen_tau:
+        tau_arr = np.arange(0.01, 15.0, 0.005)  # in Gyr
+        chosen_tau = np.random.choice(tau_arr)
 
     # --------- Metallicity
     # metals_arr = np.array([0.0001, 0.0004, 0.004, 0.008, 0.02, 0.05])
@@ -307,8 +312,9 @@ def get_gal_spec_path(redshift):
     bc03_spec_llam = get_bc03_spec(chosen_age, logtau)
 
     # Apply Calzetti dust extinction depending on av value chosen
-    av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
-    chosen_av = np.random.choice(av_arr)
+    if not chosen_av:
+        av_arr = np.arange(0.0, 5.0, 0.001)  # in mags
+        chosen_av = np.random.choice(av_arr)
 
     bc03_dusty_llam = du.get_dust_atten_model(bc03_spec_wav, bc03_spec_llam, 
                                               chosen_av)
