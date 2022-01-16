@@ -128,3 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 emcee_sampler_testgalaxy1.h5
+.DS_Store
+figures/.DS_Store
+fitting_pipeline/.DS_Store
+fitting_pipeline/utils/.DS_Store

@@ -265,6 +265,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import os
     import sys
+    from tqdm import tqdm
 
     home = os.getenv('HOME')
     roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
@@ -308,7 +309,7 @@ if __name__ == '__main__':
     f435 = np.genfromtxt('throughputs/f435w_filt_curve.txt', 
                          dtype=None, names=['wav', 'trans'], encoding='ascii')
 
-    zarr = np.arange(0.01, 3.0, 0.01)
+    zarr = np.arange(0.5, 3.0, 0.0001)
     kcor_arr = np.zeros(len(zarr))
 
     dist_mod_lcdm = np.zeros(len(zarr))
@@ -316,41 +317,53 @@ if __name__ == '__main__':
 
     appmag_infer = np.zeros(len(zarr))
 
-    for i in range(len(zarr)):
-        redshift = zarr[i]
-        kcor = get_kcorr_Hogg(day0_lnu, day0_nu, redshift, f435, f105)
-        # kcor = get_kcorr_Kim1996(day0_llam, day0_lam, redshift, f435, f105)
-        kcor_arr[i] = kcor
+    # Save to lookup file in the same folder as this code
+    lookup_table_fname = 'sn_mag_z_lookup.txt'
 
-        # The Kim+1996 K-correction also gives the correct shape 
-        # but either the apparent mag or the K-correction 
-        # for some reason falls short of the LCDM prediction.
+    with open(lookup_table_fname, 'w') as fh:
 
-        # using astropy LCDM cosmo
-        dl_mpc = cosmo.luminosity_distance(redshift).value
-        mu = 5 * np.log10(dl_mpc) + 25.0
+        # Write header
+        fh.write('#    Redshift    mF106' + '\n')
 
-        dist_mod_lcdm[i] = mu
+        # Loop over all redshifts 
+        for i in tqdm(range(len(zarr))):
+            redshift = zarr[i]
+            kcor = get_kcorr_Hogg(day0_lnu, day0_nu, redshift, f435, f105)
+            # kcor = get_kcorr_Kim1996(day0_llam, day0_lam, 
+            #                          redshift, f435, f105)
+            kcor_arr[i] = kcor
 
-        # Now get the distance modulus using m - M + Kcor
-        # We will get the apparent mag by convolving the SED
-        # through the filter
-        appmag_f105 = get_apparent_mag(redshift, day0_lam, day0_llam, 
-                                       band=f105)
+            # The Kim+1996 K-correction also gives the correct shape 
+            # but either the apparent mag or the K-correction 
+            # for some reason falls short of the LCDM prediction.
 
-        dist_mod_infer[i] = appmag_f105 + 19.0 - kcor
+            # using astropy LCDM cosmo
+            dl_mpc = cosmo.luminosity_distance(redshift).value
+            mu = 5 * np.log10(dl_mpc) + 25.0
 
-        appmag_infer[i] = appmag_f105
+            dist_mod_lcdm[i] = mu
 
-        print(i, '  ', 
-              '{:.2f}'.format(redshift), '  ',
-              '{:.2f}'.format(kcor), '  ', 
-              '{:.2f}'.format(dl_mpc), '  ', 
-              '{:.2f}'.format(mu), '  ',
-              '{:.2f}'.format(appmag_f105))
+            # Now get the distance modulus using m - M + Kcor
+            # We will get the apparent mag by convolving the SED
+            # through the filter
+            appmag_f105 = get_apparent_mag(redshift, day0_lam, day0_llam, 
+                                           band=f105)
 
-        # print('{:.2f}'.format(redshift), '  ',
-        #       '{:.2f}'.format(appmag_f105))
+            dist_mod_infer[i] = appmag_f105 + 19.0 - kcor
+
+            appmag_infer[i] = appmag_f105
+
+            # print(i, '  ', 
+            #       '{:.2f}'.format(redshift), '  ',
+            #       '{:.2f}'.format(kcor), '  ', 
+            #       '{:.2f}'.format(dl_mpc), '  ', 
+            #       '{:.2f}'.format(mu), '  ',
+            #       '{:.2f}'.format(appmag_f105))
+
+            # Write to lookup table
+            fh.write('{:.4f}'.format(redshift) + '  ' +
+                     '{:.4f}'.format(appmag_f105))
+            fh.write('\n')
 
     fig = plt.figure(figsize=(8, 5))
     ax = fig.add_subplot(111)

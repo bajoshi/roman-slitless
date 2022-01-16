@@ -400,8 +400,10 @@ if __name__ == '__main__':
     # cutout is 100x100; need half that here
 
     # Mag limits for choosing random SN mag
-    lowmag = 21.0
-    highmag = 28.2
+    # low and high limits here correspond to 
+    # almost exactly z=0.5 and z=3.0
+    lowmag = 22.42
+    highmag = 28.71
 
     s = CUTOUT_SIZE
 
@@ -474,25 +476,8 @@ if __name__ == '__main__':
             os.chdir(roman_slitless_dir)
 
             # ---------------
-            # Convert to model image
-            # model_imgdat = gen_model_img(model_img_name, checkimage)
-
-            # ---------------
             # Read in segmap. Will be used later
             segdata = fits.getdata(checkimage)
-
-            # ---------------
-            """
-            # Add a small amount of background
-            # The mean is zero and the standard deviation is
-            # is about 80 times lower than the expected counts
-            # for a 29th mag source (which are ~0.08 for mag=29.0).
-            # By trial and error I found that this works best for
-            # SExtractor being able to detect sources down to 27.0
-            # Not sure why it needs to be that much lower...
-            model_imgdat += np.random.normal(loc=0.0, scale=BACK_SCALE, 
-                                          size=model_imgdat.shape)
-            """
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
