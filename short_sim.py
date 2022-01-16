@@ -16,7 +16,8 @@ if not os.path.isdir(savedir):
 
 # Params of sim
 NPIX = 4096
-NUM_SNE = 100
+NUM_SNE = 50
+# seems to need a min of 50 objects for SExtractor to work right
 REF_COUNTS = 13696.77
 SIZE = 50  # half of cutout
 # LOWMAG = 22.42
@@ -123,6 +124,8 @@ def run_pylinear_shortsim():
     sedlst = savedir + 'sed_shortsim.lst'
     fltlst = savedir + 'flt_shortsim.lst'
 
+    os.chdir(savedir)
+
     # ---------------------- Get sources
     sources = pylinear.source.SourceCollection(segfile, obslst, 
                                                detindex=0, maglim=MAGLIM)
@@ -142,7 +145,91 @@ def run_pylinear_shortsim():
     # ---------------------- Add noise
     for f in range(3):
         flt = savedir + 'shortsim' + str(f+1) + '_flt.fits'
-        scidata = fits.getdata(flt)
+        flthdu = fits.open(flt)
+
+        sci = flthdu[1].data
+
+        print('Data range:', np.min(sci), '  ', np.max(sci))
+
+        size = sci.shape
+
+        # Add sky and dark
+        signal = (sci + SKY + DARK)
+
+        # Scale by exptime
+        signal = signal * EXPTIME
+
+        variance = signal + READNOISE**2
+        sigma = np.sqrt(variance)
+
+        # Photometric variation
+        new_sig = np.random.normal(loc=signal, 
+                                   scale=sigma, size=size)
+
+        # Subtract background and go back to e/s
+        final_sig = (new_sig / EXPTIME) - SKY
+
+        # Save
+        # 0th extension with just the header
+        noised_hdul = fits.HDUList()
+        noised_hdul.append(fits.PrimaryHDU(header=flthdu[0].header))
+        # 1st extension with the SCI data
+        noised_hdul.append(fits.ImageHDU(data=final_sig, 
+                                         header=flthdu[1].header))
+        # 2nd extension with the ERR
+        noised_hdul.append(fits.ImageHDU(data=sigma/EXPTIME, 
+                                         header=flthdu[2].header))
+        # 3rd extension with the DQ Array
+        noised_hdul.append(fits.ImageHDU(data=flthdu[3].data, 
+                                         header=flthdu[3].header))
+
+        fltname = flt.replace('_flt', '_flt_noised')
+        noised_hdul.writeto(fltname, overwrite=True)
+
+        # Close open HDU
+        flthdu.close()
+
+    # Generate FLT LST and start extraction
+    with open(fltlst, 'w') as fh:
+        hdr1 = "# Path to each flt image" + "\n"
+        hdr2 = "# This has to be a simulated or " + \
+               "observed dispersed image" + "\n"
+
+        fh.write(hdr1)
+        fh.write(hdr2)
+
+        for i in range(3):
+            flt = savedir + 'shortsim' + str(i+1) + '_flt_noised.fits'
+            fh.write('\n' + flt)
+
+    print('Noised FLTs and written FLT LST.')
+
+    # ---------------------- Extraction
+    print('Starting extraction...')
+
+    tablespath = savedir + 'tables/'
+
+    grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
+    tabulate = pylinear.modules.Tabulate('pdt', 
+                                         path=tablespath, ncpu=0)
+    tabulate.run(grisms, sources, BEAM) 
+    
+    extraction_parameters = grisms.get_default_extraction()
+    
+    extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A,' + \
+                 ' sampling = {dlamb} A'
+    print(extpar_fmt.format(**extraction_parameters))
+    
+    # Set extraction params
+    sources.update_extraction_parameters(**extraction_parameters)
+    method = 'golden'  # golden, grid, or single
+    extroot = 'shortsim_'
+    logdamp = [-6, -1, 0.1]
+
+    pylinear.modules.extract.extract1d(grisms, sources, BEAM, logdamp, 
+                                       method, extroot, tablespath, 
+                                       inverter='lsqr', ncpu=6, 
+                                       group=False)
 
     return None
 

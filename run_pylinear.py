@@ -550,9 +550,7 @@ if __name__ == '__main__':
                     hdul[('SCI', 1)].data = final_sig
     
                     # update the uncertainty extension with the sigma
-                    err = np.sqrt(signal) / exptime  
-                    # or just np.sqrt(sci + dark + bck + read**2)
-                    print("Change error here to sigma / exptime???")
+                    err = sigma / exptime
     
                     hdul[('ERR', 1)].data = err
     
