@@ -243,14 +243,14 @@ if __name__ == '__main__':
 
     # ======================
     # Insert SNe and assign the SEDs
-    # insert_sne_getsedlst_shortsim()
+    insert_sne_getsedlst_shortsim()
 
-    # print('\nNow run SExtractor and create the LST files by hand.')
-    # print('Run the following command for SExtractor in the shortsim folder:')
-    # print('>> sex shortsim_image.fits -c default_config.txt')
-    # print('Make sure to comment out the insert code before running the next',
-    #       'function to run pylinear on the short sim.')
-    # sys.exit(0)
+    print('\nNow run SExtractor and create the LST files by hand.')
+    print('Run the following command for SExtractor in the shortsim folder:')
+    print('>> sex shortsim_image.fits -c default_config.txt')
+    print('Make sure to comment out the insert code before running the next',
+          'function to run pylinear on the short sim.')
+    sys.exit(0)
 
     # Run pyLINEAR
     run_pylinear_shortsim()
