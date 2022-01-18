@@ -3,12 +3,17 @@ from astropy.io import fits
 
 import os
 import sys
+import socket
 
 import pylinear
 
 from gen_sed_lst import get_sn_z, get_sn_spec_path
 
-extdir = "/Volumes/Joshi_external_HDD/Roman/"
+if 'plffsn2' in socket.gethostname():
+    extdir = "/Volumes/Joshi_external_HDD/Roman/"
+else:
+    extdir = "/astro/ffsn/Joshi/"
+
 img_sim_dir = extdir + "roman_direct_sims/sims2021/K_5degimages_part1/"
 savedir = img_sim_dir + 'shortsim/'
 if not os.path.isdir(savedir):
