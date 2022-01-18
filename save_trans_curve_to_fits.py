@@ -1,13 +1,14 @@
 from astropy.io import fits
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 import os
 import sys
 
 home = os.getenv('HOME')
-pylinear_config_roman_dir = home + '/Documents/pylinear_ref_files/pylinear_config/Roman/'
+pylinear_config_roman_dir = home + \
+    '/Documents/pylinear_ref_files/pylinear_config/Roman/'
+
 
 def save_thru_curve_to_fits(wav, sens, err, disperser, savedir, order=1):
 
@@ -22,32 +23,37 @@ def save_thru_curve_to_fits(wav, sens, err, disperser, savedir, order=1):
     hdul = fits.HDUList(p)
     hdul.append(thdu)
         
-    hdul.writeto(savedir + 'Roman_' + disperser + '_' + str(order) + '_throughput_20190325.fits', 
-        overwrite=True)
+    hdul.writeto(savedir + 'Roman_' + disperser + '_' + str(order) + 
+                 '_throughput_20190325.fits', overwrite=True)
 
     return None
 
+
 def main():
 
-    rt = np.genfromtxt(pylinear_config_roman_dir + 'roman_throughput_20190325.txt', \
-    dtype=None, names=True, skip_header=3)
+    rt = np.genfromtxt(pylinear_config_roman_dir + 
+                       'roman_throughput_20190325.txt',
+                       dtype=None, names=True, skip_header=3)
 
     # Read in sensitivity file
     # See the code sens_file_test.py
-    sens = np.genfromtxt('/Volumes/Joshi_external_HDD/Roman/sensitivity_files/Roman_prism_sensitivity.txt', 
-        dtype=None, names=True, encoding='ascii')
+    sens_dir = "/Volumes/Joshi_external_HDD/Roman/sensitivity_files/"
+    sens = np.genfromtxt(sens_dir + 'Roman_prism_sensitivity.txt', 
+                         dtype=None, names=True, encoding='ascii')
     
     # ---------------- Prism ---------------- #
     wp = rt['Wave'] * 1e4  # convert to angstroms from microns
 
-    sens_grid = griddata(points=sens['Wav'], values=sens['Sensitivity'], xi=wp, fill_value=0.0)
+    sens_grid = griddata(points=sens['Wav'], values=sens['Sensitivity'], 
+                         xi=wp, fill_value=0.0)
 
     tp = rt['SNPrism'] * sens_grid
 
     print("Prism sensitivity:")
     print(tp)
 
-    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), 'p127', pylinear_config_roman_dir)
+    save_thru_curve_to_fits(wp, tp, np.zeros(len(tp)), 'p127', 
+                            pylinear_config_roman_dir)
 
     sys.exit()
 
@@ -64,6 +70,7 @@ def main():
     save_thru_curve_to_fits(w0, t0, np.zeros(len(t0)), 'g150', order=0)
     
     return None
+
 
 if __name__ == '__main__':
     main()
