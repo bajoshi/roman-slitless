@@ -383,15 +383,19 @@ def get_optimal_position(wav, flam, ferr, opt_args=None):
 def main():
 
     # ----------------------- Preliminary stuff ----------------------- #
-    ext_root = "romansim_prism_"
+    # ext_root = "romansim_prism_"
+    ext_root = "shortsim_"
     img_filt = 'Y106_'
 
-    exptime1 = '_10800s'
-    exptime2 = '_3600s'
-    exptime3 = '_1200s'
+    shortsim_dir = extdir + \
+        "roman_direct_sims/sims2021/K_5degimages_part1/shortsim/"
+
+    # exptime1 = '_10800s'
+    # exptime2 = '_3600s'
+    # exptime3 = '_1200s'
     exptime4 = '_400s'
 
-    all_exptimes = [exptime1, exptime2, exptime3, exptime4]
+    all_exptimes = [exptime4]  # [exptime1, exptime2, exptime3, exptime4]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -415,11 +419,13 @@ def main():
     for pt in pointings:
         for det in detectors:
 
-            img_suffix = img_filt + str(pt) + '_' + str(det)
+            # img_suffix = img_filt + str(pt) + '_' + str(det)
+            img_suffix = 'shortsim'
 
             # --------------- Read in sed.lst
             sedlst_header = ['segid', 'sed_path']
-            sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+            # sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+            sedlst_path = shortsim_dir + 'sed_' + img_suffix + '.lst'
             sedlst = np.genfromtxt(sedlst_path, dtype=None, 
                                    names=sedlst_header, encoding='ascii')
             print("Read in sed.lst from:", sedlst_path)
@@ -440,8 +446,9 @@ def main():
                 exptime = all_exptimes[e]
 
                 # --------------- Read in the extracted spectra                
-                ext_spec_filename = (ext_spectra_dir + ext_root + img_suffix + 
-                                     exptime + '_x1d.fits')
+                # ext_spec_filename = (ext_spectra_dir + ext_root + img_suffix + 
+                #                      exptime + '_x1d.fits')
+                ext_spec_filename = ext_spectra_dir + ext_root + '_x1d.fits'
                 ext_hdu = fits.open(ext_spec_filename)
                 print("Read in extracted spectra from:", ext_spec_filename)
 
@@ -462,6 +469,8 @@ def main():
                         os.path.basename(sedlst['sed_path'][segid_idx])
                     # Get template inputs needed for plotting
                     template_inputs = get_template_inputs(template_name)
+
+                    print('Template inputs:', template_inputs)
 
                     # This is get to faster results to show in 
                     # the schematic figure, i.e., only fit the 

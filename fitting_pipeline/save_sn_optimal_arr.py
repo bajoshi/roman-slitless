@@ -10,18 +10,20 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 fitting_utils = cwd + '/utils/'
 
 sys.path.append(fitting_utils)
-import dust_utils as du
+import dust_utils as du  # noqa: E402
 
 # Define any required constants/arrays
 sn_scalefac = 1.734e40  # see sn_scaling.py 
-sn_day_arr = np.arange(-19,51,1)
+sn_day_arr = np.arange(-19, 51, 1)
 
 # Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", \
-    dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt",
+                           dtype=None, names=['day', 'lam', 'flam'], 
+                           encoding='ascii')
 
 # Also load in lookup table for luminosity distance
-dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', dtype=None, names=True)
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', 
+                       dtype=None, names=True)
 # Get arrays 
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
@@ -30,14 +32,14 @@ del dl_cat
 
 # --------------------------------
 # --------------------------------
-# REdshift array
+# Redshift array
 redshift_arr = np.arange(0.01, 3.01, 0.01)
 
 # Av array
 av_arr = np.arange(0.5, 5.5, 0.5)
 
 # -------- Now save all models to an npy array
-total_models = len(sn_day_arr) * len(redshift_arr) * len(av_arr)  #  total models
+total_models = len(sn_day_arr) * len(redshift_arr) * len(av_arr)
 print('Total models:', total_models)
 
 # Get the wavelengths for one of the SN spectra
@@ -45,7 +47,10 @@ print('Total models:', total_models)
 sn_lam = salt2_spec['lam'][salt2_spec['day'] == 0]
 
 # For clipping to prism wav grid
-x = np.arange(12010.0, 15970.0 + 55.0, 55.0)
+x = np.arange(12000.0, 15960.0 + 90.0, 90.0)
+print('Number of points in approx center of prism spectrum',
+      'that will be matched to templates for optimal pos finder:',
+      len(x))
 
 # Empty array to write to
 allmods = []
@@ -75,7 +80,8 @@ for d in tqdm(range(len(sn_day_arr)), desc='SN Phase'):
             spec_redshifted = sn_dusty_llam / (4 * np.pi * dl * dl * (1 + z))
             
             # Clip model to observed wavelength range
-            # This must be the same range as the clipped range for the extracted spectra
+            # This must be the same range as the clipped 
+            # range for the extracted spectra
             # Also make sure the wav sampling is the same
             # Currently the pylinear x1d prism spectra have
             #  np.arange(7500.0, 18030.0, 30.0) # defined above as x

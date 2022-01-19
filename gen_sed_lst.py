@@ -179,7 +179,7 @@ def get_sn_spec_path(redshift, day_chosen=-99, chosen_av=None):
     # Save individual spectrum file if it doesn't already exist
     sn_spec_path = roman_sims_seds \
         + "salt2_spec_day" + str(day_chosen) \
-        + "_z" + "{:.3f}".format(redshift).replace('.', 'p') \
+        + "_z" + "{:.4f}".format(redshift).replace('.', 'p') \
         + "_av" + "{:.3f}".format(chosen_av).replace('.', 'p') \
         + ".txt"
 
