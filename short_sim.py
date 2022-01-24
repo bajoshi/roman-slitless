@@ -4,6 +4,7 @@ from astropy.io import fits
 import os
 import sys
 import socket
+import subprocess
 
 import pylinear
 
@@ -34,9 +35,16 @@ BEAM = '+1'
 EXPTIME = 400  # seconds per FLT file
 
 # Noise budget
-SKY = 1.1
-DARK = 0.015
-READNOISE = 8
+# See the prism info file from Jeff Kruk
+# for all these numbers.
+# Readnoise is effective readnoise rate
+# Assumed average 1.1 factor for Zodi
+BCK_ZODIACAL = 1.047 # e/pix/sec
+BCK_THERMAL = 0.0637249  # e/pix/sec
+DARK = 0.005  # e/pix/sec
+READNOISE = 0.031  # e/pix/sec
+# Effective sky
+SKY = BCK_ZODIACAL + BCK_THERMAL
 
 
 def get_counts(mag):
@@ -128,8 +136,6 @@ def run_pylinear_shortsim():
     wcslst = savedir + 'wcs_shortsim.lst'
     sedlst = savedir + 'sed_shortsim.lst'
     fltlst = savedir + 'flt_shortsim.lst'
-
-    os.chdir(savedir)
 
     # ---------------------- Get sources
     sources = pylinear.source.SourceCollection(segfile, obslst, 
@@ -245,12 +251,11 @@ if __name__ == '__main__':
     # Insert SNe and assign the SEDs
     insert_sne_getsedlst_shortsim()
 
-    print('\nNow run SExtractor and create the LST files by hand.')
-    print('Run the following command for SExtractor in the shortsim folder:')
-    print('>> sex shortsim_image.fits -c default_config.txt')
-    print('Make sure to comment out the insert code before running the next',
-          'function to run pylinear on the short sim.')
-    sys.exit(0)
+    os.chdir(savedir)
+
+    subprocess.run(['sex', 'shortsim_image.fits', 
+                    '-c', 'default_config.txt'], 
+                   check=True)
 
     # Run pyLINEAR
     run_pylinear_shortsim()

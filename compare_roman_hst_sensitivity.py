@@ -1,13 +1,19 @@
 from astropy.io import fits
+import numpy as np
 
 import matplotlib.pyplot as plt
 
 import os
 import sys
+import warnings
 
 home = os.getenv('HOME')
 
 sens_dir = home + '/Documents/HST_Roman_sensitivities/'
+
+# To suppress a warning about division by zero 
+# when we take the ratio of sensitivities.
+warnings.filterwarnings('ignore')
 
 # ------- HST 
 hst_g102 = fits.open(sens_dir + 
@@ -31,25 +37,69 @@ p127_wav = roman_prism[1].data['Wavelength']
 p127_sen = roman_prism[1].data['Sensitivity']
 
 # --------------
-fig = plt.figure(figsize=(10, 5))
-ax = fig.add_subplot(111)
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(10, 7))
 
-ax.set_xlabel('Wavelength [A]', fontsize=15)
-ax.set_ylabel('Sensitivity', fontsize=15)
+ax2.set_xlabel('Wavelength [A]', fontsize=15)
+ax1.set_ylabel('Sensitivity', fontsize=15)
 
-ax.plot(g102_wav, g102_sen, '--', color='blue', 
+ax1.plot(g102_wav, g102_sen, '--', color='blue', 
         label='HST WFC3/G102, +1 order')
-ax.plot(g141_wav, g141_sen, '--', color='crimson', 
+ax1.plot(g141_wav, g141_sen, '--', color='crimson', 
         label='HST WFC3/G141, +1 order')
 
 # ax.plot(g150_wav, g150_sen, color='purple', label='Roman grism, +1 order')
-ax.plot(p127_wav, p127_sen, color='dodgerblue', label='Roman prism')
+ax1.plot(p127_wav, p127_sen, color='dodgerblue', label='Roman prism')
 
-ax.legend(loc=0, fontsize=12, frameon=False)
+ax1.legend(loc=0, fontsize=12, frameon=False)
 
-ax.set_xlim(7000, 20500)
-ax.set_yscale('log')
-ax.set_ylim(7e14, 6e17)
+ax1.set_xlim(7000, 19000)
+ax1.set_yscale('log')
+ax1.set_ylim(7e14, 6e17)
+
+# Now divide the sensitivities and find out by how much
+# the Roman prism is more sensitive
+# Start by creating an array to hold the HST grism
+# sensitivities. Because there are two HST grisms, over 
+# the entire wav range we are going to choose whichever
+# one of the two grisms is more sensitive.
+hst_sens = np.zeros(len(p127_wav))
+for i in range(len(p127_wav)):
+
+    current_wav = p127_wav[i]
+
+    g102_wav_idx = np.argmin(abs(current_wav - g102_wav))
+    g141_wav_idx = np.argmin(abs(current_wav - g141_wav))
+
+    g102se = g102_sen[g102_wav_idx]
+    g141se = g141_sen[g141_wav_idx]
+
+    if g102se > g141se:
+        hst_sens[i] = g102se
+    else:
+        hst_sens[i] = g141se
+
+sens_ratio = p127_sen/hst_sens
+ax2.plot(p127_wav, sens_ratio, color='k')
+
+#ax1.plot(p127_wav, hst_sens, color='gray', lw=5.0)
+
+# Get the average factor of improvement for the Roman 
+# prism within the central wavelength coverage.
+midwav_idx = np.where((p127_wav >= 9000) & (p127_wav <= 16000))[0]
+print('Average of sensitivity ratio between 0.9 to 1.6 microns:', 
+      '{:.3f}'.format(np.mean(sens_ratio[midwav_idx])))
+
+g102_midwav_idx = np.where((p127_wav >= 9000) & (p127_wav <= 11000))[0]
+print('Average of sensitivity ratio between 0.9 to 1.1 microns (for G102):', 
+      '{:.3f}'.format(np.mean(sens_ratio[g102_midwav_idx])))
+
+g141_midwav_idx = np.where((p127_wav >= 12000) & (p127_wav <= 16000))[0]
+print('Average of sensitivity ratio between 1.2 to 1.6 microns (for G141):', 
+      '{:.3f}'.format(np.mean(sens_ratio[g141_midwav_idx])))
+
+ax2.set_ylabel('Sensitivity Ratio [Roman/HST]', fontsize=15)
+ax2.set_xlim(7000, 19000)
+ax2.set_ylim(1, 8)
 
 fig.savefig('figures/hst_roman_sensitivities.pdf', dpi=200, 
             bbox_inches='tight')

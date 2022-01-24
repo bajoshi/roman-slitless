@@ -2,7 +2,7 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
 
-import os
+import os, sys
 
 datadir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_files/'
 
@@ -12,26 +12,29 @@ def get_sens(mag, flam_fac):
     # Read in manually copy pasted parts from Jeff Kruk's file
     datafile = datadir + 'abmag' + str(int(mag)) + '_prism_sens_kruk.txt'
     s = np.genfromtxt(datafile, dtype=None, 
-                      names=['wav', 'sp_ht', 'flam', 'counts', 'snr'], 
+                      names=['wav', 'sp_ht', 'input_flam', 'counts', 'snr'], 
                       usecols=(0, 1, 3, 4, 5), skip_header=3, 
                       encoding='ascii')
     
     wav = s['wav'] * 1e4  # convert microns to angstroms
     # print('Wavelength grid:', wav)
 
+    # exptime = # 1001.91
+
     # Scale back to W/m2/micron
     # In Jeff Kruk's file they've been scaled up 
     # by some factor dependent on the AB mag
-    flam_watt_m2_micron = s['flam'] / flam_fac
+    flam_watt_m2_micron = s['input_flam'] / flam_fac
 
     # Convert from W/m2/micron to erg/cm2/s/A
+    # 1 W/m2/micron = 0.1 erg/cm2/s/A
     conv_fac = 0.1
-    flam_cgs = conv_fac * flam_watt_m2_micron
+    flam_cgs = flam_watt_m2_micron / conv_fac
     
     # Get the correct count rate
     # Note that the count rate in the file has been summed 
     # over pixels vertically (perpendicular to the spectral trace)
-    cps = s['counts'] / s['sp_ht']
+    cps = s['counts'] * s['sp_ht']
     
     sens = cps / flam_cgs
 
@@ -46,12 +49,15 @@ mags = [19, 21, 23, 25]
 flam_fac = [1e17, 1e18, 1e18, 1e19]
 
 for i, mag in enumerate(mags):
+    print('Working on mag:', i, mag)
     wav, sens = get_sens(mag, flam_fac[i])
     ax.plot(wav, sens, label='AB = ' + str(mag))
 
-print(wav, len(wav))
-wav_idx = np.where((wav >= 7800) & (wav <= 18000))[0]
-print(wav[wav_idx], len(wav_idx))
+# Ensure that every curve above is identical
+# i.e., they should all lie exactly on top of one another
+#print(wav, len(wav))
+#wav_idx = np.where((wav >= 7800) & (wav <= 18000))[0]
+#print(wav[wav_idx], len(wav_idx))
 
 ax.set_xlabel('Wavelength [Angstroms]', fontsize=14)
 ax.set_ylabel('Sensitivity [count rate/Flambda]', fontsize=14)
@@ -59,7 +65,6 @@ ax.set_ylabel('Sensitivity [count rate/Flambda]', fontsize=14)
 ax.legend(loc=0, fontsize=14)
 plt.show()
 
-# Ensure that every curve above is identical
 # Now save to a txt file
 with open(datadir + 'Roman_prism_sensitivity.txt', 'w') as fh:
     fh.write('#  Wav  Sensitivity' + '\n')
