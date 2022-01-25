@@ -485,17 +485,21 @@ if __name__ == '__main__':
             # also check WFIRST tech report TR1901
             # Also see file from Rick Kessler which came from Jeff Kruk
             # in folder sensitivity_files in external drive
-            sky = 1.1     # e/s/pix  # zodi + thermal + MW
-            # npix = 4096 * 4096
-    
-            dark = 0.005   # e/s/pix
-            rdnoise = 10      # electrons per read
+            # Noise budget
+            # Readnoise is effective readnoise rate
+            # Assumed average 1.1 factor for Zodi
+            BCK_ZODIACAL = 1.047 # e/pix/sec
+            BCK_THERMAL = 0.0637249  # e/pix/sec
+            DARK = 0.005  # e/pix/sec
+            READNOISE = 0.031  # e/pix/sec
+            # Effective sky
+            SKY = BCK_ZODIACAL + BCK_THERMAL
 
             exptime = exptime_list[e]  # seconds
     
             # Number of reads
             nreads = int(np.ceil(exptime/900))
-            read_total = nreads * rdnoise
+            read_total = nreads * READNOISE
             
             for i in range(len(roll_angle_list)):
 
@@ -511,7 +515,7 @@ if __name__ == '__main__':
     
                     # update the science extension with sky background 
                     # and dark current
-                    signal = (sci + sky + dark)
+                    signal = (sci + SKY + DARK)
                     
                     # Multiply the science image with the exptime
                     # sci image originally in electrons/s
@@ -536,7 +540,7 @@ if __name__ == '__main__':
                     # now divide by the exptime and subtract the sky again 
                     # to get back to e/s. 
                     # LINEAR expects a background subtracted image
-                    final_sig = (new_sig / exptime) - sky
+                    final_sig = (new_sig / exptime) - SKY
     
                     # Stop if you find nans
                     nan_idx = np.where(np.isnan(final_sig))

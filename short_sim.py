@@ -1,5 +1,8 @@
 import numpy as np
 from astropy.io import fits
+from astropy.modeling import models
+from skimage.morphology import label
+import matplotlib.pyplot as plt
 
 import os
 import sys
@@ -22,17 +25,17 @@ if not os.path.isdir(savedir):
 
 # Params of sim
 NPIX = 4096
-NUM_SNE = 50
-# seems to need a min of 50 objects for SExtractor to work right
+NUM_SNE = 1
 REF_COUNTS = 13696.77
 SIZE = 50  # half of cutout
-# LOWMAG = 22.42
-# HIGHMAG = 28.71
-ZP = 26.264 
+SNMAG_CENTRAL = 23.5
+ZP = 26.264  # For WFC3/F105W and for WFI/F106
+PIXSCL = 0.108  # arcsec per pix
+MODEL = 'GAUSS'  # model to use for fake SNe; GAUSS or REFSTAR
 
 MAGLIM = 29.0
 BEAM = '+1'
-EXPTIME = 400  # seconds per FLT file
+EXPTIME = 1200  # seconds per FLT file; we have 3 so total is 1 hr
 
 # Noise budget
 # See the prism info file from Jeff Kruk
@@ -47,6 +50,10 @@ READNOISE = 0.031  # e/pix/sec
 SKY = BCK_ZODIACAL + BCK_THERMAL
 
 
+# Change to working directory
+os.chdir(savedir)
+
+
 def get_counts(mag):
     counts = np.power(10, -0.4 * (mag - ZP))
     return counts
@@ -58,44 +65,113 @@ def insert_sne_getsedlst_shortsim():
     full_img = np.zeros((NPIX, NPIX))
 
     # ---------------
-    # Get reference image
-    # Read in the reference image of the star from 
-    # Y106_0_6 at 72.1175280, -53.5739388 (~16th mag)
-    ref_cutout_path = img_sim_dir + 'ref_cutout_psf.fits'
+    if MODEL == 'REFSTAR':
+        # Get reference image
+        # Read in the reference image of the star from 
+        # Y106_0_6 at 72.1175280, -53.5739388 (~16th mag)
+        ref_cutout_path = img_sim_dir + 'ref_cutout_psf.fits'
+        ref_data = fits.getdata(ref_cutout_path)
+    elif MODEL == 'GAUSS':
+        # Generate Gaussian model from astropy
+        # See Russell's simulating images notebook
 
-    ref_data = fits.getdata(ref_cutout_path)
+        # Create Gaussian function model
+        # stddev in pixels
+        gaussfunc = models.Gaussian2D(x_stddev=3, y_stddev=3)
 
     # Empty array to store inserted sne properties
     insert_cat = np.zeros((NUM_SNE, 3))
+
+    # Get a header with WCS
+    hdr = fits.getheader(img_sim_dir + '5deg_Y106_0_1.fits')
 
     # ---------------
     # Loop over sne to insert
     for i in range(NUM_SNE):
 
-        # Scale SN and add to full image
-        # Decide some random mag for the SN
-        snmag = np.random.normal(loc=27.0, scale=0.1, size=None)
-        sncounts = get_counts(snmag)
-        scale_fac = sncounts / REF_COUNTS
-        sn_img = ref_data * scale_fac
-
+        # Decide some random mag for the SN and get counts
+        # Position of SN
+        # and adding to image
         # Get SN coords # random
-        r = np.random.randint(low=110, high=3985, size=None)
-        c = np.random.randint(low=110, high=3985, size=None)
+        if NUM_SNE == 1:
+            snmag = SNMAG_CENTRAL
+            sncounts = get_counts(snmag)
 
-        full_img[r-SIZE:r+SIZE, c-SIZE:c+SIZE] += sn_img
+            r = 2048
+            c = 2048
+        else:
+            snmag = np.random.normal(loc=SNMAG_CENTRAL, scale=0.01, size=None)
+            sncounts = get_counts(snmag)
 
-        print(i+1, '  ', r, '  ', c, '  ', '{:.3f}'.format(snmag))
+            r = np.random.randint(low=110, high=3985, size=None)
+            c = np.random.randint(low=110, high=3985, size=None)
 
-        insert_cat[i][0] = r
-        insert_cat[i][1] = c
-        insert_cat[i][2] = snmag
+        if MODEL == 'GAUSS':
+            
+            # Put the SN in the center of the image
+            gaussfunc.x_mean = c
+            gaussfunc.y_mean = r
+
+            x, y = np.meshgrid(np.arange(NPIX), np.arange(NPIX))
+
+            full_img += gaussfunc(x, y)
+
+            # Also ensure that the number of pixels in 
+            # manual segmap above threshold sum up to required
+            # counts. 
+            # See Russell's pyLINEAR notebooks for creating segmap
+            # create a segmentation map from this image
+            threshold = 0.2  # threshold to apply to the image
+            good = full_img > threshold  # these pixels belong to a source
+            segmap = label(good)  # now these pixels have unique segmentation IDs
+
+            print('Total good pixels:', len(np.where(good)[0]))
+            actual_counts = np.sum(full_img[good])
+            print('Total counts within good pixels:', actual_counts)
+            print('Required counts:', sncounts)
+            scale_fac = sncounts / actual_counts
+            # with np.printoptions(precision=2):
+            #     print(full_img[good])
+            
+            print('Scaling factor:', scale_fac)
+            full_img *= scale_fac
+
+            print('New scaled counts:', np.sum(full_img[good]))
+
+            # with np.printoptions(precision=4):
+            #     print(full_img[good])
+
+            # print(segmap[2048-10:2048+10, 
+            #              2048-10:2048+10])
+
+            # fig = plt.figure(figsize=(7, 7))
+            # ax = fig.add_subplot(111)
+            # ax.imshow(full_img[2048-25:2048+25, 
+            #                    2048-25:2048+25], origin='lower')
+            # plt.show()
+
+            # ------- Now save segmap
+            fits.writeto(savedir + 'test_segmap.fits',
+                         segmap, header=hdr, overwrite=True)
+
+
+        else:
+
+
+            # Scale SN and add to full image
+            scale_fac = sncounts / REF_COUNTS
+            sn_img = ref_data * scale_fac
+
+            full_img[r-SIZE:r+SIZE, c-SIZE:c+SIZE] += sn_img
+
+            print(i+1, '  ', r, '  ', c, '  ', '{:.3f}'.format(snmag))
+
+            insert_cat[i][0] = r
+            insert_cat[i][1] = c
+            insert_cat[i][2] = snmag
 
     # Save the file
     savefile = savedir + 'shortsim_image.fits'
-
-    # Get a header with WCS
-    hdr = fits.getheader(img_sim_dir + '5deg_Y106_0_1.fits')
 
     hdu = fits.PrimaryHDU(data=full_img, header=hdr)
     hdu.writeto(savefile, overwrite=True)
@@ -116,7 +192,10 @@ def insert_sne_getsedlst_shortsim():
         for j in range(NUM_SNE):
 
             # First we need the mag for the jth SN
-            m = insert_cat[j][2]
+            if NUM_SNE == 1:
+                m = SNMAG_CENTRAL
+            else:
+                m = insert_cat[j][2]
 
             # Also assign the SED
             # First we need the correct z
@@ -251,11 +330,11 @@ if __name__ == '__main__':
     # Insert SNe and assign the SEDs
     insert_sne_getsedlst_shortsim()
 
-    os.chdir(savedir)
-
-    subprocess.run(['sex', 'shortsim_image.fits', 
-                    '-c', 'default_config.txt'], 
-                   check=True)
+    # Run SExtractor to generate segmap
+    if MODEL == 'REFSTAR':
+        subprocess.run(['sex', 'shortsim_image.fits', 
+                        '-c', 'default_config.txt'], 
+                       check=True)
 
     # Run pyLINEAR
     run_pylinear_shortsim()
