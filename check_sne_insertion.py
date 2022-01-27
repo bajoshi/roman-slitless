@@ -45,7 +45,7 @@ from kcorr import get_kcorr_Hogg
 # There should be greater than 200 SNe detected in each.
 
 pt = '0'  # Enter the pointing you want to test
-total_detectors = 18  # Enter up to 18 depending on how many you want to test
+total_detectors = 1  # Enter up to 18 depending on how many you want to test
 
 
 def read_numsn(sedlst):
