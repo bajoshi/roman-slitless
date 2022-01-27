@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os, sys, socket
 
 if 'plffsn2' in socket.gethostname():
-    datadir = '/astro/ffsn/Joshi/'
+    datadir = '/astro/ffsn/Joshi/sensitivity_files/'
 else:
     datadir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_files/'
 
