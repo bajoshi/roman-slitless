@@ -5,9 +5,12 @@ import matplotlib.pyplot as plt
 import os, sys, socket
 
 if 'plffsn2' in socket.gethostname():
-    datadir = '/astro/ffsn/Joshi/sensitivity_files/'
+    extdir = '/astro/ffsn/Joshi/'
+    datadir = extdir + 'sensitivity_files/'
+    pylinear_ref_dir = extdir + 'pylinear_ref_files/pylinear_config/Roman/'
 else:
     datadir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_files/'
+    pylinear_ref_dir = home + '/Documents/pylinear_ref_files/pylinear_config/Roman/'
 
 
 def get_sens_v2_exptime(mag, flam_fac):
@@ -116,7 +119,7 @@ ax.plot(wav, poly_sens_mod, color='k', lw=2.0)
 """
 
 ax.legend(loc=0, fontsize=14)
-plt.show()
+#plt.show()
 
 # Now save to a txt file
 with open(datadir + 'Roman_prism_sensitivity.txt', 'w') as fh:
@@ -148,5 +151,4 @@ hdul.append(thdu)
 if 'plffsn2' not in socket.gethostname():
     hdul.writeto(sens_dir + 'Roman_p127_sens.fits', overwrite=True)
 
-pylinear_ref_dir = home + '/Documents/pylinear_ref_files/pylinear_config/Roman/'
 hdul.writeto(pylinear_ref_dir + 'Roman_p127_sens.fits', overwrite=True)
