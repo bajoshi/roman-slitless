@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 
 import os, sys, socket
 
-datadir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_files/'
+if 'plffsn2' in socket.gethostname():
+    datadir = '/astro/ffsn/Joshi/'
+else:
+    datadir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_files/'
 
 
 def get_sens_v2_exptime(mag, flam_fac):
