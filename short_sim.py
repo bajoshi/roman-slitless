@@ -28,14 +28,14 @@ NPIX = 4096
 NUM_SNE = 1
 REF_COUNTS = 13696.77
 SIZE = 50  # half of cutout
-SNMAG_CENTRAL = 23.5
+SNMAG_CENTRAL = 27.0
 ZP = 26.264  # For WFC3/F105W and for WFI/F106
 PIXSCL = 0.108  # arcsec per pix
 MODEL = 'GAUSS'  # model to use for fake SNe; GAUSS or REFSTAR
 
 MAGLIM = 29.0
 BEAM = '+1'
-EXPTIME = 1200  # seconds per FLT file; we have 3 so total is 1 hr
+EXPTIME = 334  # seconds per FLT file; we have 3 exposures
 
 # Noise budget
 # See the prism info file from Jeff Kruk
@@ -95,16 +95,16 @@ def insert_sne_getsedlst_shortsim():
         # Get SN coords # random
         if NUM_SNE == 1:
             snmag = SNMAG_CENTRAL
-            sncounts = get_counts(snmag)
 
             r = 2048
             c = 2048
         else:
             snmag = np.random.normal(loc=SNMAG_CENTRAL, scale=0.01, size=None)
-            sncounts = get_counts(snmag)
 
             r = np.random.randint(low=110, high=3985, size=None)
             c = np.random.randint(low=110, high=3985, size=None)
+
+        sncounts = get_counts(snmag)
 
         if MODEL == 'GAUSS':
             
@@ -154,10 +154,7 @@ def insert_sne_getsedlst_shortsim():
             fits.writeto(savedir + 'test_segmap.fits',
                          segmap, header=hdr, overwrite=True)
 
-
         else:
-
-
             # Scale SN and add to full image
             scale_fac = sncounts / REF_COUNTS
             sn_img = ref_data * scale_fac

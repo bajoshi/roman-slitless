@@ -2,39 +2,62 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
 
-import os, sys
+import os, sys, socket
 
 datadir = '/Volumes/Joshi_external_HDD/Roman/sensitivity_files/'
 
 
-def get_sens(mag, flam_fac):
+def get_sens_v2_exptime(mag, flam_fac):
 
     # Read in manually copy pasted parts from Jeff Kruk's file
     datafile = datadir + 'abmag' + str(int(mag)) + '_prism_sens_kruk.txt'
     s = np.genfromtxt(datafile, dtype=None, 
-                      names=['wav', 'sp_ht', 'input_flam', 'counts', 'snr'], 
-                      usecols=(0, 1, 3, 4, 5), skip_header=3, 
+                      names=['wav', 'sp_ht', 'input_flam', 'counts',
+                             'spec_zodi1', 'spec_zodi1p1', 'spec_zodi1p2'], 
+                      usecols=(0, 1, 3, 4, 7, 10, 13), skip_header=3, 
                       encoding='ascii')
     
     wav = s['wav'] * 1e4  # convert microns to angstroms
     # print('Wavelength grid:', wav)
 
-    # exptime = # 1001.91
+    exptime = 1001.91
 
     # Scale back to W/m2/micron
     # In Jeff Kruk's file they've been scaled up 
     # by some factor dependent on the AB mag
-    flam_watt_m2_micron = s['input_flam'] / flam_fac
+    spec = s['spec_zodi1p1'] / exptime
+    flam_watt_m2_micron = spec / flam_fac
 
     # Convert from W/m2/micron to erg/cm2/s/A
     # 1 W/m2/micron = 0.1 erg/cm2/s/A
     conv_fac = 0.1
-    flam_cgs = flam_watt_m2_micron / conv_fac
+    flam_cgs = flam_watt_m2_micron * conv_fac
     
     # Get the correct count rate
     # Note that the count rate in the file has been summed 
     # over pixels vertically (perpendicular to the spectral trace)
-    cps = s['counts'] * s['sp_ht']
+    cps = s['counts'] / s['sp_ht']
+    
+    sens = cps / flam_cgs
+
+    return wav, sens
+
+
+def get_sens(mag, flam_fac):
+
+    # Read in manually copy pasted parts from Jeff Kruk's file
+    s = np.genfromtxt(datadir + 'abmag' + str(int(mag)) + '_prism_sens_kruk.txt', 
+        dtype=None, names=['wav', 'sp_ht', 'flam', 'counts', 'snr'], 
+        usecols=(0, 1, 3, 4, 5), skip_header=3, encoding='ascii')
+    
+    wav = s['wav'] * 1e4  # convert microns to angstroms
+    #print('Wavelength grid:', wav)
+    flam_cgs = 0.1 * s['flam'] / flam_fac
+    
+    # Get the correct count rate
+    # Note that the count rate in the file has been summed 
+    # over pixels vertically (perpendicular to the spectral trace)
+    cps = s['counts'] / s['sp_ht']
     
     sens = cps / flam_cgs
 
@@ -45,8 +68,8 @@ def get_sens(mag, flam_fac):
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
-mags = [19, 21, 23, 25]
-flam_fac = [1e17, 1e18, 1e18, 1e19]
+mags = [19, 21, 23]#, 25]
+flam_fac = [1e17, 1e18, 1e18]#, 1e19]
 
 for i, mag in enumerate(mags):
     print('Working on mag:', i, mag)
@@ -61,6 +84,33 @@ for i, mag in enumerate(mags):
 
 ax.set_xlabel('Wavelength [Angstroms]', fontsize=14)
 ax.set_ylabel('Sensitivity [count rate/Flambda]', fontsize=14)
+
+# This block to fit with a polynomial only used
+# with the exptime version of the get_sens func
+"""
+# Approx by some line fit to the central part of the curve
+# This polynomial approximation is what will be written to file
+cen_idx = np.where((wav >= 12000) & (wav <= 16500))[0]
+wfit = wav[cen_idx]
+sensfit = sens[cen_idx]
+
+pp = np.polyfit(x=wfit, y=sensfit, deg=1)
+p = np.poly1d(pp)
+
+poly_sens = p(wav)
+
+# Also force it to drop to zero 
+# below 7440 and above 18150
+poly_sens_mod = np.zeros(len(wav))
+for k in range(len(wav)):
+    current_wav = wav[k]
+    if current_wav <= 7440 or current_wav >= 18150:
+        poly_sens_mod[k] = 0.0
+    else:
+        poly_sens_mod[k] = poly_sens[k]
+
+ax.plot(wav, poly_sens_mod, color='k', lw=2.0)
+"""
 
 ax.legend(loc=0, fontsize=14)
 plt.show()
@@ -91,7 +141,9 @@ thdu = fits.BinTableHDU.from_columns(cols)
 
 hdul = fits.HDUList()
 hdul.append(thdu)
-hdul.writeto(sens_dir + 'Roman_p127_sens.fits', overwrite=True)
+
+if 'plffsn2' not in socket.gethostname():
+    hdul.writeto(sens_dir + 'Roman_p127_sens.fits', overwrite=True)
 
 pylinear_ref_dir = home + '/Documents/pylinear_ref_files/pylinear_config/Roman/'
 hdul.writeto(pylinear_ref_dir + 'Roman_p127_sens.fits', overwrite=True)

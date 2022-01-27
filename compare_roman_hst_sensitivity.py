@@ -99,7 +99,7 @@ print('Average of sensitivity ratio between 1.2 to 1.6 microns (for G141):',
 
 ax2.set_ylabel('Sensitivity Ratio [Roman/HST]', fontsize=15)
 ax2.set_xlim(7000, 19000)
-ax2.set_ylim(1, 8)
+ax2.set_ylim(1, 50)
 
 fig.savefig('figures/hst_roman_sensitivities.pdf', dpi=200, 
             bbox_inches='tight')

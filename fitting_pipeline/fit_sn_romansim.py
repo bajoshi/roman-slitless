@@ -383,12 +383,12 @@ def get_optimal_position(wav, flam, ferr, opt_args=None):
 def main():
 
     # ----------------------- Preliminary stuff ----------------------- #
-    # ext_root = "romansim_prism_"
-    ext_root = "shortsim_"
+    ext_root = "romansim_prism_"
     img_filt = 'Y106_'
 
-    shortsim_dir = extdir + \
-        "roman_direct_sims/sims2021/K_5degimages_part1/shortsim/"
+    # ext_root = "shortsim_"
+    # shortsim_dir = extdir + \
+    #     "roman_direct_sims/sims2021/K_5degimages_part1/shortsim/"
 
     # exptime1 = '_10800s'
     # exptime2 = '_3600s'
@@ -419,13 +419,13 @@ def main():
     for pt in pointings:
         for det in detectors:
 
-            # img_suffix = img_filt + str(pt) + '_' + str(det)
-            img_suffix = 'shortsim'
+            img_suffix = img_filt + str(pt) + '_' + str(det)
+            # img_suffix = 'shortsim'
 
             # --------------- Read in sed.lst
             sedlst_header = ['segid', 'sed_path']
-            # sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
-            sedlst_path = shortsim_dir + 'sed_' + img_suffix + '.lst'
+            sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
+            # sedlst_path = shortsim_dir + 'sed_' + img_suffix + '.lst'
             sedlst = np.genfromtxt(sedlst_path, dtype=None, 
                                    names=sedlst_header, encoding='ascii')
             print("Read in sed.lst from:", sedlst_path)
@@ -445,10 +445,12 @@ def main():
 
                 exptime = all_exptimes[e]
 
-                # --------------- Read in the extracted spectra                
-                # ext_spec_filename = (ext_spectra_dir + ext_root + img_suffix + 
-                #                      exptime + '_x1d.fits')
-                ext_spec_filename = ext_spectra_dir + ext_root + '_x1d.fits'
+                # --------------- Read in the extracted spectra
+                # for full sim
+                ext_spec_filename = (ext_spectra_dir + ext_root + img_suffix + 
+                                     exptime + '_x1d.fits')
+                # for shortsim
+                # ext_spec_filename = ext_spectra_dir + ext_root + '_x1d.fits'
                 ext_hdu = fits.open(ext_spec_filename)
                 print("Read in extracted spectra from:", ext_spec_filename)
 
