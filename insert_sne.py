@@ -505,7 +505,7 @@ if __name__ == '__main__':
 
                 # Decide some random mag for the SN
                 # This is a power law # previously uniform dist
-                pow_idx = 1.5  
+                pow_idx = 1.2  # not too steep; 1 is uniform
                 # power law index # PDF given by: P(x;a) = a * x^(a-1)
                 snmag = np.random.power(pow_idx, size=None)
                 snmag = snmag * (highmag - lowmag) + lowmag

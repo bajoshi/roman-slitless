@@ -21,11 +21,12 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     e.g., A simple 4-point dither looks like this,
                         *
 
-         * 
-       
-       
-                            *
-        
+         *
+
+
+
+                           *
+
              *
 
     where the coords are:
@@ -49,30 +50,30 @@ def get_dithered_locations(ra_cen, dec_cen, nobs):
     ra_list, dec_list = [ra_cen], [dec_cen]
 
     if nobs == 2:
-        ra_list.append(ra_cen + 3.5*pix_to_deg)
-        dec_list.append(dec_cen + 3.5*pix_to_deg)
+        ra_list.append(ra_cen + 3.5 * pix_to_deg)
+        dec_list.append(dec_cen + 3.5 * pix_to_deg)
 
     if nobs == 3:
-        ra_list.append(ra_cen + 3.33*pix_to_deg)
-        dec_list.append(dec_cen + 3.33*pix_to_deg)
+        ra_list.append(ra_cen + 3.33 * pix_to_deg)
+        dec_list.append(dec_cen + 3.33 * pix_to_deg)
 
-        ra_list.append(ra_cen + 6.67*pix_to_deg)
-        dec_list.append(dec_cen + 6.67*pix_to_deg)
+        ra_list.append(ra_cen + 6.67 * pix_to_deg)
+        dec_list.append(dec_cen + 6.67 * pix_to_deg)
 
     if nobs == 4:
-        ra_list.append(ra_cen + 4.0*pix_to_deg)
-        dec_list.append(dec_cen + 1.5*pix_to_deg)
+        ra_list.append(ra_cen + 4.0 * pix_to_deg)
+        dec_list.append(dec_cen + 1.5 * pix_to_deg)
 
-        ra_list.append(ra_cen + 2.5*pix_to_deg)
-        dec_list.append(dec_cen + 4.0*pix_to_deg)
+        ra_list.append(ra_cen + 2.5 * pix_to_deg)
+        dec_list.append(dec_cen + 4.0 * pix_to_deg)
 
-        ra_list.append(ra_cen - 1.5*pix_to_deg)
-        dec_list.append(dec_cen + 2.5*pix_to_deg)
+        ra_list.append(ra_cen - 1.5 * pix_to_deg)
+        dec_list.append(dec_cen + 2.5 * pix_to_deg)
 
     return ra_list, dec_list
 
 
-def create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
+def create_wcs_lst(lst_dir, img_suffix, roll_angle_list,
                    simroot, ra_cen, dec_cen, disp_elem, exptime_list):
 
     # Format the ra dec
@@ -81,7 +82,7 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list,
 
     # Write list
     wcs_filename = 'wcs_' + img_suffix + '.lst'
-        
+
     with open(lst_dir + wcs_filename, 'w') as fh:
         fh.write("# TELESCOPE = Roman" + "\n")
         fh.write("# INSTRUMENT = WFI" + "\n")
@@ -93,10 +94,9 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list,
 
             roll_angle = "{:.1f}".format(roll_angle_list[r])
 
-            str_to_write = "\n" + simroot + str(r+1) + '_' + img_suffix + \
+            str_to_write = "\n" + simroot + str(r + 1) + '_' + img_suffix + \
                            '  ' + ra_cen_fmt + '  ' + dec_cen_fmt + \
                            '  ' + roll_angle + '  ' + disp_elem
-            
             fh.write(str_to_write)
 
     print("Written WCS LST:", wcs_filename)
@@ -104,7 +104,7 @@ def create_wcs_lst(lst_dir, img_suffix, roll_angle_list,
     return None
 
 
-def create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name, 
+def create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name,
                    img_suffix, machine):
 
     # Write list
@@ -123,7 +123,7 @@ def create_obs_lst(lst_dir, dir_img_path, dir_img_filt, dir_img_name,
 
 def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
 
-    # After a base sed lst has been generated edit the 
+    # After a base sed lst has been generated edit the
     # paths so that they will work on different machines.
     sedlst_basefilename = lst_dir + 'sed_' + img_suffix + '.lst'
     sedlst_filename = lst_dir + 'sed_' + img_suffix + machine + '.lst'
@@ -163,7 +163,7 @@ def create_sed_lst(lst_dir, seds_path, img_suffix, machine):
     return None
 
 
-def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list, 
+def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list,
                    machine, roll_angle_list):
 
     # There is a unique flt lst for each exptime
@@ -189,7 +189,7 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list,
 
             for r in range(len(roll_angle_list)):
 
-                str_to_write = "\n" + result_path + simroot + str(r+1) + \
+                str_to_write = "\n" + result_path + simroot + str(r + 1) + \
                                '_' + img_suffix + '_' + str(e) + 's_flt.fits'
 
                 fh.write(str_to_write)
@@ -199,21 +199,21 @@ def create_flt_lst(lst_dir, result_path, simroot, img_suffix, exptime_list,
     return None
 
 
-def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list, 
-                     dir_img_path, dir_img_filt, dir_img_name, seds_path, 
+def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list,
+                     dir_img_path, dir_img_filt, dir_img_name, seds_path,
                      result_path, exptime_list, simroot, disp_elem):
     """
     This function creates the lst files needed as pylinear inputs.
     It requires the following args --
-      
-      machine: string to identify machine that pylinear is being run on. 
+
+      machine: string to identify machine that pylinear is being run on.
       If you're running pylinear only on one machine this can be left blank.
 
       lst_dir: path to store lst files.
 
       img_suffix: direct and dispersed image identifier.
 
-      roll_angle_list: list of roll angles that will be simulated. 
+      roll_angle_list: list of roll angles that will be simulated.
       Floats in list.
 
       dir_img_path: Directory for direct image.
@@ -237,15 +237,15 @@ def create_lst_files(machine, lst_dir, img_suffix, roll_angle_list,
     dec_cen = float(h[0].header['CRVAL2'])
 
     # OBS LST
-    create_obs_lst(lst_dir, dir_img_path, dir_img_filt, 
+    create_obs_lst(lst_dir, dir_img_path, dir_img_filt,
                    dir_img_name, img_suffix, machine)
 
     # WCS LST
-    create_wcs_lst(lst_dir, img_suffix, roll_angle_list, 
+    create_wcs_lst(lst_dir, img_suffix, roll_angle_list,
                    simroot, ra_cen, dec_cen, disp_elem, exptime_list)
 
     # FLT LST
-    create_flt_lst(lst_dir, result_path, simroot, img_suffix, 
+    create_flt_lst(lst_dir, result_path, simroot, img_suffix,
                    exptime_list, machine, roll_angle_list)
 
     # SED LST
@@ -281,7 +281,7 @@ def get_truth_sn(roman_direct_dir, img_suffix):
     truth_hdu_sn = fits.open(truth_filename)
 
     num_truth_sn = len(truth_hdu_sn[1].data['ra'])
-    
+
     truth_hdu_sn.close()
 
     return num_truth_sn
@@ -299,7 +299,7 @@ if __name__ == '__main__':
     # Get starting time
     start = time.time()
     logger.info("Starting now.")
-    
+
     # Change directory to make sure results go in the right place
     home = os.getenv('HOME')
 
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     if 'compute' in socket.gethostname():
         # Define path for results and change to that directory
         result_path = home + '/work/roman_slitless_sims_results/'
-        
+
         # Define directories for imaging and lst files
         pylinear_lst_dir = home + '/work/roman-slitless/pylinear_lst_files/'
         roman_direct_dir = home + '/work/roman_direct_sims/sims2021/'
@@ -321,16 +321,16 @@ if __name__ == '__main__':
 
         # Define path for SEDs
         seds_path = home + '/work/roman_slitless_sims_seds/'
-        
+
         # Define identifier for machine
         obsstr = '_marcc'
-    
+
     elif 'plffsn2' in socket.gethostname():
         extdir = '/astro/ffsn/Joshi/'
 
         # Define path for results and change to that directory
         result_path = extdir + 'roman_slitless_sims_results/'
-        
+
         # Define directories for imaging and lst files
         pylinear_lst_dir = extdir + 'pylinear_lst_files/'
         roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
@@ -341,7 +341,7 @@ if __name__ == '__main__':
 
         # Define path for SEDs
         seds_path = extdir + 'roman_slitless_sims_seds/'
-        
+
         # Define identifier for machine
         obsstr = '_plffsn2'
 
@@ -354,7 +354,7 @@ if __name__ == '__main__':
         obsstr = ''
         tablespath = result_path + 'tables/'
         matricespath = result_path + 'matrices/'
-    
+
     # Set imaging sims dir
     img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
 
@@ -369,12 +369,12 @@ if __name__ == '__main__':
         simroot = 'romansim_grism'
     elif disp_elem == 'P127':
         simroot = 'romansim_prism'
-    
+
     # ---------------------- Now set simulation counter and loop
     sim_count = 0
-    
+
     for img in img_suffix_list:
-    
+
         img_suffix = img_suffix_list[sim_count]
 
         dir_img_name = img_basename + img_suffix + '_SNadded.fits'
@@ -391,25 +391,25 @@ if __name__ == '__main__':
 
         # Leave commented out # Do not delete
         # Calling sequence for testing on laptop
-        # create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix, 
-        #                  roll_angle_list, 
-        #                  img_sim_dir, dir_img_filt, dir_img_name, 
-        #                  seds_path, result_path, 
+        # create_lst_files('_plffsn2', pylinear_lst_dir, img_suffix,
+        #                  roll_angle_list,
+        #                  img_sim_dir, dir_img_filt, dir_img_name,
+        #                  seds_path, result_path,
         #                  exptime_list, simroot, disp_elem)
         # sys.exit(0)
 
-        # ---------------------- 
+        # ----------------------
         # Now check that there are SNe planted in this image since
         # some of the images do not have them. For computational
-        # efficiency I'm going to skip the images that do not have 
+        # efficiency I'm going to skip the images that do not have
         # SNe in them.
         num_truth_sn = get_truth_sn(roman_direct_dir, img_suffix)
-        logger.info("Number of SN (from orig truth) in image: " + 
-                    str(num_truth_sn))
+        logger.info("Number of SN (from orig truth) in image: "
+                    + str(num_truth_sn))
 
-        create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list, 
-                         img_sim_dir, dir_img_filt, dir_img_name, 
-                         seds_path, result_path, 
+        create_lst_files(obsstr, pylinear_lst_dir, img_suffix, roll_angle_list,
+                         img_sim_dir, dir_img_filt, dir_img_name,
+                         seds_path, result_path,
                          exptime_list, simroot, disp_elem)
 
         # Change directory to where the simulation results will go
@@ -431,18 +431,18 @@ if __name__ == '__main__':
         assert os.path.isfile(obslst)
         assert os.path.isfile(sedlst)
         assert os.path.isfile(wcslst)
-    
+
         logger.info("Using the following paths to lst files and segmap: ")
         logger.info("Segmentation map: " + segfile)
         logger.info("OBS LST: " + obslst)
         logger.info("SED LST: " + sedlst)
         logger.info("WCS LST: " + wcslst)
 
-        # ---------------------- Need to also check that there is at least 
+        # ---------------------- Need to also check that there is at least
         # one SN spectrum in the sed.lst file. This check is required because
         # sometimes even if a SN is in the image it might not get matched to
         # truth and therefore the sed.lst file will not have any SN spectra
-        # in it. 
+        # in it.
         # For getting larger numbers of SNe spectra to analyze I'm only
         # going through the images with at least 2 SNe in them, first.
         with open(sedlst, 'r') as sed_fh:
@@ -461,7 +461,7 @@ if __name__ == '__main__':
 
         # ---------------------- Proceed if all okay
         # ---------------------- Get sources
-        sources = pylinear.source.SourceCollection(segfile, obslst, 
+        sources = pylinear.source.SourceCollection(segfile, obslst,
                                                    detindex=0, maglim=maglim)
 
         # Set up
@@ -478,7 +478,6 @@ if __name__ == '__main__':
 
         # ---------------------- Now do the exptime dependent stuff
         for e in range(len(exptime_list)):
-            
             # ---------------------- Add noise
             logger.info("Adding noise... ")
             # check Russell's notes in pylinear notebooks
@@ -488,7 +487,7 @@ if __name__ == '__main__':
             # Noise budget
             # Readnoise is effective readnoise rate
             # Assumed average 1.1 factor for Zodi
-            BCK_ZODIACAL = 1.047 # e/pix/sec
+            BCK_ZODIACAL = 1.047  # e/pix/sec
             BCK_THERMAL = 0.0637249  # e/pix/sec
             DARK = 0.005  # e/pix/sec
             READNOISE = 0.031  # e/pix/sec
@@ -496,32 +495,32 @@ if __name__ == '__main__':
             SKY = BCK_ZODIACAL + BCK_THERMAL
 
             exptime = exptime_list[e]  # seconds
-    
+
             # Number of reads
-            nreads = int(np.ceil(exptime/900))
+            nreads = int(np.ceil(exptime / 900))
             read_total = nreads * READNOISE
-            
+
             for i in range(len(roll_angle_list)):
 
-                oldf = simroot + str(i+1) + '_' + img_suffix + '_flt.fits'
+                oldf = simroot + str(i + 1) + '_' + img_suffix + '_flt.fits'
                 logger.info("Working on... " + oldf)
-                logger.info("Putting in an exposure time of: " +
-                            str(exptime) + " seconds.")
-    
+                logger.info("Putting in an exposure time of: "
+                            + str(exptime) + " seconds.")
+
                 # open the fits file
                 with fits.open(oldf) as hdul:
                     sci = hdul[('SCI', 1)].data    # the science image
                     size = sci.shape              # dimensionality of the image
-    
-                    # update the science extension with sky background 
+
+                    # update the science extension with sky background
                     # and dark current
                     signal = (sci + SKY + DARK)
-                    
+
                     # Multiply the science image with the exptime
                     # sci image originally in electrons/s
                     signal = signal * exptime  # this is now in electrons
-    
-                    # Randomly vary signal about its mean. 
+
+                    # Randomly vary signal about its mean.
                     # Assuming Gaussian distribution
                     # first get the uncertainty
                     variance = signal + read_total**2
@@ -534,32 +533,32 @@ if __name__ == '__main__':
                     if sigma_nan_idx.size:
                         sigma[sigma_nan_idx] = np.nanmean(sigma)
 
-                    new_sig = np.random.normal(loc=signal, 
+                    new_sig = np.random.normal(loc=signal,
                                                scale=sigma, size=size)
-    
-                    # now divide by the exptime and subtract the sky again 
-                    # to get back to e/s. 
+
+                    # now divide by the exptime and subtract the sky again
+                    # to get back to e/s.
                     # LINEAR expects a background subtracted image
                     final_sig = (new_sig / exptime) - SKY
-    
+
                     # Stop if you find nans
                     nan_idx = np.where(np.isnan(final_sig))
                     nan_idx = np.asarray(nan_idx)
                     if nan_idx.size:
-                        logger.critical("Found NaNs." +
-                                        "Resolve this issue first. Exiting.")
+                        logger.critical("Found NaNs."
+                                        + "Resolve this issue first. Exiting.")
                         sys.exit(1)
 
                     # Assign updated sci image to the first [SCI] extension
                     hdul[('SCI', 1)].data = final_sig
-    
+
                     # update the uncertainty extension with the sigma
                     err = sigma / exptime
-    
+
                     hdul[('ERR', 1)].data = err
-    
+
                     # now write to a new file name
-                    newfilename = oldf.replace('_flt', '_' + str(exptime) 
+                    newfilename = oldf.replace('_flt', '_' + str(exptime)
                                                + 's' + '_flt')
                     hdul.writeto(newfilename, overwrite=True)
 
@@ -567,8 +566,8 @@ if __name__ == '__main__':
 
             logger.info("Noise addition done. Check simulated images.")
             ts = time.time()
-            logger.info("Time taken for simulation: " + 
-                        "{:.2f}".format(ts - start) + " seconds.")
+            logger.info("Time taken for simulation: "
+                        + "{:.2f}".format(ts - start) + " seconds.")
 
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
@@ -576,38 +575,38 @@ if __name__ == '__main__':
 
             assert os.path.isfile(fltlst)
             logger.info("FLT LST:" + fltlst)
-    
+
             grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-            tabulate = pylinear.modules.Tabulate('pdt', 
+            tabulate = pylinear.modules.Tabulate('pdt',
                                                  path=tablespath, ncpu=0)
-            tabulate.run(grisms, sources, beam) 
-    
+            tabulate.run(grisms, sources, beam)
+
             extraction_parameters = grisms.get_default_extraction()
-    
+
             extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A,' + \
                          ' sampling = {dlamb} A'
             logger.info(extpar_fmt.format(**extraction_parameters))
-    
+
             # Set extraction params
             sources.update_extraction_parameters(**extraction_parameters)
             method = 'golden'  # golden, grid, or single
             extroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
             logdamp = [-6, -1, 0.1]
-    
+
             logger.info("Extracting...")
-            pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp, 
-                                               method, extroot, tablespath, 
-                                               inverter='lsqr', ncpu=1, 
+            pylinear.modules.extract.extract1d(grisms, sources, beam, logdamp,
+                                               method, extroot, tablespath,
+                                               inverter='lsqr', ncpu=1,
                                                group=False)
 
             try:
                 te = time.time() - ts
-                logger.info("Time taken for extraction: " + 
-                            "{:.2f}".format(te) + " seconds.")
+                logger.info("Time taken for extraction: "
+                            + "{:.2f}".format(te) + " seconds.")
             except NameError:
                 logger.info("Finished.")
 
-        # ---------------------- Remove matrices, tables, and 
+        # ---------------------- Remove matrices, tables, and
         # *_res.fits.gz files to save space
         # MATRICES
         for e in range(len(exptime_list)):
@@ -619,12 +618,12 @@ if __name__ == '__main__':
 
         # TABLES
         for i in range(len(roll_angle_list)):
-            pth = tablespath + simroot + str(i+1) + '_' + img_suffix + '.h5'
+            pth = tablespath + simroot + str(i + 1) + '_' + img_suffix + '.h5'
             os.remove(pth)
             logger.info('Deleted table file: ' + pth)
             for e in range(len(exptime_list)):
                 exptime = exptime_list[e]
-                pth = tablespath + simroot + str(i+1) + '_' + img_suffix + \
+                pth = tablespath + simroot + str(i + 1) + '_' + img_suffix + \
                     '_' + str(exptime) + 's' + '.h5'
                 os.remove(pth)
                 logger.info('Deleted table file: ' + pth)
@@ -640,18 +639,18 @@ if __name__ == '__main__':
             logger.info('Deleted FLT file: ' + fl)
 
         # Clean up all the sed files too
-        sedcat = np.genfromtxt(sedlst, dtype=None, names=['segid', 'sedpath'], 
+        sedcat = np.genfromtxt(sedlst, dtype=None, names=['segid', 'sedpath'],
                                delimiter=' ', encoding='ascii', skip_header=2)
         for f in range(len(sedcat)):
             sed_fl_to_remove = sedcat['sedpath'][f]
             # Dont trash the stellar spectra
             # i.e., because there are so few that they repeat
-            # from one detector to another and the next 
-            # detector simulation will fail if it doesn't 
+            # from one detector to another and the next
+            # detector simulation will fail if it doesn't
             # find the stellar spectrum.
             # In case of the galaxy and salt2 SN spectra,
             # it is also possible BUT HIGHLY UNLIKELY that
-            # a spectrum is repeated between detectors. 
+            # a spectrum is repeated between detectors.
             # If the repeat happens then the next detector sim
             # will definitely fail.
             if 'pickles' in sed_fl_to_remove:
@@ -662,16 +661,16 @@ if __name__ == '__main__':
                     logger.info('Deleted SED file: ' + sed_fl_to_remove)
                 except FileNotFoundError:
                     continue
-    
+
         # ----------------------
         # Increment simulation counter
-        # This only increments after all the exptimes 
+        # This only increments after all the exptimes
         # for a given direct image are simulated
         sim_count += 1
 
         logger.info("Finished with set of sims for: " + img_suffix)
 
-    logger.info("Total time taken: " + 
-                "{:.2f}".format(time.time() - start) + " seconds.")
+    logger.info("Total time taken: "
+                + "{:.2f}".format(time.time() - start) + " seconds.")
 
     sys.exit(0)
