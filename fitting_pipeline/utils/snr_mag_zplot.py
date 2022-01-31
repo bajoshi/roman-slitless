@@ -9,13 +9,15 @@ from get_snr import get_snr
 from get_all_sn_segids import get_all_sn_segids
 
 import os
+import sys
 home = os.getenv('HOME')
 roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
+
 
 def plot_z_mag_snr(mag, snr, redshift, savepath=None):
 
     # Make fig and choose cmap
-    fig = plt.figure(figsize=(11,5))
+    fig = plt.figure(figsize=(11, 5))
     ax = fig.add_subplot(111)
 
     ax.set_xlabel('Y106 magnitude', fontsize=16)
@@ -29,7 +31,8 @@ def plot_z_mag_snr(mag, snr, redshift, savepath=None):
 
     # Plot
     for i in range(5):
-        cax = ax.scatter(mag[i], snr[i], s=12, c=redshift[i], cmap=cmaps[i], facecolors='None')
+        cax = ax.scatter(mag[i], snr[i], s=12, c=redshift[i],
+                         cmap=cmaps[i], facecolors='None')
 
     # Colorbar and label
     cbar = fig.colorbar(cax)
@@ -51,12 +54,14 @@ def plot_z_mag_snr(mag, snr, redshift, savepath=None):
 
     return None
 
+
 def get_counts(segid, dirdat, segdat):
 
     obj_pix = np.where(segdat == segid)
     counts = np.sum(dirdat[obj_pix])
 
     return counts
+
 
 def plot_z_mag_counts(cat, segmap_path, dirimg_path):
 
@@ -77,8 +82,8 @@ def plot_z_mag_counts(cat, segmap_path, dirimg_path):
     dhdu.close()
     shdu.close()
 
-    # Plot 
-    fig = plt.figure(figsize=(9,5))
+    # Plot
+    fig = plt.figure(figsize=(9, 5))
     ax = fig.add_subplot(111)
 
     ax.set_xlabel('Y106 magnitude', fontsize=16)
@@ -86,7 +91,8 @@ def plot_z_mag_counts(cat, segmap_path, dirimg_path):
 
     cmap = plt.cm.get_cmap('viridis_r')
 
-    cax = ax.scatter(cat['Y106mag'], np.log10(counts), s=20, c=cat['z_true'], cmap=cmap, facecolors='None')
+    cax = ax.scatter(cat['Y106mag'], np.log10(counts), s=20, c=cat['z_true'],
+                     cmap=cmap, facecolors='None')
 
     cbar = fig.colorbar(cax)
     cbar.set_label('Redshift', fontsize=16)
@@ -97,14 +103,14 @@ def plot_z_mag_counts(cat, segmap_path, dirimg_path):
 
     return None
 
-    
-
 
 if __name__ == '__main__':
 
-    results_dir = '/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/'
-    pylinear_lst_dir = '/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/'
-    img_sim_dir = '/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/K_5degimages_part1/'
+    extdir = '/Volumes/Joshi_external_HDD/Roman/'
+
+    results_dir = extdir + 'roman_slitless_sims_results/'
+    pylinear_lst_dir = extdir + 'pylinear_lst_files/'
+    img_sim_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
 
     img_suffix = 'Y106_0_1'
     exptime = ['_20s', '_400s', '_1200s', '_3600s', '_10800s']
@@ -115,9 +121,11 @@ if __name__ == '__main__':
 
     # --------------- Also read in SExtractor catalog for mags
     cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'
-    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-    'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 'FWHM_IMAGE']
-    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, encoding='ascii')
+    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
+                  'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO',
+                  'FLUX_RADIUS', 'FWHM_IMAGE']
+    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header,
+                        encoding='ascii')
 
     # --------------- Collect needed arrays
     mag = np.zeros((len(exptime), len(all_sn_segids)))
@@ -131,7 +139,8 @@ if __name__ == '__main__':
         # --------------- Read in extracted spectra
         xhdu = fits.open(results_dir + resfile)
 
-        for i in tqdm(range(len(all_sn_segids)), desc='Processing SN', leave=False):
+        for i in tqdm(range(len(all_sn_segids)), desc='Processing SN',
+                      leave=False):
 
             current_segid = all_sn_segids[i]
             segid_idx = int(np.where(cat['NUMBER'] == current_segid)[0])
@@ -159,19 +168,4 @@ if __name__ == '__main__':
     # Close HDU
     xhdu.close()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    sys.exit(0)

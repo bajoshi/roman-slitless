@@ -55,7 +55,7 @@ CUTOUT_SIZE = 50
 
 def get_segpix(snmag):
 
-    blank_smap = np.zeros((CUTOUT_SIZE*2, CUTOUT_SIZE*2), dtype=np.int64)
+    blank_smap = np.zeros((CUTOUT_SIZE * 2, CUTOUT_SIZE * 2), dtype=np.int64)
 
     if snmag > 26.0:
         # central 3x3 grid
@@ -97,10 +97,10 @@ def get_ref_segpix_counts(snmag):
     # since there is only one detected object
     # in all the reference segmaps.
 
-    # Ensure that when the counts in the segpix for 
-    # this supernova are summed you get the scaled 
+    # Ensure that when the counts in the segpix for
+    # this supernova are summed you get the scaled
     # reference counts. You cannot simply do np.sum()
-    # on the new cutout because it adds everything, 
+    # on the new cutout because it adds everything,
     # including pixels that won't be included in the
     # segpix and will therefore be an overestimate.
 
@@ -111,7 +111,7 @@ def get_ref_segpix_counts(snmag):
     # segcounts = np.sum(refimgdat[segpix[0], segpix[1]])
 
     delta_m = REF_MAG - snmag
-    sncounts = REF_COUNTS * (1 / 10**(-0.4*delta_m))
+    sncounts = REF_COUNTS * (1 / 10**(-0.4 * delta_m))
 
     # Now determine scaling and scale ref img to check
     # sf = sncounts / segcounts
@@ -130,8 +130,8 @@ def get_ref_segpix_counts(snmag):
     return sncounts, segpix
 
 
-def get_insertion_coords(num_to_insert, 
-                         img_cat=None, img_segmap=None, 
+def get_insertion_coords(num_to_insert,
+                         img_cat=None, img_segmap=None,
                          imdat=None, checkplot=False):
 
     x_ins = np.zeros(num_to_insert, dtype=np.int64)
@@ -151,13 +151,13 @@ def get_insertion_coords(num_to_insert,
         host_galaxy_ids = np.zeros(num_to_insert, dtype=np.int64)
 
         # Read in catalog
-        cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 
-                      'ALPHA_J2000', 'DELTA_J2000', 
-                      'FLUX_AUTO', 'FLUXERR_AUTO', 
-                      'MAG_AUTO', 'MAGERR_AUTO', 
-                      'FLUX_RADIUS', 'FWHM_IMAGE', 
+        cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE',
+                      'ALPHA_J2000', 'DELTA_J2000',
+                      'FLUX_AUTO', 'FLUXERR_AUTO',
+                      'MAG_AUTO', 'MAGERR_AUTO',
+                      'FLUX_RADIUS', 'FWHM_IMAGE',
                       'CLASS_STAR']
-        cat = np.genfromtxt(img_cat, dtype=None, names=cat_header, 
+        cat = np.genfromtxt(img_cat, dtype=None, names=cat_header,
                             encoding='ascii')
 
         # PUll out mags
@@ -166,8 +166,8 @@ def get_insertion_coords(num_to_insert,
         # Read in segmap
         segmap = fits.getdata(img_segmap)
 
-        # Now insert each SN next to another object with 
-        # at least 15 pixels in the segmap, as long as that 
+        # Now insert each SN next to another object with
+        # at least 15 pixels in the segmap, as long as that
         # many galaxies exist, otherwise move on to smaller
         # hosts.
         sn_added_count = 0
@@ -175,7 +175,7 @@ def get_insertion_coords(num_to_insert,
 
             # First find a galaxy close to a chosen magnitude
             # This magnitude is drawn from a power law distribution
-            # similar to the distribution for SNe below. This 
+            # similar to the distribution for SNe below. This
             # ensures that SNe are not preferentially inserted
             # into faint/bright galaxies.
             pow_prob = np.random.power(2.0, size=None)
@@ -188,15 +188,16 @@ def get_insertion_coords(num_to_insert,
             # 0.2 mag is initial search width
             mag_width = 0.2
             all_cat_idx = \
-                np.where((cat_mags >= galaxy_mag_to_match - mag_width) & 
-                         (cat_mags <= galaxy_mag_to_match + mag_width))[0]
-            
+                np.where((cat_mags >= galaxy_mag_to_match - mag_width)
+                         & (cat_mags <= galaxy_mag_to_match + mag_width))[0]
+
             # Randomly pick a galaxy that is within this range
             while not all_cat_idx.size:  # ie., no galaxies found in mag range
                 mag_width += 0.05
                 all_cat_idx = \
-                    np.where((cat_mags >= galaxy_mag_to_match - mag_width) &
-                             (cat_mags <= galaxy_mag_to_match + mag_width))[0]
+                    np.where((cat_mags >= galaxy_mag_to_match - mag_width)
+                             & (cat_mags
+                                <= galaxy_mag_to_match + mag_width))[0]
 
             cat_idx = np.random.choice(all_cat_idx)
 
@@ -235,7 +236,7 @@ def get_insertion_coords(num_to_insert,
             # Now insert SN close to the other object if all okay
             if num_src_pix >= 15:
 
-                # Put the SN shifted out some pix away from one 
+                # Put the SN shifted out some pix away from one
                 # of hte four corners of the bounding box
                 xsn = np.random.choice([left, right]) + 3
                 ysn = np.random.choice([top, bottom]) + 3
@@ -246,7 +247,7 @@ def get_insertion_coords(num_to_insert,
 
                 galaxy_mag = cat['MAG_AUTO'][cat_idx]
 
-                # print(sn_added_count, src_segid, num_src_pix, 
+                # print(sn_added_count, src_segid, num_src_pix,
                 #       xsn, ysn, star, galaxy_mag)
 
                 x_ins[sn_added_count] = xsn
@@ -265,30 +266,31 @@ def get_insertion_coords(num_to_insert,
                         ax = fig.add_subplot(111)
 
                         # Get cutout
-                        im_cutout = imdat[bottom-10:top+10, left-10:right+10]
+                        im_cutout = imdat[bottom - 10:top + 10,
+                                          left - 10:right + 10]
 
                         # Image extent
-                        ext = [left-10, right+10, bottom-10, top+10]
+                        ext = [left - 10, right + 10, bottom - 10, top + 10]
 
                         # Ensure square extent
-                        x_extent = right+10 - left-10
-                        y_extent = top+10 - bottom-10
+                        x_extent = right + 10 - left - 10
+                        y_extent = top + 10 - bottom - 10
 
                         if x_extent > y_extent:
                             ext_diff = x_extent - y_extent
-                            ext = [left-10, right+10, 
-                                   bottom-10-int(ext_diff/2), 
-                                   top+10+int(ext_diff/2)]
+                            ext = [left - 10, right + 10,
+                                   bottom - 10 - int(ext_diff / 2),
+                                   top + 10 + int(ext_diff / 2)]
                         elif y_extent > x_extent:
                             ext_diff = y_extent - x_extent
-                            ext = [left-10-int(ext_diff/2), 
-                                   right+10+int(ext_diff/2), 
-                                   bottom-10, top+10]
+                            ext = [left - 10 - int(ext_diff / 2),
+                                   right + 10 + int(ext_diff / 2),
+                                   bottom - 10, top + 10]
 
                         # Show image of galaxy and mark SN location
-                        ax.imshow(np.log10(im_cutout), extent=ext, 
+                        ax.imshow(np.log10(im_cutout), extent=ext,
                                   origin='lower')
-                        ax.scatter(xsn, ysn, marker='x', lw=5.0, 
+                        ax.scatter(xsn, ysn, marker='x', lw=5.0,
                                    s=60, color='red')
 
                         plt.show()
@@ -320,7 +322,7 @@ def gen_reference_cutout(showref=False):
         # Get the reference image first
         dname = img_sim_dir + img_basename + img_suffix + '.fits'
         ddat, dhdr = fits.getdata(dname, header=True)
-        
+
         # Now scale image to get the image to counts per sec
         cps_sci_arr = ddat * DIRIMAGE_SCALING
 
@@ -333,7 +335,8 @@ def gen_reference_cutout(showref=False):
     r = yloc
     c = xloc
 
-    ref_img = img_arr[r-CUTOUT_SIZE:r+CUTOUT_SIZE, c-CUTOUT_SIZE:c+CUTOUT_SIZE]
+    ref_img = img_arr[r - CUTOUT_SIZE:r + CUTOUT_SIZE,
+                      c - CUTOUT_SIZE:c + CUTOUT_SIZE]
 
     # Save
     rhdu = fits.PrimaryHDU(data=ref_img)
@@ -347,11 +350,11 @@ def gen_reference_cutout(showref=False):
     cat_filename = ref_name.replace('.fits', '.cat')
     checkimage = ref_name.replace('.fits', '_segmap.fits')
 
-    subprocess.run(['sex', ref_name, 
-                    '-c', 'roman_sims_sextractor_config.txt', 
-                    '-CATALOG_NAME', 
-                    os.path.basename(cat_filename), 
-                    '-CHECKIMAGE_NAME', checkimage], 
+    subprocess.run(['sex', ref_name,
+                    '-c', 'roman_sims_sextractor_config.txt',
+                    '-CATALOG_NAME',
+                    os.path.basename(cat_filename),
+                    '-CHECKIMAGE_NAME', checkimage],
                    check=True)
 
     # Go back to roman-slitless directory
@@ -360,9 +363,9 @@ def gen_reference_cutout(showref=False):
     # --------------
     # Now read in the catalog just created to get
     # the reference's counts and magnitude
-    ref_cat_hdr = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 
-                   'DELTA_J2000', 'FLUX_AUTO', 'FLUXERR_AUTO', 
-                   'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS', 
+    ref_cat_hdr = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000',
+                   'DELTA_J2000', 'FLUX_AUTO', 'FLUXERR_AUTO',
+                   'MAG_AUTO', 'MAGERR_AUTO', 'FLUX_RADIUS',
                    'FWHM_IMAGE', 'CLASS_STAR']
     ref_cat = np.genfromtxt(cat_filename, dtype=None,
                             names=ref_cat_hdr, encoding='ascii')
@@ -396,11 +399,11 @@ if __name__ == '__main__':
     # ---------------
     # some preliminary settings
     img_basename = '5deg_'
-    s = 50  # same as the size of the cutout stamp  
+    s = 50  # same as the size of the cutout stamp
     # cutout is 100x100; need half that here
 
     # Mag limits for choosing random SN mag
-    # low and high limits here correspond to 
+    # low and high limits here correspond to
     # almost exactly z=0.5 and z=3.0
     lowmag = 22.42
     highmag = 28.71
@@ -408,7 +411,7 @@ if __name__ == '__main__':
     s = CUTOUT_SIZE
 
     # ---------------
-    # Read in the reference image of the star from 
+    # Read in the reference image of the star from
     # Y106_0_6 at 72.1175280, -53.5739388 (~16th mag)
     ref_cutout_path = img_sim_dir + 'ref_cutout_psf.fits'
     if not os.path.isfile(ref_cutout_path):
@@ -431,12 +434,13 @@ if __name__ == '__main__':
             # randomly insert approx 10 stars in each detector
             num_to_insert_stars = np.random.randint(low=8, high=12)
 
+            # ---------------
             img_suffix = 'Y106_' + str(pt) + '_' + str(det)
             dir_img_name = img_sim_dir + img_basename + img_suffix + '.fits'
 
             print("Working on: " + dir_img_name)
-            print("Will insert " + str(num_to_insert) + " SNe in " + 
-                  os.path.basename(dir_img_name))
+            print("Will insert " + str(num_to_insert) + " SNe in "
+                  + os.path.basename(dir_img_name))
 
             # First check that the files have been unzipped
             if not os.path.isfile(dir_img_name):
@@ -455,10 +459,10 @@ if __name__ == '__main__':
             # Save to be able to run sextractor to generate model image
             mhdu = fits.PrimaryHDU(data=cps_sci_arr, header=cps_hdr)
             model_img_name = dir_img_name.replace('.fits', '_formodel.fits')
-            mhdu.writeto(model_img_name, overwrite=True) 
+            mhdu.writeto(model_img_name, overwrite=True)
 
             # ---------------
-            # First pass of SExtractor 
+            # First pass of SExtractor
             # See notes on sextractor args for subprocess
             # in gen_sed_lst.py
             # Change directory to images directory
@@ -467,9 +471,9 @@ if __name__ == '__main__':
             cat_filename = model_img_name.replace('.fits', '.cat')
             checkimage = model_img_name.replace('.fits', '_segmap.fits')
 
-            subprocess.run(['sex', model_img_name, 
-                            '-c', 'roman_sims_sextractor_config.txt', 
-                            '-CATALOG_NAME', os.path.basename(cat_filename), 
+            subprocess.run(['sex', model_img_name,
+                            '-c', 'roman_sims_sextractor_config.txt',
+                            '-CATALOG_NAME', os.path.basename(cat_filename),
                             '-CHECKIMAGE_NAME', checkimage], check=True)
 
             # Go back to roman-slitless directory
@@ -482,9 +486,9 @@ if __name__ == '__main__':
             # ---------------
             # Get a list of x-y coords to insert SNe at
             x_ins, y_ins, host_mags, host_segids = \
-                get_insertion_coords(num_to_insert, 
-                                     img_cat=cat_filename, 
-                                     img_segmap=checkimage, 
+                get_insertion_coords(num_to_insert,
+                                     img_cat=cat_filename,
+                                     img_segmap=checkimage,
                                      imdat=cps_sci_arr)
 
             # ================================================
@@ -494,9 +498,9 @@ if __name__ == '__main__':
             # print("--"*16)
 
             insert_mag = np.zeros(num_to_insert + num_to_insert_stars)
-            object_type = np.empty(num_to_insert + num_to_insert_stars, 
+            object_type = np.empty(num_to_insert + num_to_insert_stars,
                                    dtype='<U4')
-            insert_segid = np.zeros(num_to_insert + num_to_insert_stars, 
+            insert_segid = np.zeros(num_to_insert + num_to_insert_stars,
                                     dtype=int)
 
             last_segid = np.max(segdata)
@@ -522,11 +526,11 @@ if __name__ == '__main__':
                 eps = sncounts / cutout_sum
                 new_cutout_scaled = eps * new_cutout
 
-                # scaled_cutout_sum = np.sum(new_cutout_scaled[segpix[0], 
+                # scaled_cutout_sum = np.sum(new_cutout_scaled[segpix[0],
                 #                                              segpix[1]])
                 # inferred_mag = -2.5 * np.log10(scaled_cutout_sum) + 26.264
-                # print(i, 
-                #       '{:.3f}'.format(snmag), 
+                # print(i,
+                #       '{:.3f}'.format(snmag),
                 #       '{:.3f}'.format(inferred_mag),
                 #       '{:.3f}'.format(snmag - inferred_mag))
 
@@ -538,12 +542,19 @@ if __name__ == '__main__':
                 c = xi
 
                 # Add in the new SN in the direct image
-                cps_sci_arr[r-s:r+s, c-s:c+s] = \
-                    cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout_scaled
+                cps_sci_arr[r - s:r + s, c - s:c + s] = \
+                    cps_sci_arr[r - s:r + s, c - s:c + s] + new_cutout_scaled
 
                 # Also add it into the segmap
                 # First update segpix to reference the larger 4096 x 4096 grid
                 segpix_big = get_fullgrid_segpix(segpix, r, c)
+
+                # Recompute the sum of the segmap pixels for this source
+                # Now that it has been added to the sci img the sum will
+                # not be the same as the above scaled_cutout_sum
+                sci_sum = np.sum(cps_sci_arr[segpix_big[0], segpix_big[1]])
+
+                print(sci_sum)
 
                 # Now update segid and add
                 new_segid = last_segid + i + 1
@@ -556,10 +567,12 @@ if __name__ == '__main__':
                 object_type[i] = 'SNIa'
 
                 # Print info to screen
-                # print(str(xi) + "  " + str(yi) + "    " + \
-                #    "{:.3f}".format(snmag) + "    " + \
-                #    "{:.3f}".format(sncounts) + "    " + \
-                #    "{:.3f}".format(host_mags[i]))
+                print(str(xi) + "  " + str(yi) + "    "
+                      + "{:.3f}".format(snmag) + "    "
+                      + "{:.3f}".format(sncounts) + "    "
+                      + "{:.3f}".format(host_mags[i]))
+
+                sys.exit()
 
             # ================================================
             # Now insert some bright stars. Same process as SNe.
@@ -575,7 +588,7 @@ if __name__ == '__main__':
 
                 # Decide mag to insert
                 stellar_mag = np.random.choice(stellar_mag_array)
-                insert_mag[i+j+1] = stellar_mag
+                insert_mag[i + j + 1] = stellar_mag
 
                 # Decide location to insert
                 xs = np.random.randint(low=110, high=3985, size=1)
@@ -598,30 +611,30 @@ if __name__ == '__main__':
                 # Not really needed because these stars are
                 # already quite bright.
 
-                cps_sci_arr[r-s:r+s, c-s:c+s] = \
-                    cps_sci_arr[r-s:r+s, c-s:c+s] + new_cutout
+                cps_sci_arr[r - s:r + s, c - s:c + s] = \
+                    cps_sci_arr[r - s:r + s, c - s:c + s] + new_cutout
 
                 # Also add it into the segmap
                 segpix_big = get_fullgrid_segpix(segpix, r, c)
                 new_segid = last_segid + j + 1
                 segdata[segpix_big[0], segpix_big[1]] = new_segid
 
-                insert_segid[i+j+1] = new_segid
+                insert_segid[i + j + 1] = new_segid
 
                 # Now assign an object type.
-                object_type[i+j+1] = 'STAR'
+                object_type[i + j + 1] = 'STAR'
 
             # Append star data to the SN data and save
             x_ins = np.append(x_ins, star_x)
             y_ins = np.append(y_ins, star_y)
-            host_mags = np.append(host_mags, 
-                                  np.ones(num_to_insert_stars)*-99.0)
-            host_segids = np.append(host_segids, 
-                                    np.ones(num_to_insert_stars)*-99.0)
+            host_mags = np.append(host_mags,
+                                  np.ones(num_to_insert_stars) * -99.0)
+            host_segids = np.append(host_segids,
+                                    np.ones(num_to_insert_stars) * -99.0)
 
             # Save the locations and SN mag as a numpy array
-            added_sn_data = np.c_[x_ins, y_ins, insert_mag, 
-                                  host_mags, host_segids, 
+            added_sn_data = np.c_[x_ins, y_ins, insert_mag,
+                                  host_mags, host_segids,
                                   object_type, insert_segid]
             snadd_fl = dir_img_name.replace('.fits', '_SNadded.npy')
             np.save(snadd_fl, added_sn_data)
@@ -657,17 +670,17 @@ if __name__ == '__main__':
 
                 for i in range(num_to_insert):
 
-                    fhreg.write("circle(" + 
-                                "{:.1f}".format(x_ins[i]) + "," + 
-                                "{:.1f}".format(y_ins[i]) + "," + 
-                                "9.5955367)" + " # color=red" + 
-                                " width=3" + "\n")
+                    fhreg.write("circle("
+                                + "{:.1f}".format(x_ins[i]) + ","
+                                + "{:.1f}".format(y_ins[i]) + ","
+                                + "9.5955367)" + " # color=red"
+                                + " width=3" + "\n")
 
             tqdm.write('Saved: ' + snadd_regfl)
 
             # Clean up intermediate files
             os.remove(checkimage)
-            # os.remove(cat_filename) 
+            # os.remove(cat_filename)
             os.remove(model_img_name)
 
-    sys.exit(0)    
+    sys.exit(0)
