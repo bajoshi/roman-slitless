@@ -10,6 +10,7 @@ import sys
 import subprocess
 from tqdm import tqdm
 import socket
+import pickle
 
 import matplotlib.pyplot as plt
 
@@ -1084,6 +1085,15 @@ def gen_sed_lst():
                 host_segids = host_segids.astype(np.float64)
                 host_segids = host_segids.astype(np.int64)
 
+                # Also load in the host and SN segpix arrays
+                host_segpix_fl = dir_img_path.replace('.fits', 
+                                                      '_hostsegpix.pkl')
+                sn_segpix_fl = dir_img_path.replace('.fits', '_snsegpix.pkl')
+                with open(host_segpix_fl, 'rb') as fh_host:
+                    host_segpix_arr = pickle.load(fh_host)
+                with open(sn_segpix_fl, 'rb') as fh_sn:
+                    sn_segpix_arr = pickle.load(fh_sn)
+
                 # Keep track of assigned redshifts
                 all_redshifts = np.zeros(total_objects)
 
@@ -1126,7 +1136,25 @@ def gen_sed_lst():
                         host_idx = int(current_host_segid - 1)
                         host_z = all_redshifts[host_idx]
 
-                        spec_path = get_sn_spec_path(host_z)
+                        # Now compute overlap between host-galaxy and SN pixels
+                        host_segpix = host_segpix_arr[obj_idx]
+                        sn_segpix = sn_segpix_arr[obj_idx]
+
+                        overlap, overlap_pix = isoverlapping(sn_segpix, 
+                                                             host_segpix)
+
+                        sys.exit(0)
+
+                        if overlap:
+                            # i.e., generate a SN spectrum
+                            # contaminated by host light
+                            spec_path = \
+                                get_sn_spec_path_hostoverlap(host_z, 
+                                                             overlap_pix)
+                        else:
+                            # i.e., generate a pure SN spectrum
+                            spec_path = get_sn_spec_path(host_z)
+
                         # Append redshift
                         all_redshifts[i] = host_z
 
@@ -1137,6 +1165,34 @@ def gen_sed_lst():
                     fh.write(str(current_segid) + " " + spec_path + "\n")
 
     return None
+
+
+def isoverlapping(sn_segpix, host_segpix):
+
+    # The shape for these segpix arrays should 
+    # always be (2, n) where n is the number of
+    # pixels in the object.
+
+    assert sn_segpix.ndim == 2
+    assert host_segpix.ndim == 2
+
+    print(sn_segpix.shape)
+    print(host_segpix.shape)
+
+    # There is probably a faster numpy way to do this
+    # but this is easiest for now. I'm going to check each
+    # (row, col) coordinate tuple in the SN segpix against 
+    # the host segpix to determine pixel overlap.
+    for i in range(sn_segpix.shape[1]):
+
+        current_sn_segpix = sn_segpix[:, i]
+
+        print(current_sn_segpix)
+
+        if (current_sn_segpix[0], current_sn_segpix[1]) in all_host_coords:
+            overlap = True
+
+    return overlap
 
 
 if __name__ == '__main__':

@@ -7,13 +7,13 @@ import socket
 import subprocess
 from tqdm import tqdm
 import warnings
+import pickle
 
 import matplotlib.pyplot as plt
 
 # Get the dirs correct
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
-    modeldir = extdir + 'bc03_output_dir/'
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
     roman_slitless_dir = extdir + 'GitHub/roman-slitless/'
@@ -21,21 +21,19 @@ if 'plffsn2' in socket.gethostname():
 
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
-    modeldir = extdir + 'bc03_output_dir/m62/'
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
     home = os.getenv('HOME')
     roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
     utils_dir = roman_slitless_dir + 'fitting_pipeline/utils/'
 
-assert os.path.isdir(modeldir)
 assert os.path.isdir(roman_direct_dir)
 
 dir_img_part = 'part1'
 img_sim_dir = roman_direct_dir + 'K_5degimages_' + dir_img_part + '/'
 
-# sys.path.append(utils_dir)
-# from make_model_dirimg import gen_model_img  # noqa: E402
+sys.path.append(utils_dir)
+from make_model_dirimg import gen_model_img  # noqa: E402
 
 # ---------------------- GLOBAL DEFS
 # Scaling factor for direct images
@@ -149,6 +147,7 @@ def get_insertion_coords(num_to_insert,
         # Empty array for hsot galaxy magnitudes
         host_galaxy_mags = np.zeros(num_to_insert)
         host_galaxy_ids = np.zeros(num_to_insert, dtype=np.int64)
+        host_galaxy_segpix = []
 
         # Read in catalog
         cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE',
@@ -178,7 +177,18 @@ def get_insertion_coords(num_to_insert,
             # similar to the distribution for SNe below. This
             # ensures that SNe are not preferentially inserted
             # into faint/bright galaxies.
-            pow_prob = np.random.power(2.0, size=None)
+            pow_prob = np.random.power(1.0, size=None)
+            # Leaving the power distribution flat for now
+            # I want to give equal probability to say a 27th mag
+            # SN being next to a 27th mag galaxy or a 17th mag galaxy.
+            # This is because we want to assess the contamination effects
+            # later and this is just taking another variable out of
+            # that assessment (for a first pass at analysis).
+            # We can make this magnitude distribution more realistic later.
+            # Also, since the original direct image has a realistic galaxy
+            # distribution built in if we select a galaxy from that
+            # distribution with equal prob to all mags then we will be
+            # following the same distribution.
             galaxy_mag_to_match = pow_prob * (27 - 17) + 17.0
             # This line above assumes 17th mag is approx brightest galaxy
             # and 27th mag is approx faintest galaxy
@@ -236,10 +246,10 @@ def get_insertion_coords(num_to_insert,
             # Now insert SN close to the other object if all okay
             if num_src_pix >= 15:
 
-                # Put the SN shifted out some pix away from one
-                # of hte four corners of the bounding box
-                xsn = np.random.choice([left, right]) + 3
-                ysn = np.random.choice([top, bottom]) + 3
+                # Put the SN at one of the
+                # four corners of the bounding box
+                xsn = np.random.choice([left, right])
+                ysn = np.random.choice([top, bottom])
 
                 # Put the SN somewhere within the bounding box
                 # xsn = np.random.choice(np.arange(left, right))
@@ -256,6 +266,10 @@ def get_insertion_coords(num_to_insert,
                 host_galaxy_ids[sn_added_count] = src_segid
 
                 sn_added_count += 1
+
+                # Assign host-galaxy segmentation
+                # pixels to variable to return
+                host_galaxy_segpix.append(np.array([src_rows, src_cols]))
 
                 # Check cutout of inserted SN and galaxy
                 if checkplot:
@@ -302,7 +316,8 @@ def get_insertion_coords(num_to_insert,
                 # print('SKIPPING TOO SMALL SOURCE.')
                 continue
 
-        return x_ins, y_ins, host_galaxy_mags, host_galaxy_ids
+        return x_ins, y_ins, host_galaxy_mags, host_galaxy_ids, \
+            host_galaxy_segpix
 
 
 def gen_reference_cutout(showref=False):
@@ -429,7 +444,7 @@ if __name__ == '__main__':
 
             # ---------------
             # Determine number of SNe to insert and open dir img
-            num_to_insert = np.random.randint(low=90, high=100)
+            num_to_insert = 5  # np.random.randint(low=90, high=100)
             # Also decide number of stars
             # randomly insert approx 10 stars in each detector
             num_to_insert_stars = np.random.randint(low=8, high=12)
@@ -480,16 +495,29 @@ if __name__ == '__main__':
             os.chdir(roman_slitless_dir)
 
             # ---------------
-            # Read in segmap. Will be used later
+            # Read in segmap. Will be used later for inserting
+            # SNe close to host-galaxies.
             segdata = fits.getdata(checkimage)
+
+            # Convert to model image
+            # i.e., the direct image updated such that
+            # any pixel not associated with a segmap
+            # source ID is forced to zero. This is done so
+            # that the counts that pylinear infers are exactly
+            # what we intended to put in for the fake SNe.
+            model_imgdat = gen_model_img(model_img_name, checkimage)
 
             # ---------------
             # Get a list of x-y coords to insert SNe at
-            x_ins, y_ins, host_mags, host_segids = \
+            x_ins, y_ins, host_mags, host_segids, host_segpix_arr = \
                 get_insertion_coords(num_to_insert,
                                      img_cat=cat_filename,
                                      img_segmap=checkimage,
                                      imdat=cps_sci_arr)
+
+            # The rest of the code uses cps_sci_arr so I'm
+            # just going to assign the model data to this variable.
+            cps_sci_arr = model_imgdat
 
             # ================================================
             # Now insert as many SNe as required
@@ -502,6 +530,7 @@ if __name__ == '__main__':
                                    dtype='<U4')
             insert_segid = np.zeros(num_to_insert + num_to_insert_stars,
                                     dtype=int)
+            sn_segpix_arr = []
 
             last_segid = np.max(segdata)
 
@@ -551,10 +580,10 @@ if __name__ == '__main__':
 
                 # Recompute the sum of the segmap pixels for this source
                 # Now that it has been added to the sci img the sum will
-                # not be the same as the above scaled_cutout_sum
-                sci_sum = np.sum(cps_sci_arr[segpix_big[0], segpix_big[1]])
-
-                print(sci_sum)
+                # not be the same as the above scaled_cutout_sum.
+                # This is because the sci image already had some background
+                # in it.
+                # scicounts = np.sum(cps_sci_arr[segpix_big[0], segpix_big[1]])
 
                 # Now update segid and add
                 new_segid = last_segid + i + 1
@@ -566,13 +595,15 @@ if __name__ == '__main__':
                 # to assign spectra.
                 object_type[i] = 'SNIa'
 
+                # Append to SN segpix array
+                sn_segpix_arr.append(np.array([segpix_big[0], segpix_big[1]]))
+
                 # Print info to screen
                 print(str(xi) + "  " + str(yi) + "    "
+                      + str(new_segid) + "   "
                       + "{:.3f}".format(snmag) + "    "
                       + "{:.3f}".format(sncounts) + "    "
                       + "{:.3f}".format(host_mags[i]))
-
-                sys.exit()
 
             # ================================================
             # Now insert some bright stars. Same process as SNe.
@@ -624,6 +655,11 @@ if __name__ == '__main__':
                 # Now assign an object type.
                 object_type[i + j + 1] = 'STAR'
 
+                # Alsp append 'None' to the host and SN segpix array
+                host_segpix_arr.append(np.array([None, None]))
+                sn_segpix_arr.append(np.array([None, None]))
+
+            # ======================
             # Append star data to the SN data and save
             x_ins = np.append(x_ins, star_x)
             y_ins = np.append(y_ins, star_y)
@@ -640,6 +676,24 @@ if __name__ == '__main__':
             np.save(snadd_fl, added_sn_data)
             tqdm.write('Saved: ' + snadd_fl)
 
+            # ======================
+            # Write the segpix arrays separately using pickle
+            host_segpix_fl = dir_img_name.replace('.fits',
+                                                  '_SNadded_hostsegpix.pkl')
+            with open(host_segpix_fl, 'wb') as fh_host:
+                pickle.dump(host_segpix_arr, fh_host)
+
+            sn_segpix_fl = dir_img_name.replace('.fits',
+                                                '_SNadded_snsegpix.pkl')
+            with open(sn_segpix_fl, 'wb') as fh_sn:
+                pickle.dump(sn_segpix_arr, fh_sn)
+            tqdm.write('Saved segpix arrays.')
+
+            print(host_segpix_arr)
+            print('=======================\n')
+            print(sn_segpix_arr)
+
+            # ======================
             # Save direct image and check with ds9
             new_hdu = fits.PrimaryHDU(header=cps_hdr, data=cps_sci_arr)
             savefile = dir_img_name.replace('.fits', '_SNadded.fits')
@@ -653,6 +707,7 @@ if __name__ == '__main__':
             new_segmap.writeto(new_segmap_file, overwrite=True)
             tqdm.write('Saved: ' + new_segmap_file)
 
+            # ======================
             # Also add a regions file for the added SNe
             snadd_regfl = dir_img_name.replace('.fits', '_SNadded.reg')
             with open(snadd_regfl, 'w') as fhreg:
@@ -678,6 +733,7 @@ if __name__ == '__main__':
 
             tqdm.write('Saved: ' + snadd_regfl)
 
+            # ======================
             # Clean up intermediate files
             os.remove(checkimage)
             # os.remove(cat_filename)
