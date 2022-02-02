@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.random import default_rng
 from astropy.io import fits
+from scipy import spatial
+from scipy.interpolate import griddata
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
@@ -22,6 +24,9 @@ sn_scalefac = 1.734e40
 
 astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc,
                               Tcmb0=2.725 * u.K, Om0=0.3)
+
+DIRIMAGE_SCALING = 10**(-0.4 * (31.7956 - 26.264))
+SPEED_OF_LIGHT_ANG = 3e18
 
 # -----------------
 if 'plffsn2' in socket.gethostname():
@@ -366,7 +371,7 @@ def get_gal_spec_path(redshift, log_stellar_mass_chosen=None,
 
     # Save file
     gal_spec_path = roman_sims_seds + 'bc03_template' + \
-        "_z" + "{:.3f}".format(redshift).replace('.', 'p') + \
+        "_z" + "{:.4f}".format(redshift).replace('.', 'p') + \
         "_ms" + log_stellar_mass_str + \
         "_age" + "{:.3f}".format(chosen_age).replace('.', 'p') + \
         "_tau" + "{:.3f}".format(chosen_tau).replace('.', 'p') + \
@@ -1080,13 +1085,14 @@ def gen_sed_lst():
                 # ------------
                 # Also assign SN spectra to our added SN
                 insert_cat = np.load(dir_img_path.replace('.fits', '.npy'))
+                print(insert_cat)
                 insert_segid = np.array(insert_cat[:, -1], dtype=np.int64)
                 host_segids = np.array(insert_cat[:, 4])
                 host_segids = host_segids.astype(np.float64)
                 host_segids = host_segids.astype(np.int64)
 
                 # Also load in the host and SN segpix arrays
-                host_segpix_fl = dir_img_path.replace('.fits', 
+                host_segpix_fl = dir_img_path.replace('.fits',
                                                       '_hostsegpix.pkl')
                 sn_segpix_fl = dir_img_path.replace('.fits', '_snsegpix.pkl')
                 with open(host_segpix_fl, 'rb') as fh_host:
@@ -1094,8 +1100,13 @@ def gen_sed_lst():
                 with open(sn_segpix_fl, 'rb') as fh_sn:
                     sn_segpix_arr = pickle.load(fh_sn)
 
-                # Keep track of assigned redshifts
+                # Keep track of assigned redshifts and spectra
+                # Have to keep track of previous spectra because
+                # I need the host spectra in cases where contam
+                # SN spectra need to be generated and the sedlst
+                # is still being written so we can't read that(?)
                 all_redshifts = np.zeros(total_objects)
+                all_spectra = []
 
                 # ------------ Now loop over all objects
                 for i in tqdm(range(total_objects), desc="Object SegID"):
@@ -1140,17 +1151,27 @@ def gen_sed_lst():
                         host_segpix = host_segpix_arr[obj_idx]
                         sn_segpix = sn_segpix_arr[obj_idx]
 
-                        overlap, overlap_pix = isoverlapping(sn_segpix, 
+                        overlap, overlap_pix = isoverlapping(sn_segpix,
                                                              host_segpix)
-
-                        sys.exit(0)
-
                         if overlap:
                             # i.e., generate a SN spectrum
                             # contaminated by host light
+
+                            # First you need the path to the host spectrum
+                            # and host and SN magnitudes
+                            host_path = all_spectra[host_idx]
+                            hostmag = float(insert_cat[obj_idx, 3])
+                            snmag = float(insert_cat[obj_idx, 2])
                             spec_path = \
-                                get_sn_spec_path_hostoverlap(host_z, 
-                                                             overlap_pix)
+                                get_sn_spec_path_hostoverlap(host_z,
+                                                             overlap_pix,
+                                                             sn_segpix,
+                                                             dir_img_path,
+                                                             host_path,
+                                                             hostmag,
+                                                             snmag,
+                                                             current_host_segid,  # noqa: E501
+                                                             current_segid)
                         else:
                             # i.e., generate a pure SN spectrum
                             spec_path = get_sn_spec_path(host_z)
@@ -1163,6 +1184,7 @@ def gen_sed_lst():
 
                     # ------------ Write to file
                     fh.write(str(current_segid) + " " + spec_path + "\n")
+                    all_spectra.append(spec_path)
 
     return None
 
@@ -1176,23 +1198,208 @@ def isoverlapping(sn_segpix, host_segpix):
     assert sn_segpix.ndim == 2
     assert host_segpix.ndim == 2
 
-    print(sn_segpix.shape)
-    print(host_segpix.shape)
+    # Create an array of host and SN segpix
+    # See: https://stackoverflow.com/questions/10818546/finding-index-of-\
+    # nearest-point-in-numpy-arrays-of-x-and-y-coordinates
+    all_host_pix = host_segpix.T
+    all_sn_pix = sn_segpix.T
 
-    # There is probably a faster numpy way to do this
-    # but this is easiest for now. I'm going to check each
-    # (row, col) coordinate tuple in the SN segpix against 
-    # the host segpix to determine pixel overlap.
+    # print(all_host_pix, '======\n')
+
+    overlap_pix = []
+    overlap = False
+
     for i in range(sn_segpix.shape[1]):
 
-        current_sn_segpix = sn_segpix[:, i]
+        current_sn_segpix = all_sn_pix[i]
+        distance, index = spatial.KDTree(all_host_pix).query(current_sn_segpix)
 
-        print(current_sn_segpix)
-
-        if (current_sn_segpix[0], current_sn_segpix[1]) in all_host_coords:
+        if distance == 0.0:
             overlap = True
+            overlap_pix.append(current_sn_segpix)
+            # print(i, current_sn_segpix, distance, index)
 
-    return overlap
+    return overlap, overlap_pix
+
+
+def abs_scale(spec_wav, spec_flam, objmag):
+
+    # Read in F106 bandpass # Using WFC3/F105W
+    f105 = np.genfromtxt(fitting_utils + 'throughputs/F105W_IR_throughput.csv',
+                         delimiter=',', dtype=None, names=['wav', 'trans'],
+                         encoding='ascii', usecols=(1, 2), skip_header=1)
+
+    # Convolve spectrum with filter
+    filt_flam = filter_conv(f105['wav'], f105['trans'],
+                            spec_wav, spec_flam)
+
+    # Convert to fnu since we have the AB mag
+    lam_pivot = 10552.0  # hardcoded for F105W
+    fnu = lam_pivot**2 * filt_flam / SPEED_OF_LIGHT_ANG
+    req_fnu = 10**(-0.4 * (objmag + 48.6))
+
+    scale_fac = req_fnu / fnu
+
+    # Scale the flam spectrum
+    # I think I realized in the kcorr code that
+    # this scaling factor is the same regardless of
+    # flam or fnu
+    scaled_spec = spec_flam * scale_fac
+
+    return scaled_spec
+
+
+def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
+
+    # First grid the spectrum wavelengths to the filter wavelengths
+    spec_on_filt_grid = griddata(points=spec_wav, values=spec_flam,
+                                 xi=filter_wav)
+
+    # Remove NaNs
+    valid_idx = np.where(~np.isnan(spec_on_filt_grid))
+
+    filter_wav = filter_wav[valid_idx]
+    filter_thru = filter_thru[valid_idx]
+    spec_on_filt_grid = spec_on_filt_grid[valid_idx]
+
+    # Now do the two integrals
+    num = np.trapz(y=spec_on_filt_grid * filter_thru, x=filter_wav)
+    den = np.trapz(y=filter_thru, x=filter_wav)
+
+    filter_flux = num / den
+
+    return filter_flux
+
+
+def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
+                                 snadded_img_pth, host_path,
+                                 hostmag, snmag, host_id, sn_id,
+                                 day_chosen=-99, chosen_av=None):
+    """
+
+
+    Even more realistic would be to assign each overlapping segpix
+    a separate segid and its own spectrum and then simulate. The other
+    host-galaxy and SN segpix that do not overlap can be grouped
+    together. This should give the most realistic simulation.
+    Then for extraction you can again go back to associating
+    all overlapping pix with the SN or host depending on which
+    object you're interested in extracting (if interested in both
+    the extraction will have to be done twice with the overlapping
+    pix flipping their ID between SN and host each time).
+    """
+
+    # First get the base SN spectrum and also the host spectrum
+    # The host spectrum has already been generated so we need to
+    # use that.
+    base_sn_spec_path = get_sn_spec_path(redshift)
+
+    base_sn_spec = np.genfromtxt(base_sn_spec_path, dtype=None,
+                                 names=True, encoding='ascii')
+    host_spec = np.genfromtxt(host_path, dtype=None, names=True,
+                              encoding='ascii')
+
+    # Put both the spectra on the same wavelength grid
+    common_wav = np.arange(6000, 20000)
+
+    sn_spec_regrid = griddata(points=base_sn_spec['lam'],
+                              values=base_sn_spec['flux'],
+                              xi=common_wav)
+    host_spec_regrid = griddata(points=host_spec['lam'],
+                                values=host_spec['flux'],
+                                xi=common_wav)
+
+    # Now get the absolute scaling of the spectra right.
+    # ie., we know the F106 mags of both objects so we will
+    # scale the spectra such that the spectrum convolved with
+    # the F106 bandpass gives the expected magnitude.
+    sn_spec_regrid = abs_scale(common_wav, sn_spec_regrid, snmag)
+    host_spec_regrid = abs_scale(common_wav, host_spec_regrid, hostmag)
+
+    # Total pixels to loop over
+    total_sn_pix = sn_segpix.shape[1]
+
+    all_sn_pix = sn_segpix.T
+
+    # Read in direct image # This is the original direct image
+    # We have to use the both the direct image prior to adding
+    # the fake SNe and also the newer *_SNadded.fits because
+    # for the overlapping pixels we need the amount of galaxy
+    # light in them (prior to adding the SN) to get the correct
+    # weighting factor for the host spectrum. We need the newer
+    # image with the fake SNe to determine the weighting factor
+    # for the SNe.
+    orig_dir_img_path = snadded_img_pth.replace('_SNadded', '')
+    dirimg = fits.getdata(orig_dir_img_path)
+    # Remember that we'd scaled to compensate for the ZP difference
+    # See notes in insert_sne.py
+    dirimg *= DIRIMAGE_SCALING
+
+    snadded_img = fits.getdata(snadded_img_pth)
+
+    # Final contaminated spectrum
+    full_contam_spec = np.zeros(len(common_wav))
+
+    # Now loop over each pixel that is associated with the SN
+    # We will be generating a flux-weighted linear combination
+    # of SN and host spectra at each pixel associated with the
+    # SN. Each of these individual pixel spectra are then summed
+    # up to create the contaminated spectrum for the SN.
+    for i in range(total_sn_pix):
+
+        current_pix = all_sn_pix[i]
+        distance, index = spatial.KDTree(overlap_pix).query(current_pix)
+
+        # print('\n', i, current_pix, distance, index, overlap_pix[index])
+
+        if distance == 0.0:
+            host_counts = dirimg[overlap_pix[index][0], overlap_pix[index][1]]
+            total_counts = snadded_img[overlap_pix[index][0],
+                                       overlap_pix[index][1]]
+            sn_counts = total_counts - host_counts
+
+            sn_weight = sn_counts / total_counts
+            host_weight = host_counts / total_counts
+
+            # print(total_counts, host_counts, sn_counts)
+            # print(host_weight, sn_weight)
+        else:
+            sn_weight = 1.0
+            host_weight = 0.0
+
+        contam_spec = (sn_weight * sn_spec_regrid
+                       + host_weight * host_spec_regrid)
+        full_contam_spec += contam_spec
+
+        # Test figure
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(common_wav, contam_spec, color='k')
+        ax.plot(common_wav, sn_weight * sn_spec_regrid, color='crimson')
+        ax.plot(common_wav, host_weight * host_spec_regrid,
+                color='dodgerblue')
+        plt.show()
+        fig.clear()
+        plt.close(fig)
+        """
+
+    contam_spec_path = roman_sims_seds + 'contam_host' \
+        + str(host_id) + '_sn' + str(sn_id) + '.txt'
+
+    # Save individual spectrum file
+    with open(contam_spec_path, 'w') as fh_contam:
+        fh_contam.write("#  lam  flux")
+        fh_contam.write("\n")
+
+        for j in range(len(common_wav)):
+            fh_contam.write("{:.2f}".format(common_wav[j]) + " "
+                            + str(full_contam_spec[j]))
+            fh_contam.write("\n")
+
+        fh_contam.close()
+
+    return contam_spec_path
 
 
 if __name__ == '__main__':
