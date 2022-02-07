@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 from get_template_inputs import get_template_inputs
 from get_snr import get_snr
-from get_all_sn_segids import get_all_sn_segids
 
 import os
 import sys
@@ -20,7 +19,7 @@ def plot_z_mag_snr(mag, snr, redshift, savepath=None):
     fig = plt.figure(figsize=(11, 5))
     ax = fig.add_subplot(111)
 
-    ax.set_xlabel('Y106 magnitude', fontsize=16)
+    ax.set_xlabel('F106 magnitude', fontsize=16)
     ax.set_ylabel('SNR of extracted 1d spectrum', fontsize=16)
 
     cmaps = [plt.cm.get_cmap('Oranges_r'),
@@ -30,7 +29,7 @@ def plot_z_mag_snr(mag, snr, redshift, savepath=None):
              plt.cm.get_cmap('Reds_r')]
 
     # Plot
-    for i in range(5):
+    for i in range(mag.shape[0]):
         cax = ax.scatter(mag[i], snr[i], s=12, c=redshift[i],
                          cmap=cmaps[i], facecolors='None')
 
@@ -38,11 +37,11 @@ def plot_z_mag_snr(mag, snr, redshift, savepath=None):
     cbar = fig.colorbar(cax)
     cbar.set_label('Redshift', fontsize=16)
 
-    # Add horizontal line at SNR=5.0
-    ax.axhline(y=5.0, ls='--', color='k', lw=2.0)
+    # Add horizontal line at SNR=3.0
+    ax.axhline(y=3.0, ls='--', color='k', lw=2.0)
 
     # limits
-    ax.set_ylim(-10.0, 200.0)
+    ax.set_ylim(-10.0, 50.0)
 
     # Save figure if needed
     if savepath:
@@ -113,19 +112,24 @@ if __name__ == '__main__':
     img_sim_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
 
     img_suffix = 'Y106_0_1'
-    exptime = ['_20s', '_400s', '_1200s', '_3600s', '_10800s']
+    exptime = ['_400s', '_1200s', '_3600s', '_10800s']
 
     # --------------- Get all SNe IDs
+    sedlst_header = ['segid', 'sed_path']
     sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
-    all_sn_segids = get_all_sn_segids(sedlst_path)
+    sedlst = np.genfromtxt(sedlst_path, dtype=None,
+                           names=sedlst_header, encoding='ascii')
+    # Counting only the uncontaminated spectra for now
+    all_sn_segids = []
+    for i in range(len(sedlst)):
+        if ('salt' in sedlst['sed_path'][i]):
+            all_sn_segids.append(sedlst['segid'][i])
 
-    # --------------- Also read in SExtractor catalog for mags
-    cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.cat'
-    cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
-                  'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO',
-                  'FLUX_RADIUS', 'FWHM_IMAGE']
-    cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header,
-                        encoding='ascii')
+    # --------------- Also read in inserted object catalog for mags
+    cat_filename = img_sim_dir + '5deg_' + img_suffix + '_SNadded.npy'
+    insert_cat = np.load(cat_filename)
+
+    all_inserted_segids = np.array(insert_cat[:, -1], dtype=np.int64)
 
     # --------------- Collect needed arrays
     mag = np.zeros((len(exptime), len(all_sn_segids)))
@@ -143,10 +147,10 @@ if __name__ == '__main__':
                       leave=False):
 
             current_segid = all_sn_segids[i]
-            segid_idx = int(np.where(cat['NUMBER'] == current_segid)[0])
+            segid_idx = int(np.where(all_inserted_segids == current_segid)[0])
 
             # Get magnitude
-            mag[e, i] = cat['MAG_AUTO'][segid_idx]
+            mag[e, i] = float(insert_cat[segid_idx, 2])
 
             # Get spectrum and SNR
             wav = xhdu[('SOURCE', current_segid)].data['wavelength']
@@ -164,6 +168,28 @@ if __name__ == '__main__':
     savepath = roman_slitless_dir + 'figures/extracted_snr.pdf'
 
     plot_z_mag_snr(mag, snr, redshift, savepath)
+
+    # --------------- Make a separate plot for the 1 hr and 20m exptimes
+    fig, (ax1, ax2) = plt.subplots(figsize=(13, 5), nrows=1, ncols=2)
+
+    ax1.set_xlabel('F106 magnitude', fontsize=16)
+    ax2.set_xlabel('F106 magnitude', fontsize=16)
+
+    ax1.set_ylabel('20 min SNR of extracted 1d spectrum', fontsize=16)
+    ax2.set_ylabel('1 hr SNR of extracted 1d spectrum', fontsize=16)
+
+    ax1.scatter(mag[0], snr[0], s=12, c='k', facecolors='None')
+    ax2.scatter(mag[1], snr[1], s=12, c='k', facecolors='None')
+
+    ax1.axhline(y=3.0, ls='--', color='k', lw=2.0)
+    ax2.axhline(y=3.0, ls='--', color='k', lw=2.0)
+
+    # Fixed y limits on both to be able to compare
+    ax1.set_ylim(0, 13)
+    ax2.set_ylim(0, 13)
+
+    fig.savefig(savepath.replace('.pdf', '_short_exptimes.pdf'), dpi=200,
+                bbox_inches='tight')
 
     # Close HDU
     xhdu.close()

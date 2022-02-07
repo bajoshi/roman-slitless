@@ -29,7 +29,7 @@ pylinear_flam_scale_fac = 1e-17
 def get_burn_thin(sampler):
 
     # Get autocorrelation time
-    # Discard burn-in. You do not want to consider 
+    # Discard burn-in. You do not want to consider
     # the burn in the corner plots/estimation.
     tau = sampler.get_autocorr_time(tol=0)
 
@@ -66,7 +66,7 @@ def write_to_file_data(fh, emcee_savefile):
     # ----- Get flat samples
     sampler = emcee.backends.HDFBackend(emcee_savefile)
     burn_in, thinning_steps = get_burn_thin(sampler)
-    flat_samples = sampler.get_chain(discard=burn_in, 
+    flat_samples = sampler.get_chain(discard=burn_in,
                                      thin=thinning_steps, flat=True)
 
     # ----- Read in corner quantiles
@@ -139,34 +139,30 @@ exptime2 = '_1200s'
 exptime3 = '_3600s'
 exptime4 = '_10800s'
 
-res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  ' + 
-           'Y106mag  SNR400  SNR1200  SNR3600  SNR10800  ' + 
-
-           'z400  z400_lowerr  z400_uperr  ' + 
-           'phase400  phase400_lowerr  phase400_uperr  ' + 
-           'Av400  Av400_lowerr  Av400_uperr  ' + 
-
-           'z1200  z1200_lowerr  z1200_uperr  ' + 
-           'phase1200  phase1200_lowerr  phase1200_uperr  ' + 
-           'Av1200  Av1200_lowerr  Av1200_uperr  ' + 
-            
-           'z3600  z3600_lowerr  z3600_uperr  ' + 
-           'phase3600  phase3600_lowerr  phase3600_uperr  ' + 
-           'Av3600  Av3600_lowerr  Av3600_uperr  ' + 
-            
-           'z10800  z10800_lowerr  z10800_uperr  ' + 
-           'phase10800  phase10800_lowerr  phase10800_uperr  ' + 
-           'Av10800  Av10800_lowerr  Av10800_uperr'
+res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  '
+           + 'Y106mag  SNR400  SNR1200  SNR3600  SNR10800  '
+           + 'z400  z400_lowerr  z400_uperr  '
+           + 'phase400  phase400_lowerr  phase400_uperr  '
+           + 'Av400  Av400_lowerr  Av400_uperr  '
+           + 'z1200  z1200_lowerr  z1200_uperr  '
+           + 'phase1200  phase1200_lowerr  phase1200_uperr  '
+           + 'Av1200  Av1200_lowerr  Av1200_uperr  '
+           + 'z3600  z3600_lowerr  z3600_uperr  '
+           + 'phase3600  phase3600_lowerr  phase3600_uperr  '
+           + 'Av3600  Av3600_lowerr  Av3600_uperr  '
+           + 'z10800  z10800_lowerr  z10800_uperr  '
+           + 'phase10800  phase10800_lowerr  phase10800_uperr  '
+           + 'Av10800  Av10800_lowerr  Av10800_uperr'
            )
 
 # Header for SExtractor catalog
-cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-              'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO', 
+cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
+              'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO',
               'FLUX_RADIUS', 'FWHM_IMAGE']
 
 # Arrays to loop over
 pointings = np.arange(0, 1)
-detectors = np.arange(1, 4)
+detectors = np.arange(1, 2)
 
 for pt in pointings:
 
@@ -185,7 +181,7 @@ for pt in pointings:
             sedlst_header = ['segid', 'sed_path']
             sedlst_path = extdir + 'pylinear_lst_files/' + 'sed_' \
                 + img_suffix + '.lst'
-            sedlst = np.genfromtxt(sedlst_path, dtype=None, 
+            sedlst = np.genfromtxt(sedlst_path, dtype=None,
                                    names=sedlst_header, encoding='ascii')
 
             # ----- Read in npy file for inserted SNe
@@ -215,7 +211,7 @@ for pt in pointings:
             # ----- Read in catalog from SExtractor
             # cat_filename = img_sim_dir + '5deg_' + img_suffix \
             #    + '_SNadded.cat'
-            # cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header, 
+            # cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header,
             #                     encoding='ascii')
 
             # -----Read in segmentation map
@@ -263,8 +259,8 @@ for pt in pointings:
                 # ----- Write to file
                 # --- ID and true quantities
                 fh.write(img_suffix + '  ' + str(segid) + '  ')
-                fh.write('{:.3f}'.format(true_z) + '  ' + 
-                         str(true_phase) + '  ')
+                fh.write('{:.3f}'.format(true_z) + '  '
+                         + str(true_phase) + '  ')
                 fh.write('{:.3f}'.format(true_av) + '  ')
                 fh.write('{:.2f}'.format(snmag) + '  ')
                 fh.write('{:.2f}'.format(snr1) + '  ')

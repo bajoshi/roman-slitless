@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
-astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, 
+astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K,
                               Om0=0.3)
 
 # Assign directories and custom imports
@@ -26,6 +26,7 @@ extdir = "/Volumes/Joshi_external_HDD/Roman/"
 ext_spectra_dir = extdir + "roman_slitless_sims_results/"
 results_dir = ext_spectra_dir + 'fitting_results/'
 pylinear_lst_dir = extdir + 'pylinear_lst_files/'
+dirimg_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
 
 sys.path.append(roman_slitless_dir)
 sys.path.append(fitting_utils)
@@ -33,12 +34,14 @@ from get_snr import get_snr # noqa
 from get_template_inputs import get_template_inputs # noqa
 import dust_utils as du # noqa
 from snfit_plots import read_pickle_make_plots_sn # noqa
+from gen_sed_lst import get_sn_z  # noqa
+
 
 # ### ------ DONE WITH IMPORTS ------ ### #
 start = time.time()
 
 # Define any required constants/arrays
-sn_scalefac = 1.734e40  # see sn_scaling.py 
+sn_scalefac = 1.734e40  # see sn_scaling.py
 sn_day_arr = np.arange(-19, 51, 1)
 
 # Set pylinear f_lambda scaling factor
@@ -51,22 +54,22 @@ redshift_optfindarr = np.arange(0.01, 3.01, 0.01)
 # ------ THIS HAS TO BE GLOBAL!
 
 # Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", 
-                           dtype=None, names=['day', 'lam', 'flam'], 
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt",
+                           dtype=None, names=['day', 'lam', 'flam'],
                            encoding='ascii')
 
 # Also load in lookup table for luminosity distance
-dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', 
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt',
                        dtype=None, names=True)
-# Get arrays 
+# Get arrays
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
 
 del dl_cat
 
 sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
-print("Done loading all models. Time taken:", 
-      "{:.3f}".format(time.time()-start), "seconds.")
+print("Done loading all models. Time taken:",
+      "{:.3f}".format(time.time() - start), "seconds.")
 # --------------------------------------
 
 # Check directories
@@ -351,21 +354,21 @@ def get_optimal_position(wav, flam, ferr, opt_args=None):
             #     '{:.3e}'.format(ferr[i]), '{:.3f}'.format(td), tdiff)
 
         chi2o = np.sum((flam - model_a[big_index] * 
-                        sn_opt_arr[big_index])**2/ferr**2, axis=None)
+                        sn_opt_arr[big_index])**2 / ferr**2, axis=None)
         chi2t = np.sum((flam - model_a[true_big_index] * 
-                        sn_opt_arr[true_big_index])**2/ferr**2, axis=None)
-        print('Manual chi2 opt:',  chi2o)
+                        sn_opt_arr[true_big_index])**2 / ferr**2, axis=None)
+        print('Manual chi2 opt:', chi2o)
         print('Manual chi2 true:', chi2t)
         print(model_a[big_index], model_a[true_big_index])
         print(odiff, tdiff)
-        
-        ax.text(x=0.75, y=0.25,  s='z = ' + '{:.3f}'.format(z_prior),
+
+        ax.text(x=0.75, y=0.25, s='z = ' + '{:.3f}'.format(z_prior),
                 verticalalignment='top', horizontalalignment='left',
                 transform=ax.transAxes, color='royalblue', size=14)
         ax.text(x=0.75, y=0.2, s='Phase = ' + '{:d}'.format(phase_prior),
                 verticalalignment='top', horizontalalignment='left',
                 transform=ax.transAxes, color='royalblue', size=14)
-        ax.text(x=0.75, y=0.15,  s='Av = ' + '{:.3f}'.format(av_prior),
+        ax.text(x=0.75, y=0.15, s='Av = ' + '{:.3f}'.format(av_prior),
                 verticalalignment='top', horizontalalignment='left',
                 transform=ax.transAxes, color='royalblue', size=14)
 
@@ -390,12 +393,12 @@ def main():
     # shortsim_dir = extdir + \
     #     "roman_direct_sims/sims2021/K_5degimages_part1/shortsim/"
 
-    # exptime1 = '_10800s'
-    # exptime2 = '_3600s'
-    # exptime3 = '_1200s'
+    exptime1 = '_10800s'
+    exptime2 = '_3600s'
+    exptime3 = '_1200s'
     exptime4 = '_400s'
 
-    all_exptimes = [exptime4]  # [exptime1, exptime2, exptime3, exptime4]
+    all_exptimes = [exptime1, exptime2, exptime3, exptime4]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -426,7 +429,7 @@ def main():
             sedlst_header = ['segid', 'sed_path']
             sedlst_path = pylinear_lst_dir + 'sed_' + img_suffix + '.lst'
             # sedlst_path = shortsim_dir + 'sed_' + img_suffix + '.lst'
-            sedlst = np.genfromtxt(sedlst_path, dtype=None, 
+            sedlst = np.genfromtxt(sedlst_path, dtype=None,
                                    names=sedlst_header, encoding='ascii')
             print("Read in sed.lst from:", sedlst_path)
 
@@ -435,10 +438,16 @@ def main():
             # --------------- loop and find all SN segids
             all_sn_segids = []
             for i in range(len(sedlst)):
-                if 'salt' in sedlst['sed_path'][i]:
+                if ('salt' in sedlst['sed_path'][i])\
+                        or ('contam' in sedlst['sed_path'][i]):
                     all_sn_segids.append(sedlst['segid'][i])
 
             print('ALL SN segids in this file:', all_sn_segids)
+
+            # --------------- Also read in inserted props cat
+            insert_cat_name = '5deg_' + img_suffix + '_SNadded.npy'
+            insert_cat = np.load(dirimg_dir + insert_cat_name)
+            all_inserted_segids = np.array(insert_cat[:, -1], dtype=np.int64)
 
             # --------------- Loop over all extracted files
             for e in range(len(all_exptimes)):
@@ -447,8 +456,8 @@ def main():
 
                 # --------------- Read in the extracted spectra
                 # for full sim
-                ext_spec_filename = (ext_spectra_dir + ext_root + img_suffix + 
-                                     exptime + '_x1d.fits')
+                ext_spec_filename = (ext_spectra_dir + ext_root + img_suffix
+                                     + exptime + '_x1d.fits')
                 # for shortsim
                 # ext_spec_filename = ext_spectra_dir + ext_root + '_x1d.fits'
                 ext_hdu = fits.open(ext_spec_filename)
@@ -461,21 +470,34 @@ def main():
                     fitsmooth = False
 
                     print("\n#####################################")
-                    print("Fitting SegID:", segid, 
+                    print("Fitting SegID:", segid,
                           "with exposure time:", exptime)
- 
+
                     # ----- Get spectrum
                     segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
                     template_name = \
                         os.path.basename(sedlst['sed_path'][segid_idx])
                     # Get template inputs needed for plotting
-                    template_inputs = get_template_inputs(template_name)
+                    if 'salt' in template_name:
+                        template_inputs = get_template_inputs(template_name)
+                    elif 'contam' in template_name:
+                        template_inputs = []
+                        ll = template_name.split('_')[-1]
+                        sn_segid = int(ll.rstrip('.txt').lstrip('sn'))
+                        insert_idx = int(np.where(all_inserted_segids
+                                                  == sn_segid)[0])
+                        snmag = float(insert_cat[insert_idx, 2])
+                        sn_z = get_sn_z(snmag)
+
+                        template_inputs.append(sn_z)
+                        template_inputs.append(0)
+                        template_inputs.append(0.0)
 
                     print('Template inputs:', template_inputs)
 
-                    # This is get to faster results to show in 
-                    # the schematic figure, i.e., only fit the 
+                    # This is get to faster results to show in
+                    # the schematic figure, i.e., only fit the
                     # SNe in the redshift ranges you want.
                     # ztrue = template_inputs[0]
                     # proceed = False
@@ -499,41 +521,43 @@ def main():
                     # sf = convolve(flam, Box1DKernel(smoothing_width_pix))
 
                     # ----- Get noise level
-                    ferr = (ferr_lo + ferr_hi)/2.0
+                    ferr = (ferr_lo + ferr_hi) / 2.0
                     # noise_correct = ferr * 5
                     # sf_noised = np.zeros(len(sf))
                     # for w in range(len(wav)):
                     #     sf_noised[w] = \
-                    #         np.random.normal(loc=sf[w], 
+                    #         np.random.normal(loc=sf[w],
                     #                          scale=noise_correct[w], size=1)
 
                     # flam = sf_noised
                     # ferr = noise_correct
 
                     # ----- Check SNR
-                    # snr = get_snr(wav, flam)
+                    snr = get_snr(wav, flam)
                     # smoothed_snr = get_snr(wav, sf)
-                    snr = np.nanmean(flam/ferr)
-                    print("Avg SNR per pix for this spectrum:", 
+                    # snr = np.nanmean(flam / ferr)
+                    # print("Avg SNR per pix for this spectrum:",
+                    #       "{:.2f}".format(snr))
+                    print('SNR from Stoehr et al. algorithm:',
                           "{:.2f}".format(snr))
 
                     # Check if file exists and continue if all okay
                     snstr = str(segid) + '_' + img_suffix + exptime
-                    emcee_savefile = (results_dir + 'emcee_sampler_sn' + 
-                                      snstr + '.h5')
+                    emcee_savefile = (results_dir + 'emcee_sampler_sn'
+                                      + snstr + '.h5')
 
                     if snr < 3.0:
                         # if os.path.isfile(emcee_savefile):
                         #     os.remove(emcee_savefile)
-                        #     print('Removed:', 
+                        #     print('Removed:',
                         #           os.path.basename(emcee_savefile))
                         continue
                         # if (smoothed_snr > 2 * snr) and (smoothed_snr > 3.0):
                         #     #fitsmooth = True
                         #     #flam = sf
                         #     #ferr /= np.sqrt(smoothing_width_pix)
-                        #     #print(f'{bcolors.HEADER}', 
-                        #     #      "------> Fitting smoothed spectrum.", 
+                        #     #print(f'{bcolors.HEADER}',
+                        #     #      "------> Fitting smoothed spectrum.",
                         #     #      f'{bcolors.ENDC}')
                         #     replace = True
                         # else:
@@ -546,12 +570,12 @@ def main():
                     if not os.path.isfile(emcee_savefile):
 
                         # ----- Get optimal starting position
-                        # Fix the crazy flam and ferr values 
+                        # Fix the crazy flam and ferr values
                         # before getting optimal pos
                         # snr_array = flam / ferr
                         # nan_idx = np.where(np.isnan(snr_array))[0]
 
-                        # opt_dict = {'verbose': True, 
+                        # opt_dict = {'verbose': True,
                         #             'ztrue': template_inputs[0],
                         #             'phasetrue': template_inputs[1],
                         #             'avtrue': template_inputs[2],
@@ -563,33 +587,31 @@ def main():
                         rsn_init = np.array([z_prior, phase_prior, av_prior])
                         # redshift, day relative to peak, and dust extinction
 
-                        # rsn_init = np.array([1.18, 0, 0.5])
-
                         print("logpost at starting position for SN:")
                         print(logpost_sn(rsn_init, wav, flam, ferr))
                         print("Starting position:", rsn_init)
 
                         """
                         #z_smooth, phase_smooth, av_smooth = \
-                        #    get_optimal_position(wav, sf, 
+                        #    get_optimal_position(wav, sf,
                         #                         ferr/np.sqrt(smoothing_width_pix))
 
                         fig = plt.figure(figsize=(9,4))
                         ax = fig.add_subplot(111)
 
                         ax.plot(wav, flam, color='k', lw=1.5, zorder=1)
-                        ax.fill_between(wav, flam - ferr, flam + ferr, 
+                        ax.fill_between(wav, flam - ferr, flam + ferr,
                             color='gray', alpha=0.5, zorder=1)
                         ax.plot(wav, sf, color='firebrick', lw=3.0, zorder=3.0)
 
-                        tm = model_sn(wav, template_inputs[0], 
+                        tm = model_sn(wav, template_inputs[0],
                                       template_inputs[1], template_inputs[2])
                         ta = get_y_alpha(tm, flam, ferr)
                         ax.plot(wav, ta, color='dodgerblue', lw=2.0, zorder=5)
 
-                        print('Start for unsmoothed spec:', z_prior, 
+                        print('Start for unsmoothed spec:', z_prior,
                               phase_prior, av_prior)
-                        print('Start for smoothed spec:', z_smooth, 
+                        print('Start for smoothed spec:', z_smooth,
                               phase_smooth, av_smooth)
 
                         ax.set_xlim(7400, 18500)
@@ -599,19 +621,19 @@ def main():
                         sys.exit(0)
                         """
 
-                        # generating ball of walkers about optimal 
+                        # generating ball of walkers about optimal
                         # position defined above
                         pos_sn = np.zeros(shape=(nwalkers, ndim_sn))
 
                         for i in range(nwalkers):
 
                             # ---------- For SN
-                            rsn0 = float(rsn_init[0] + jump_size_z * 
-                                         np.random.normal(size=1))
-                            rsn1 = int(rsn_init[1] + jump_size_day * 
-                                       np.random.normal(size=1))
-                            rsn2 = float(rsn_init[2] + jump_size_av * 
-                                         np.random.normal(size=1))
+                            rsn0 = float(rsn_init[0] + jump_size_z
+                                         * np.random.normal(size=1))
+                            rsn1 = int(rsn_init[1] + jump_size_day
+                                       * np.random.normal(size=1))
+                            rsn2 = float(rsn_init[2] + jump_size_av
+                                         * np.random.normal(size=1))
 
                             rsn = np.array([rsn0, rsn1, rsn2])
 
@@ -630,18 +652,18 @@ def main():
                         # ----- Now run emcee on SN
                         backend = emcee.backends.HDFBackend(emcee_savefile)
                         backend.reset(nwalkers, ndim_sn)
-                            
+
                         with Pool(6) as pool:
-                            sampler = emcee.EnsembleSampler(nwalkers, ndim_sn, 
+                            sampler = emcee.EnsembleSampler(nwalkers, ndim_sn,
                                                             logpost_sn,
-                                                            args=args_sn, 
-                                                            pool=pool, 
+                                                            args=args_sn,
+                                                            pool=pool,
                                                             backend=backend)
                             sampler.run_mcmc(pos_sn, niter, progress=True)
 
                         print(f"{bcolors.GREEN}")
                         print("Finished running emcee.")
-                        print("Mean acceptance Fraction:", 
+                        print("Mean acceptance Fraction:",
                               np.mean(sampler.acceptance_fraction), "\n")
                         print(f"{bcolors.ENDC}")
 
@@ -657,20 +679,20 @@ def main():
                             orig_spec = \
                                 ext_hdu[('SOURCE', segid)].data['flam'] * \
                                 pylinear_flam_scale_fac
-                            orig_ferr = (ferr_lo + ferr_hi)/2.0
-                            read_pickle_make_plots_sn('sn' + snstr, 
-                                                      ndim_sn, args_sn, 
-                                                      label_list_sn, 
-                                                      truth_dict, results_dir, 
-                                                      fitsmooth=True, 
+                            orig_ferr = (ferr_lo + ferr_hi) / 2.0
+                            read_pickle_make_plots_sn('sn' + snstr,
+                                                      ndim_sn, args_sn,
+                                                      label_list_sn,
+                                                      truth_dict, results_dir,
+                                                      fitsmooth=True,
                                                       orig_wav=orig_wav,
-                                                      orig_spec=orig_spec, 
+                                                      orig_spec=orig_spec,
                                                       orig_ferr=orig_ferr)
 
                         else:
-                            read_pickle_make_plots_sn('sn' + snstr, 
-                                                      ndim_sn, args_sn, 
-                                                      label_list_sn, 
+                            read_pickle_make_plots_sn('sn' + snstr,
+                                                      ndim_sn, args_sn,
+                                                      label_list_sn,
                                                       truth_dict, results_dir)
 
                         print("Finished plotting results.")

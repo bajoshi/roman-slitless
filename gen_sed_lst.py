@@ -1385,7 +1385,8 @@ def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
         """
 
     contam_spec_path = roman_sims_seds + 'contam_host' \
-        + str(host_id) + '_sn' + str(sn_id) + '.txt'
+        + str(host_id) + '_sn' + str(sn_id) \
+        + '.txt'
 
     # Save individual spectrum file
     with open(contam_spec_path, 'w') as fh_contam:
