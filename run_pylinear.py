@@ -258,7 +258,7 @@ def gen_img_suffixes():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(1, 19, 1)
 
     img_filt = 'Y106_'
 
@@ -360,7 +360,7 @@ if __name__ == '__main__':
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [400, 1200, 3600, 10800]
+    exptime_list = [400, 1200, 3600]
     roll_angle_list = [0.0, 70.0, 140.0]
 
     dir_img_filt = 'hst_wfc3_f105w'

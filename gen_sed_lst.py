@@ -1057,7 +1057,7 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
         for det in tqdm(detectors, desc="Detector", leave=False):

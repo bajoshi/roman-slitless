@@ -437,14 +437,14 @@ if __name__ == '__main__':
     # ---------------
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
         for det in detectors:
 
             # ---------------
             # Determine number of SNe to insert and open dir img
-            num_to_insert = 10  # np.random.randint(low=90, high=100)
+            num_to_insert = np.random.randint(low=90, high=100)
             # Also decide number of stars
             # randomly insert approx 10 stars in each detector
             num_to_insert_stars = np.random.randint(low=8, high=12)

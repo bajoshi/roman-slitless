@@ -24,9 +24,9 @@ def get_template_inputs(template_name, verbose=False):
 
     elif 'contam' in template_name:
 
-        sn_z = 
-        sn_av = 
-        sn_day = 
+        sn_av = float(tl[-1].replace('p', '.').replace('av', ''))
+        sn_day = int(tl[-2].replace('day', ''))
+        sn_z = float(tl[-3].replace('p', '.').replace('z', ''))
 
         return [sn_z, sn_day, sn_av]
 
