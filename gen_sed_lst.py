@@ -25,7 +25,8 @@ sn_scalefac = 1.734e40
 astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc,
                               Tcmb0=2.725 * u.K, Om0=0.3)
 
-DIRIMAGE_SCALING = 10**(-0.4 * (31.7956 - 26.264))
+ZP = 26.264
+DIRIMAGE_SCALING = 10**(-0.4 * (31.7956 - ZP))
 SPEED_OF_LIGHT_ANG = 3e18
 
 # -----------------
@@ -1191,7 +1192,7 @@ def gen_sed_lst():
 
 def isoverlapping(sn_segpix, host_segpix):
 
-    # The shape for these segpix arrays should 
+    # The shape for these segpix arrays should
     # always be (2, n) where n is the number of
     # pixels in the object.
 
@@ -1292,7 +1293,17 @@ def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
     # First get the base SN spectrum and also the host spectrum
     # The host spectrum has already been generated so we need to
     # use that.
-    base_sn_spec_path = get_sn_spec_path(redshift)
+    # Also choose a day and av because this will have to be
+    # written to the path.
+    # Create array for days relative to max
+    sn_day = np.random.choice(np.arange(-5, 6, 1))
+    # choose av. see notes in above func for sn spec path
+    rng = default_rng()
+    sn_av = rng.exponential(0.5)
+    if sn_av > 3.0:
+        sn_av = 3.0
+    base_sn_spec_path = get_sn_spec_path(redshift, day_chosen=sn_day,
+                                         chosen_av=sn_av)
 
     base_sn_spec = np.genfromtxt(base_sn_spec_path, dtype=None,
                                  names=True, encoding='ascii')
@@ -1337,6 +1348,17 @@ def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
 
     snadded_img = fits.getdata(snadded_img_pth)
 
+    # ALso compute total counts in the SN
+    # This is needed to get the relative pixel weights correct
+    effective_obj_counts = np.sum(snadded_img[sn_segpix[0],
+                                              sn_segpix[1]])
+    scale_counts = 1 / effective_obj_counts
+    # inf_mag = -2.5 * np.log10(effective_obj_counts) + ZP
+    # print(effective_obj_counts, snmag, inf_mag)
+    # print('New counts:', np.sum(snadded_img[sn_segpix[0],
+    #                                         sn_segpix[1]]) * scale_counts)
+    rel_wt_sum = 0
+
     # Final contaminated spectrum
     full_contam_spec = np.zeros(len(common_wav))
 
@@ -1350,12 +1372,11 @@ def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
         current_pix = all_sn_pix[i]
         distance, index = spatial.KDTree(overlap_pix).query(current_pix)
 
-        # print('\n', i, current_pix, distance, index, overlap_pix[index])
-
         if distance == 0.0:
             host_counts = dirimg[overlap_pix[index][0], overlap_pix[index][1]]
             total_counts = snadded_img[overlap_pix[index][0],
                                        overlap_pix[index][1]]
+
             sn_counts = total_counts - host_counts
 
             sn_weight = sn_counts / total_counts
@@ -1363,13 +1384,29 @@ def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
 
             # print(total_counts, host_counts, sn_counts)
             # print(host_weight, sn_weight)
+            # overlap_var = 'OVERLAP'
         else:
             sn_weight = 1.0
             host_weight = 0.0
+            # overlap_var = ''
+            total_counts = snadded_img[current_pix[0],
+                                       current_pix[1]]
 
         contam_spec = (sn_weight * sn_spec_regrid
                        + host_weight * host_spec_regrid)
-        full_contam_spec += contam_spec
+
+        # Now figure out the relative weight between SN pix
+        # This must be done using total counts.
+        rel_pix_wt = total_counts * scale_counts
+        full_contam_spec += (rel_pix_wt * contam_spec)
+
+        rel_wt_sum += rel_pix_wt
+
+        # print('\n', i, current_pix,
+        #       '{:.1f}'.format(distance), index,
+        #       overlap_pix[index],
+        #       '{:.2f}'.format(total_counts * scale_counts),
+        #       overlap_var)
 
         # Test figure
         """
@@ -1384,9 +1421,14 @@ def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
         plt.close(fig)
         """
 
-    contam_spec_path = roman_sims_seds + 'contam_host' \
+    assert (rel_wt_sum - 1.0) <= 1e-6
+
+    contam_spec_path = roman_sims_seds + "contam_host" \
         + str(host_id) + '_sn' + str(sn_id) \
-        + '.txt'
+        + "_z" + "{:.4f}".format(redshift).replace('.', 'p') \
+        + "_day" + str(sn_day) \
+        + "_av" + "{:.3f}".format(sn_av).replace('.', 'p') \
+        + ".txt"
 
     # Save individual spectrum file
     with open(contam_spec_path, 'w') as fh_contam:

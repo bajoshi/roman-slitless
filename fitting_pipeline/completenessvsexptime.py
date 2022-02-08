@@ -69,9 +69,9 @@ def main():
     z_tol = 0.01  # abs val of delta-z/(1+z)
 
     # Do this for each exposure time separately
-    exptime_labels = ['z10800', 'z3600', 'z1200', 'z400']
-    colors = ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
-    sigmoid_cols = ['deeppink', 'navy', 'green', 'peru']
+    exptime_labels = ['z400']  # ['z10800', 'z3600', 'z1200', 'z400']
+    colors = ['goldenrod']  # ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
+    sigmoid_cols = ['peru']  # ['deeppink', 'navy', 'green', 'peru']
 
     # The above labels are col names in the catalog
     # and these labels below will be used in the plot
@@ -150,6 +150,9 @@ def main():
             ax.plot(mags, pc2, '--', color='k',
                     label=r'$\frac{\Delta z}{1+z} \leq 0.001$')  # noqa
         """
+
+    plt.show()
+    sys.exit(0)
 
     # Show the mag dist as a light histogram
     ax1 = ax.twinx()

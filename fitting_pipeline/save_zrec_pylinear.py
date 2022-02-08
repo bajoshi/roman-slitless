@@ -19,8 +19,10 @@ fitting_utils = cwd + '/utils/'
 roman_slitless_dir = os.path.dirname(cwd)
 
 sys.path.append(fitting_utils)
+sys.path.append(roman_slitless_dir)
 from get_snr import get_snr  # noqa: E402
 from get_template_inputs import get_template_inputs  # noqa: E402
+from gen_sed_lst import get_sn_z  # noqa: E402
 
 # Set pylinear f_lambda scaling factor
 pylinear_flam_scale_fac = 1e-17
@@ -225,7 +227,8 @@ for pt in pointings:
             # ----- loop and find all SN segids
             all_sn_segids = []
             for i in range(len(sedlst)):
-                if 'salt' in sedlst['sed_path'][i]:
+                if ('salt' in sedlst['sed_path'][i])\
+                        or ('contam' in sedlst['sed_path'][i]):
                     all_sn_segids.append(sedlst['segid'][i])
 
             print('ALL SN segids in this file:', all_sn_segids)
@@ -236,9 +239,26 @@ for pt in pointings:
 
                 segid_idx = int(np.where(sedlst['segid'] == segid)[0])
 
-                template_name = os.path.basename(sedlst['sed_path'][segid_idx])
+                # ----- Get magnitude in Y106 from insert cat
+                sn_idx = int(np.where(all_inserted_segids == segid)[0])
+                matched_segid = int(insert_cat[sn_idx][-1])
 
-                template_inputs = get_template_inputs(template_name)
+                assert matched_segid == segid
+                snmag = float(insert_cat[sn_idx][2])
+
+                # ---- Get template inputs
+                template_name = os.path.basename(sedlst['sed_path'][segid_idx])
+                # Get template inputs needed for plotting
+                if 'salt' in template_name:
+                    template_inputs = get_template_inputs(template_name)
+                elif 'contam' in template_name:
+                    template_inputs = []
+                    sn_z = get_sn_z(snmag)
+
+                    template_inputs.append(sn_z)
+                    template_inputs.append(0)
+                    template_inputs.append(0.0)
+
                 true_z = template_inputs[0]
                 true_phase = template_inputs[1]
                 true_av = template_inputs[2]
@@ -248,13 +268,6 @@ for pt in pointings:
                 snr2 = get_correct_snr(ext_hdu2, segid)
                 snr3 = get_correct_snr(ext_hdu3, segid)
                 snr4 = get_correct_snr(ext_hdu4, segid)
-
-                # ----- Get magnitude in Y106 from insert cat
-                sn_idx = int(np.where(all_inserted_segids == segid)[0])
-                matched_segid = int(insert_cat[sn_idx][-1])
-
-                assert matched_segid == segid
-                snmag = float(insert_cat[sn_idx][2])
 
                 # ----- Write to file
                 # --- ID and true quantities

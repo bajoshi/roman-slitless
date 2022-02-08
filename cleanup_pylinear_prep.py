@@ -6,7 +6,7 @@ import sys
 # -----------------
 if 'plffsn2' in socket.gethostname():
     extdir = '/astro/ffsn/Joshi/'
-    
+
     roman_sims_seds = extdir + 'roman_slitless_sims_seds/'
     pylinear_lst_dir = extdir + 'pylinear_lst_files/'
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
@@ -16,7 +16,7 @@ if 'plffsn2' in socket.gethostname():
 
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
-    
+
     roman_sims_seds = extdir + "roman_slitless_sims_seds/"
     pylinear_lst_dir = extdir + "pylinear_lst_files/"
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
@@ -30,7 +30,7 @@ assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
 
 if __name__ == '__main__':
-    # This code will: 
+    # This code will:
     # 1. Remove lst files
     # 2. Remove all sed txt files
     # 3. Remove all segmap, SNadded, npy, reg, and cat files
@@ -53,7 +53,8 @@ if __name__ == '__main__':
         os.remove(fl)
 
     # ---- Files associated with SN insertion and SExtractor
-    flext = ['_segmap.fits', '_SNadded.fits', '.npy', '.reg', '.cat']
+    flext = ['_segmap.fits', '_SNadded.fits', '.npy', '.reg',
+             '.cat', '.pkl']
     for ext in flext:
         print('Working on deleting:', ext)
         for fl in glob.glob(img_sim_dir + '*' + ext):
