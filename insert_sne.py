@@ -87,7 +87,8 @@ def get_segpix(snmag):
 
 
 def get_ref_segpix_counts(snmag):
-    # OLD method: See notes in ref_cutout_segpix.py
+    # This is the current method. For notes on the
+    # old method see notes in ref_cutout_segpix.py
 
     # ---------
     # Get the segmentation pixels

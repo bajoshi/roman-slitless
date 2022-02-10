@@ -393,12 +393,12 @@ def main():
     # shortsim_dir = extdir + \
     #     "roman_direct_sims/sims2021/K_5degimages_part1/shortsim/"
 
-    exptime1 = '_10800s'
+    # exptime1 = '_10800s'
     exptime2 = '_3600s'
     exptime3 = '_1200s'
     exptime4 = '_400s'
 
-    all_exptimes = [exptime1, exptime2, exptime3, exptime4]
+    all_exptimes = [exptime2, exptime3, exptime4]
 
     # ----------------------- Using emcee ----------------------- #
     # Labels for corner and trace plots
@@ -417,7 +417,7 @@ def main():
     # ---------- Loop over all simulated and extracted SN spectra ---------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 2, 1)
+    detectors = np.arange(2, 4, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -443,11 +443,6 @@ def main():
                     all_sn_segids.append(sedlst['segid'][i])
 
             print('ALL SN segids in this file:', all_sn_segids)
-
-            # --------------- Also read in inserted props cat
-            insert_cat_name = '5deg_' + img_suffix + '_SNadded.npy'
-            insert_cat = np.load(dirimg_dir + insert_cat_name)
-            all_inserted_segids = np.array(insert_cat[:, -1], dtype=np.int64)
 
             # --------------- Loop over all extracted files
             for e in range(len(all_exptimes)):
@@ -479,22 +474,10 @@ def main():
                     template_name = \
                         os.path.basename(sedlst['sed_path'][segid_idx])
                     # Get template inputs needed for plotting
-                    if 'salt' in template_name:
-                        template_inputs = get_template_inputs(template_name)
-                    elif 'contam' in template_name:
-                        template_inputs = []
-                        ll = template_name.split('_')[-1]
-                        sn_segid = int(ll.rstrip('.txt').lstrip('sn'))
-                        insert_idx = int(np.where(all_inserted_segids
-                                                  == sn_segid)[0])
-                        snmag = float(insert_cat[insert_idx, 2])
-                        sn_z = get_sn_z(snmag)
-
-                        template_inputs.append(sn_z)
-                        template_inputs.append(0)
-                        template_inputs.append(0.0)
-
+                    template_inputs = get_template_inputs(template_name)
                     print('Template inputs:', template_inputs)
+                    if 'contam' in template_name:
+                        print('---Contains host-galaxy OVERLAP---')
 
                     # This is get to faster results to show in
                     # the schematic figure, i.e., only fit the

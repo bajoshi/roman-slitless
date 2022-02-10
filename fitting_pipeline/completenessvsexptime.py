@@ -6,22 +6,47 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
+import warnings
+warnings.filterwarnings(action='ignore')
+
 home = os.getenv('HOME')
 roman_slitless = home + '/Documents/GitHub/roman-slitless/'
+fitting_utils = roman_slitless + 'fitting_pipeline/utils/'
 
-sys.path.append(roman_slitless)
-from gen_sed_lst import get_sn_z  # noqa: E402
+# Read in lookup table for getting redshifts on the top axis
+# Lookup table name and zarr for lookup copied over
+# from kcorr.py
+lookup_table_fname = fitting_utils + 'sn_mag_z_lookup_comp_plot.txt'
+lookup_table = np.genfromtxt(lookup_table_fname,
+                             dtype=None, names=True,
+                             encoding='ascii')
+lookup_mags = lookup_table['mF106']
+lookup_z = lookup_table['Redshift']
+
+
+def get_sn_z_comp_plot(snmag):
+
+    z_idx = np.argmin(abs(snmag - lookup_mags))
+    snz = lookup_z[z_idx]
+
+    return snz
 
 
 def get_z_for_mag(m):
-    # assuming the arg m passed here is an array
-    zarr = np.zeros(len(m))
 
-    for i in range(len(m)):
-        mag = m[i]
-        zarr[i] = get_sn_z(mag)
+    # Get redshifts depending on whether a single
+    # magnitude or an array has been passed.
+    if len(m) > 1:
+        zarr = np.zeros(len(m))
 
-    return zarr
+        for i in range(len(m)):
+            mag = m[i]
+            zarr[i] = get_sn_z_comp_plot(mag)
+
+        return zarr
+
+    elif len(m) == 1:
+        return get_sn_z_comp_plot(mag)
 
 
 # Sigmoid func fitting from Lou
@@ -45,13 +70,11 @@ def main():
     resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
-    # ---------------------------- Completeness plot
+    # ---------------------------- Prep
     # Create arrays for plotting
     deltamag = 0.2
     low_maglim = 20.5
     high_maglim = 29.5
-
-    classification_eff = 1.0
 
     # left edges of mag bins
     mag_bins = np.arange(low_maglim, high_maglim, deltamag)
@@ -66,16 +89,51 @@ def main():
           '{:.2f}'.format(np.max(cat['Y106mag'])))
     print('Total mag bins:', len(mags))
 
+    # ---------------------------- Plot to ensure that overlapping
+    # isn't dependent on SN mag, i.e., SN at all mags have equal
+    # likelihood of overlapping with their host.
+    # So the plot below will show the histogram of the mag distribution
+    # for all sources and an overlaid histogram of only those SN that
+    # have an overlap with their host. The overlaid hist should follow
+    # the parent hist distribution with just lower #s at all mags.
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111)
+
+    ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray',
+             alpha=0.3, label='All SNe')
+
+    # Manually build up list of mags for those SNe that have overlap
+    overlap_mags = []
+    for k in range(len(cat)):
+        if cat['overlap'][k]:
+            overlap_mags.append(cat['Y106mag'][k])
+
+    ax1.hist(overlap_mags, bins=mag_bins, color='navy',
+             histtype='step', lw=3.0, label='SNe with host overlap')
+
+    ax1.legend(loc=0, fontsize=13)
+
+    # plt.show()
+    fig1.clear()
+    plt.close(fig1)
+
+    # ---------------------------- Completeness plot
+    classification_eff = 1.0
+
     z_tol = 0.01  # abs val of delta-z/(1+z)
 
+    # ['z10800', 'z3600', 'z1200', 'z400']
+    # ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
+    # ['deeppink', 'navy', 'green', 'peru']
+
     # Do this for each exposure time separately
-    exptime_labels = ['z400']  # ['z10800', 'z3600', 'z1200', 'z400']
-    colors = ['goldenrod']  # ['crimson', 'dodgerblue', 'seagreen', 'goldenrod']
-    sigmoid_cols = ['peru']  # ['deeppink', 'navy', 'green', 'peru']
+    exptime_labels = ['z3600', 'z1200', 'z400']
+    colors = ['dodgerblue', 'seagreen', 'goldenrod']
+    sigmoid_cols = ['navy', 'green', 'peru']
 
     # The above labels are col names in the catalog
     # and these labels below will be used in the plot
-    all_exptimes = ['9h', '3h', '1h', '20m']
+    all_exptimes = ['3h', '1h', '20m']
 
     # Setup figure
     fig = plt.figure(figsize=(8, 5))
@@ -83,12 +141,19 @@ def main():
 
     for e in range(len(exptime_labels)):
 
+        print('\nWorking on exposure time:', all_exptimes[e])
+        print('---------------------\n')
+
         et = exptime_labels[e]
 
         total_counts = np.zeros(len(mag_bins) - 1)
         ztol_counts = np.zeros(len(mag_bins) - 1)
 
         for i in range(len(cat)):
+
+            # 
+            # if cat['overlap'][i]:
+            #     continue
 
             temp_z_true = cat['z_true'][i]
             temp_z = cat[et][i]
@@ -104,8 +169,30 @@ def main():
             if z_acc <= z_tol:
                 ztol_counts[mag_idx] += 1
 
-            # print(i, et, z_acc, temp_z, temp_z_true,
-            #       list(cat[i])[:10])
+                # This passing string is just for debugging
+                passing = 'PASSING'
+            else:
+                passing = 'NOT PASSING'
+
+            # Printing some debugging info
+            # DO NOT DELETE!
+            # It took a lot of effort to get the alignment right
+            if cat['overlap'][i]:
+                overlap_printvar = 'OVERLAP'
+            else:
+                overlap_printvar = ''
+
+            # if mag > 26.0:
+            print('{:>2d}'.format(i), '  ',
+                  all_exptimes[e], '  ',
+                  cat['SNSegID'][i], '  ',
+                  '{:.2f}'.format(mag), '  ',
+                  '{:6.2f}'.format(cat['SNR3600'][i]), '  ',
+                  '{:>10.4f}'.format(z_acc), '  ',
+                  '{:>10.4f}'.format(temp_z), '  ',
+                  '{:>.4f}'.format(temp_z_true), '  ',
+                  '{:^10}'.format(overlap_printvar), '      ',
+                  passing)
 
         # Now get effective completeness/exptime and plot
         percent_complete = ztol_counts / total_counts
@@ -117,6 +204,7 @@ def main():
                 zorder=2)
 
         # ----------- Fit sigmoid curves and plot
+        """
         # Remove NaNs
         completeness_valid_idx = np.where(~np.isnan(effective_completeness))[0]
 
@@ -131,8 +219,12 @@ def main():
 
         ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=2.0,
                 color=sigmoid_cols[e],
-                label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),
+                label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),  # noqa
                 zorder=1)
+        """
+
+        # ------ Plot all sigmoid curves within error
+        # with an alpha level specified.
 
         """
         Cumulative completeness fraction
@@ -150,9 +242,6 @@ def main():
             ax.plot(mags, pc2, '--', color='k',
                     label=r'$\frac{\Delta z}{1+z} \leq 0.001$')  # noqa
         """
-
-    plt.show()
-    sys.exit(0)
 
     # Show the mag dist as a light histogram
     ax1 = ax.twinx()
@@ -193,7 +282,7 @@ def main():
 
     # labels
     ax.set_ylabel(r'$\mathrm{Frac}.\ z\ \mathrm{completeness}$', fontsize=14)
-    ax.set_xlabel(r'$m_{F106}$', fontsize=14)
+    ax.set_xlabel(r'$\mathrm{SN}\ m_{F106}$', fontsize=14)
     ax1.set_ylabel(r'$\#\ \mathrm{objects}$', fontsize=14)
 
     # Limits
@@ -201,6 +290,8 @@ def main():
     ax.set_ylim(-0.04, 1.04)
 
     ax.legend(loc=0, fontsize=13, frameon=False)
+
+    ax.minorticks_on()
 
     # save
     fig.savefig(roman_slitless + 'figures/pylinearrecovery_completeness.pdf',

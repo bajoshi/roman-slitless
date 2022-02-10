@@ -311,7 +311,15 @@ if __name__ == '__main__':
     f435 = np.genfromtxt('throughputs/f435w_filt_curve.txt',
                          dtype=None, names=['wav', 'trans'], encoding='ascii')
 
+    # Run this code with the first zarr for saving file
+    # to be used with gen_sed_lst -- get_sn_z
+    # Run it with the second zarr to get the lookup
+    # table for use with the completeness plot.
+    # Also change the name of the lookup file below.
+    # Might also want to just quit after the file is
+    # written to avoid overwriting the kcorr_test figure.
     zarr = np.arange(0.5, 3.0, 0.0001)
+    # zarr = np.arange(0.1, 4.0, 0.001)
     kcor_arr = np.zeros(len(zarr))
 
     dist_mod_lcdm = np.zeros(len(zarr))
@@ -321,6 +329,7 @@ if __name__ == '__main__':
 
     # Save to lookup file in the same folder as this code
     lookup_table_fname = 'sn_mag_z_lookup.txt'
+    # lookup_table_fname = 'sn_mag_z_lookup_comp_plot.txt'
 
     with open(lookup_table_fname, 'w') as fh:
 

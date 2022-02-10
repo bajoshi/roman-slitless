@@ -139,10 +139,10 @@ ext_root = 'romansim_prism_'
 exptime1 = '_400s'
 exptime2 = '_1200s'
 exptime3 = '_3600s'
-exptime4 = '_10800s'
+# exptime4 = '_10800s'
 
 res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  '
-           + 'Y106mag  SNR400  SNR1200  SNR3600  SNR10800  '
+           + 'overlap  Y106mag  SNR400  SNR1200  SNR3600  '
            + 'z400  z400_lowerr  z400_uperr  '
            + 'phase400  phase400_lowerr  phase400_uperr  '
            + 'Av400  Av400_lowerr  Av400_uperr  '
@@ -152,15 +152,15 @@ res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  '
            + 'z3600  z3600_lowerr  z3600_uperr  '
            + 'phase3600  phase3600_lowerr  phase3600_uperr  '
            + 'Av3600  Av3600_lowerr  Av3600_uperr  '
-           + 'z10800  z10800_lowerr  z10800_uperr  '
-           + 'phase10800  phase10800_lowerr  phase10800_uperr  '
-           + 'Av10800  Av10800_lowerr  Av10800_uperr'
+           # + 'z10800  z10800_lowerr  z10800_uperr  '
+           # + 'phase10800  phase10800_lowerr  phase10800_uperr  '
+           # + 'Av10800  Av10800_lowerr  Av10800_uperr'
            )
 
 # Header for SExtractor catalog
-cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
-              'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO',
-              'FLUX_RADIUS', 'FWHM_IMAGE']
+# cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
+#               'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO',
+#               'FLUX_RADIUS', 'FWHM_IMAGE']
 
 # Arrays to loop over
 pointings = np.arange(0, 1)
@@ -206,9 +206,9 @@ for pt in pointings:
                 + exptime3 + '_x1d.fits'
             ext_hdu3 = fits.open(ext_spec_filename3)
 
-            ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix \
-                + exptime4 + '_x1d.fits'
-            ext_hdu4 = fits.open(ext_spec_filename4)
+            # ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix \
+            #     + exptime4 + '_x1d.fits'
+            # ext_hdu4 = fits.open(ext_spec_filename4)
 
             # ----- Read in catalog from SExtractor
             # cat_filename = img_sim_dir + '5deg_' + img_suffix \
@@ -249,15 +249,12 @@ for pt in pointings:
                 # ---- Get template inputs
                 template_name = os.path.basename(sedlst['sed_path'][segid_idx])
                 # Get template inputs needed for plotting
-                if 'salt' in template_name:
-                    template_inputs = get_template_inputs(template_name)
-                elif 'contam' in template_name:
-                    template_inputs = []
-                    sn_z = get_sn_z(snmag)
+                template_inputs = get_template_inputs(template_name)
 
-                    template_inputs.append(sn_z)
-                    template_inputs.append(0)
-                    template_inputs.append(0.0)
+                if 'contam' in template_name:
+                    overlap = 'True'
+                else:
+                    overlap = 'False'
 
                 true_z = template_inputs[0]
                 true_phase = template_inputs[1]
@@ -267,19 +264,20 @@ for pt in pointings:
                 snr1 = get_correct_snr(ext_hdu1, segid)
                 snr2 = get_correct_snr(ext_hdu2, segid)
                 snr3 = get_correct_snr(ext_hdu3, segid)
-                snr4 = get_correct_snr(ext_hdu4, segid)
+                # snr4 = get_correct_snr(ext_hdu4, segid)
 
                 # ----- Write to file
                 # --- ID and true quantities
                 fh.write(img_suffix + '  ' + str(segid) + '  ')
-                fh.write('{:.3f}'.format(true_z) + '  '
+                fh.write('{:.4f}'.format(true_z) + '  '
                          + str(true_phase) + '  ')
                 fh.write('{:.3f}'.format(true_av) + '  ')
+                fh.write(overlap + '  ')
                 fh.write('{:.2f}'.format(snmag) + '  ')
                 fh.write('{:.2f}'.format(snr1) + '  ')
                 fh.write('{:.2f}'.format(snr2) + '  ')
                 fh.write('{:.2f}'.format(snr3) + '  ')
-                fh.write('{:.2f}'.format(snr4) + '  ')
+                # fh.write('{:.2f}'.format(snr4) + '  ')
 
                 # ----- Construct the filenames for this segid
                 snstr1 = str(segid) + '_' + img_suffix + exptime1
@@ -294,18 +292,18 @@ for pt in pointings:
                 emcee_savefile3 = results_dir + 'emcee_sampler_sn' \
                     + snstr3 + '.h5'
 
-                snstr4 = str(segid) + '_' + img_suffix + exptime4
-                emcee_savefile4 = results_dir + 'emcee_sampler_sn' \
-                    + snstr4 + '.h5'
+                # snstr4 = str(segid) + '_' + img_suffix + exptime4
+                # emcee_savefile4 = results_dir + 'emcee_sampler_sn' \
+                #     + snstr4 + '.h5'
 
                 # ----------------
                 check_and_write(fh, emcee_savefile1)
                 check_and_write(fh, emcee_savefile2)
                 check_and_write(fh, emcee_savefile3)
-                check_and_write(fh, emcee_savefile4)
+                # check_and_write(fh, emcee_savefile4)
                 fh.write('\n')
 
             ext_hdu1.close()
             ext_hdu2.close()
             ext_hdu3.close()
-            ext_hdu4.close()
+            # ext_hdu4.close()
