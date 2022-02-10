@@ -72,7 +72,7 @@ def main():
 
     # ---------------------------- Prep
     # Create arrays for plotting
-    deltamag = 0.2
+    deltamag = 0.5
     low_maglim = 20.5
     high_maglim = 29.5
 
@@ -142,7 +142,7 @@ def main():
     for e in range(len(exptime_labels)):
 
         print('\nWorking on exposure time:', all_exptimes[e])
-        print('---------------------\n')
+        print('-----------------------------\n')
 
         et = exptime_labels[e]
 
@@ -265,7 +265,7 @@ def main():
     redshift_ticks = get_z_for_mag(mt)
 
     ax2.set_xticks(mags_for_z_axis_transform)
-    ax2.set_xticklabels(['{:.2f}'.format(z) for z in redshift_ticks],
+    ax2.set_xticklabels(['{:.3f}'.format(z) for z in redshift_ticks],
                         rotation=30)
     ax2.set_xlabel(r'$\mathrm{Redshift\ (assumed\ SN\ at\ peak)}$',
                    fontsize=14)
