@@ -52,11 +52,8 @@ def get_z_for_mag(m):
 # Sigmoid func fitting from Lou
 def sigmoid(x, *p):
     x0, T, k = p
-    # b = np.sqrt(b**2)
-    # k = np.sqrt(k**2)
-    b = 0.0
     T = np.sqrt(T**2)
-    y = (T / (1 + np.exp(-k * (x - x0)))) - b
+    y = (T / (1 + np.exp(-k * (x - x0))))
     return y
 
 
@@ -73,7 +70,7 @@ def main():
     # ---------------------------- Prep
     # Create arrays for plotting
     deltamag = 0.5
-    low_maglim = 20.5
+    low_maglim = 21.5
     high_maglim = 29.5
 
     # left edges of mag bins
@@ -177,22 +174,22 @@ def main():
             # Printing some debugging info
             # DO NOT DELETE!
             # It took a lot of effort to get the alignment right
-            if cat['overlap'][i]:
-                overlap_printvar = 'OVERLAP'
-            else:
-                overlap_printvar = ''
+            # if cat['overlap'][i]:
+            #     overlap_printvar = 'OVERLAP'
+            # else:
+            #     overlap_printvar = ''
 
             # if mag > 26.0:
-            print('{:>2d}'.format(i), '  ',
-                  all_exptimes[e], '  ',
-                  cat['SNSegID'][i], '  ',
-                  '{:.2f}'.format(mag), '  ',
-                  '{:6.2f}'.format(cat['SNR3600'][i]), '  ',
-                  '{:>10.4f}'.format(z_acc), '  ',
-                  '{:>10.4f}'.format(temp_z), '  ',
-                  '{:>.4f}'.format(temp_z_true), '  ',
-                  '{:^10}'.format(overlap_printvar), '      ',
-                  passing)
+            # print('{:>2d}'.format(i), '  ',
+            #       all_exptimes[e], '  ',
+            #       cat['SNSegID'][i], '  ',
+            #       '{:.2f}'.format(mag), '  ',
+            #       '{:6.2f}'.format(cat['SNR3600'][i]), '  ',
+            #       '{:>10.4f}'.format(z_acc), '  ',
+            #       '{:>10.4f}'.format(temp_z), '  ',
+            #       '{:>.4f}'.format(temp_z_true), '  ',
+            #       '{:^10}'.format(overlap_printvar), '      ',
+            #       passing)
 
         # Now get effective completeness/exptime and plot
         percent_complete = ztol_counts / total_counts
@@ -204,7 +201,6 @@ def main():
                 zorder=2)
 
         # ----------- Fit sigmoid curves and plot
-        """
         # Remove NaNs
         completeness_valid_idx = np.where(~np.isnan(effective_completeness))[0]
 
@@ -217,14 +213,38 @@ def main():
                                effective_completeness, p0=p0)
         perr = np.sqrt(np.diag(np.array(pcov)))
 
-        ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=2.0,
+        ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=1.0,
                 color=sigmoid_cols[e],
                 label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),  # noqa
                 zorder=1)
-        """
 
-        # ------ Plot all sigmoid curves within error
-        # with an alpha level specified.
+        # ------ Plot randomly chosen sigmoid curves
+        # within error with an alpha level specified.
+        # Doing this only for the 20min exptime for now
+        # since it is the best behaved
+        if all_exptimes[e] == '20m':
+            for s in range(1000):
+                params = []
+
+                # Should we only vary the central magnitude?
+                # Is that the most robustly measured param?
+                mc_arr = np.arange(popt[0] - perr[0],
+                                   popt[0] + perr[0], 0.01)
+                T_arr = np.arange(popt[1] - perr[1],
+                                  popt[1] + perr[1], 0.01)
+                b_arr = np.arange(popt[2] - perr[2],
+                                  popt[2] + perr[2], 0.01)
+
+                mc = np.random.choice(mc_arr)
+                T = np.random.choice(T_arr)  # popt[1]
+                b = np.random.choice(b_arr)  # popt[2]
+
+                params.append(mc)
+                params.append(T)
+                params.append(b)
+
+                ax.plot(mags_tofit, sigmoid(mags_tofit, *params), lw=0.7,
+                        color=sigmoid_cols[e], zorder=1, alpha=0.02)
 
         """
         Cumulative completeness fraction
@@ -256,19 +276,19 @@ def main():
     # Since we're not plotting anything the default ticks
     # are at [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     # SO the on the bottom x-axis need to be transformed to [0,1]
-    # i.e., the range [20.5, 28.0] --> [0,1]
-    mt = np.arange(18.5, 31.5, 1.0)
-    mags_for_z_axis_transform = (mt - 18.5) / 13.0
+    mt = np.arange(low_maglim - 0.5, high_maglim + 0.5, 0.5)
+    mag_rng_diff = high_maglim - low_maglim + 1.0
+    mags_for_z_axis_transform = (mt - (low_maglim - 0.5)) / mag_rng_diff
     # the denominator here corresponds to the difference
     # on the bottom x-axis that is shown in the figure
     # NOT the difference between final and init values in mags_for_z_axis
     redshift_ticks = get_z_for_mag(mt)
 
     ax2.set_xticks(mags_for_z_axis_transform)
-    ax2.set_xticklabels(['{:.3f}'.format(z) for z in redshift_ticks],
+    ax2.set_xticklabels(['{:.2f}'.format(z) for z in redshift_ticks],
                         rotation=30)
     ax2.set_xlabel(r'$\mathrm{Redshift\ (assumed\ SN\ at\ peak)}$',
-                   fontsize=14)
+                   fontsize=10)
     ax2.minorticks_off()
 
     print('Magnitudes:', mt)
@@ -292,6 +312,11 @@ def main():
     ax.legend(loc=0, fontsize=13, frameon=False)
 
     ax.minorticks_on()
+    # Comment grid out for final plot.
+    # Turn it on to see which mag corresponds
+    # exactly to the redshifts tick shown.
+    # Compare by looking at figure and lookup table side by side.
+    # ax.grid()
 
     # save
     fig.savefig(roman_slitless + 'figures/pylinearrecovery_completeness.pdf',

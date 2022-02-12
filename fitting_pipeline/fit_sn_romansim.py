@@ -108,7 +108,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
 
 def loglike_sn(theta, x, data, err):
-    
+
     z, day, av = theta
 
     y = model_sn(x, z, day, av)
@@ -119,7 +119,7 @@ def loglike_sn(theta, x, data, err):
     lnLike = get_lnLike(y, data, err)
 
     # print("Chi2 term:", np.sum((y-data)**2/err**2))
-    # print("Second loglikelihood term:", 
+    # print("Second loglikelihood term:",
     #       np.nansum( np.log(2 * np.pi * err**2)) )
     # print("ln(likelihood) SN", lnLike)
 
@@ -154,19 +154,19 @@ def logprior_sn(theta):
         ln_pz = np.log(1.0 / (np.sqrt(2*np.pi)*zps)) - 0.5*(z - zp)**2/zps**2
 
         return ln_pz
-    
+
     return -np.inf
 
 
 def logpost_sn(theta, x, data, err):
 
     lp = logprior_sn(theta)
-    
+
     if not np.isfinite(lp):
         return -np.inf
-    
+
     lnL = loglike_sn(theta, x, data, err)
-    
+
     return lp + lnL
 
 
@@ -345,18 +345,18 @@ def get_optimal_position(wav, flam, ferr, opt_args=None):
 
             # print('\n')
             # print(wav[i], '{:.3e}'.format(flam[i]), \
-            #     '{:.3e}'.format(model_a[big_index] * 
+            #     '{:.3e}'.format(model_a[big_index] *
             #                     sn_opt_arr[big_index][i]),
             #     '{:.3e}'.format(ferr[i]), '{:.3f}'.format(od), odiff)
             # print(wav[i], '{:.3e}'.format(flam[i]), \
-            #     '{:.3e}'.format(model_a[true_big_index] * 
+            #     '{:.3e}'.format(model_a[true_big_index] *
             #                     sn_opt_arr[true_big_index][i]),
             #     '{:.3e}'.format(ferr[i]), '{:.3f}'.format(td), tdiff)
 
-        chi2o = np.sum((flam - model_a[big_index] * 
-                        sn_opt_arr[big_index])**2 / ferr**2, axis=None)
-        chi2t = np.sum((flam - model_a[true_big_index] * 
-                        sn_opt_arr[true_big_index])**2 / ferr**2, axis=None)
+        chi2o = np.sum((flam - model_a[big_index]
+                        * sn_opt_arr[big_index])**2 / ferr**2, axis=None)
+        chi2t = np.sum((flam - model_a[true_big_index]
+                        * sn_opt_arr[true_big_index])**2 / ferr**2, axis=None)
         print('Manual chi2 opt:', chi2o)
         print('Manual chi2 true:', chi2t)
         print(model_a[big_index], model_a[true_big_index])
@@ -417,7 +417,7 @@ def main():
     # ---------- Loop over all simulated and extracted SN spectra ---------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(2, 4, 1)
+    detectors = np.arange(4, 6, 1)
 
     for pt in pointings:
         for det in detectors:
