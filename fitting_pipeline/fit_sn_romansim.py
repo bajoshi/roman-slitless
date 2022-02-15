@@ -417,7 +417,7 @@ def main():
     # ---------- Loop over all simulated and extracted SN spectra ---------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(4, 6, 1)
+    detectors = np.arange(10, 11, 1)
 
     for pt in pointings:
         for det in detectors:

@@ -69,7 +69,7 @@ def main():
 
     # ---------------------------- Prep
     # Create arrays for plotting
-    deltamag = 0.5
+    deltamag = 0.25
     low_maglim = 21.5
     high_maglim = 29.5
 
@@ -148,7 +148,7 @@ def main():
 
         for i in range(len(cat)):
 
-            # 
+            #
             # if cat['overlap'][i]:
             #     continue
 
@@ -202,49 +202,62 @@ def main():
 
         # ----------- Fit sigmoid curves and plot
         # Remove NaNs
-        completeness_valid_idx = np.where(~np.isnan(effective_completeness))[0]
+        # if all_exptimes[e] == '20m':
+            completeness_valid_idx = np.where(~np.isnan(effective_completeness))[0]
 
-        mags_tofit = mags[completeness_valid_idx]
-        effective_completeness = effective_completeness[completeness_valid_idx]
-        # init guess
-        p0 = [25., 1.0, -0.4]
+            mags_tofit = mags[completeness_valid_idx]
+            effective_completeness = effective_completeness[completeness_valid_idx]
+            # init guess
+            p0 = [25., 1.0, -0.4]
 
-        popt, pcov = curve_fit(sigmoid, mags_tofit,
-                               effective_completeness, p0=p0)
-        perr = np.sqrt(np.diag(np.array(pcov)))
+            popt, pcov = curve_fit(sigmoid, mags_tofit,
+                                   effective_completeness, p0=p0)
+            perr = np.sqrt(np.diag(np.array(pcov)))
 
-        ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=1.0,
-                color=sigmoid_cols[e],
-                label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),  # noqa
-                zorder=1)
+            ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=1.0,
+                    color=sigmoid_cols[e],
+                    label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),  # noqa
+                    zorder=1)
 
-        # ------ Plot randomly chosen sigmoid curves
-        # within error with an alpha level specified.
-        # Doing this only for the 20min exptime for now
-        # since it is the best behaved
-        if all_exptimes[e] == '20m':
-            for s in range(1000):
-                params = []
+            # ------ Plot error on sigmoid curves
+            # within error with an alpha level specified.
+            # Doing this only for the 20min exptime for now
+            # since it is the best behaved
+            xx = np.arange(16.0, 32.0, 0.05)
 
-                # Should we only vary the central magnitude?
-                # Is that the most robustly measured param?
-                mc_arr = np.arange(popt[0] - perr[0],
-                                   popt[0] + perr[0], 0.01)
-                T_arr = np.arange(popt[1] - perr[1],
-                                  popt[1] + perr[1], 0.01)
-                b_arr = np.arange(popt[2] - perr[2],
-                                  popt[2] + perr[2], 0.01)
+            ps = np.random.multivariate_normal(popt, pcov, 100)
+            ysample = np.asarray([sigmoid(xx, *pi) for pi in ps])
 
-                mc = np.random.choice(mc_arr)
-                T = np.random.choice(T_arr)  # popt[1]
-                b = np.random.choice(b_arr)  # popt[2]
+            lower = np.percentile(ysample, 15.9, axis=0)
+            upper = np.percentile(ysample, 84.1, axis=0)
 
-                params.append(mc)
-                params.append(T)
-                params.append(b)
+            ax.fill_between(xx, upper, lower, color='r', alpha=0.2)
 
-                ax.plot(mags_tofit, sigmoid(mags_tofit, *params), lw=0.7,
-                        color=sigmoid_cols[e], zorder=1, alpha=0.02)
+        # Below: old code block for plotting error range.
+        """
+        for s in range(1000):
+            params = []
+
+            # Should we only vary the central magnitude?
+            # Is that the most robustly measured param?
+            mc_arr = np.arange(popt[0] - perr[0],
+                               popt[0] + perr[0], 0.01)
+            T_arr = np.arange(popt[1] - perr[1],
+                              popt[1] + perr[1], 0.01)
+            b_arr = np.arange(popt[2] - perr[2],
+                              popt[2] + perr[2], 0.01)
+
+            mc = np.random.choice(mc_arr)
+            T = np.random.choice(T_arr)  # popt[1]
+            b = np.random.choice(b_arr)  # popt[2]
+
+            params.append(mc)
+            params.append(T)
+            params.append(b)
+
+            ax.plot(mags_tofit, sigmoid(mags_tofit, *params), lw=0.7,
+                    color=sigmoid_cols[e], zorder=1, alpha=0.02)
+        """
 
         """
         Cumulative completeness fraction

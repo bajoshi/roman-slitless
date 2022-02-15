@@ -1278,7 +1278,6 @@ def get_sn_spec_path_hostoverlap(redshift, overlap_pix, sn_segpix,
                                  day_chosen=-99, chosen_av=None):
     """
 
-
     Even more realistic would be to assign each overlapping segpix
     a separate segid and its own spectrum and then simulate. The other
     host-galaxy and SN segpix that do not overlap can be grouped

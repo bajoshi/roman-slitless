@@ -16,11 +16,17 @@ roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
 sys.path.append(roman_slitless_dir)
 from gen_sed_lst import get_sn_spec_path, get_gal_spec_path  # noqa
 
+# Read in F106 filter
+f106_filt_path = 'throughputs/F105W_IR_throughput.csv'
+filt = np.genfromtxt(f106_filt_path,
+                     delimiter=',', dtype=None, names=True,
+                     encoding='ascii', usecols=(1, 2))
+
 
 def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
 
     # First grid the spectrum wavelengths to the filter wavelengths
-    spec_on_filt_grid = griddata(points=spec_wav, 
+    spec_on_filt_grid = griddata(points=spec_wav,
                                  values=spec_flam, xi=filter_wav)
 
     # Remove NaNs
@@ -39,7 +45,7 @@ def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
     return filter_flux
 
 
-def read_sed_scale(sed_path, obj_mag):
+def read_sed_scale(sed_path, obj_mag, verbose=False):
 
     # First fix the path
     sed_path = sed_path.replace('/astro/ffsn/Joshi/', extdir)
@@ -47,11 +53,12 @@ def read_sed_scale(sed_path, obj_mag):
     # Now check if it exists and if not then create it
     if not os.path.isfile(sed_path):
         template_inputs = get_template_inputs(sed_path, verbose=True)
-        if 'salt' in sed_path:
+        if ('salt' in sed_path)\
+           or ('contam' in sed_path):
             sn_z = template_inputs[0]
             template_day = template_inputs[1]
             template_av = template_inputs[2]
-            get_sn_spec_path(sn_z, day_chosen=template_day, 
+            get_sn_spec_path(sn_z, day_chosen=template_day,
                              chosen_av=template_av)
         else:
             galaxy_z = template_inputs[0]
@@ -59,15 +66,25 @@ def read_sed_scale(sed_path, obj_mag):
             template_age = template_inputs[2]
             template_tau = 10**(template_inputs[3])
             template_av = template_inputs[4]
-            get_gal_spec_path(galaxy_z, 
+            get_gal_spec_path(galaxy_z,
                               log_stellar_mass_chosen=template_logms,
-                              chosen_age=template_age, 
+                              chosen_age=template_age,
                               chosen_tau=template_tau,
                               chosen_av=template_av)
 
     # Read in SED
-    sed = np.genfromtxt(sed_path, dtype=None,
-                        names=['wav', 'flam'], encoding='ascii')
+    if ('contam' in sed_path):
+        roman_seds = os.path.dirname(sed_path) + '/'
+        pure_sn_path = roman_seds + 'salt2_spec_day'\
+            + str(template_day)\
+            + "_z" + "{:.4f}".format(sn_z).replace('.', 'p')\
+            + "_av" + "{:.3f}".format(template_av).replace('.', 'p')\
+            + ".txt"
+        sed = np.genfromtxt(pure_sn_path, dtype=None,
+                            names=['wav', 'flam'], encoding='ascii')
+    else:
+        sed = np.genfromtxt(sed_path, dtype=None,
+                            names=['wav', 'flam'], encoding='ascii')
 
     obj_wav = sed['wav']
     obj_flam = sed['flam']
@@ -80,12 +97,7 @@ def read_sed_scale(sed_path, obj_mag):
     obj_wav = obj_wav[wav_idx]
     obj_flam = obj_flam[wav_idx]
 
-    # Read in F106 filter
-    f106_filt_path = 'throughputs/F105W_IR_throughput.csv'
-    filt = np.genfromtxt(f106_filt_path,
-                         delimiter=',', dtype=None, names=True, 
-                         encoding='ascii', usecols=(1, 2))
-
+    # get sed flam through filter
     sed_filt_flam = filter_conv(filt['Wave_Angstroms'], filt['Throughput'],
                                 obj_wav, obj_flam)
 
@@ -95,22 +107,24 @@ def read_sed_scale(sed_path, obj_mag):
     sed_filt_fnu = (10552**2 / 3e18) * sed_filt_flam
     implied_mag = -2.5 * np.log10(sed_filt_fnu) - 48.6
 
-    required_fnu = np.power(10, ((obj_mag + 48.6)/-2.5))
+    required_fnu = np.power(10, ((obj_mag + 48.6) / -2.5))
 
     # Compute a scaling factor to scale the SED
     scalefac = required_fnu / sed_filt_fnu
 
-    print('Flam thru filter:', sed_filt_flam)
-    print('Fnu thru filter:', sed_filt_fnu)
-    print('Required Fnu:', required_fnu)
+    if verbose:
+        print('Flam thru filter:', sed_filt_flam)
+        print('Fnu thru filter:', sed_filt_fnu)
+        print('Required Fnu:', required_fnu)
 
     # Now update the SED related quantities
     sed_filt_fnu *= scalefac
     implied_mag = -2.5 * np.log10(sed_filt_fnu) - 48.6
 
-    print('Updated SED Fnu:', sed_filt_fnu)
-    print('Implied and expected object mags:', 
-          implied_mag, obj_mag)
+    if verbose:
+        print('Updated SED Fnu:', sed_filt_fnu)
+        print('Implied and expected object mags:',
+              implied_mag, obj_mag)
 
     assert np.allclose(implied_mag, obj_mag)
 
@@ -123,7 +137,21 @@ def read_sed_scale(sed_path, obj_mag):
     return obj_wav, obj_flam
 
 
-def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids, 
+def get_appmag_x1d_f106(x1d_wav, x1d_flam):
+
+    # Now convolve with F106
+    x1d_flam = filter_conv(filt['Wave_Angstroms'], filt['Throughput'],
+                           x1d_wav, x1d_flam)
+
+    # Convert to fnu and get AB mag
+    lam_pivot = 10552.0  # hardcoded for F105W
+    fnu_conv = lam_pivot**2 * x1d_flam / 3e18
+    appmag = -2.5 * np.log10(fnu_conv) - 48.6
+
+    return appmag
+
+
+def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
                             sn_segid, imdat, segmap, sedlst):
 
     # ---------------
@@ -141,16 +169,8 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
     xsn = float(insert_cat[sn_idx][0])
     ysn = float(insert_cat[sn_idx][1])
 
-    print('\nMatched/SN Seg ID:   ', sn_segid,
-          '\nSN magnitude:        ', '{:.3f}'.format(snmag),
-          '\nHost galaxy mag:     ', '{:.3f}'.format(hostmag),
-          '\nHost galaxy Seg ID:  ', host_segid,
-          '\nInserted object type:', obj_type,
-          '\nRedshift:            ', 
-          '\n---------------------\n')
-
     # ---------------
-    # Get extracted 1d spec 
+    # Get extracted 1d spec
     sn_wav = ext_hdu[('SOURCE', sn_segid)].data['wavelength']
     sn_flam = ext_hdu[('SOURCE', sn_segid)].data['flam'] * 1e-17
     sn_ferr_lo = ext_hdu[('SOURCE', sn_segid)].data['flounc'] * 1e-17
@@ -187,13 +207,13 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
 
     if x_extent > y_extent:
         ext_diff = x_extent - y_extent
-        ext = [left, right, 
-               bottom-int(ext_diff/2), 
-               top+int(ext_diff/2)]
+        ext = [left, right,
+               bottom - int(ext_diff / 2),
+               top + int(ext_diff / 2)]
     elif y_extent > x_extent:
         ext_diff = y_extent - x_extent
-        ext = [left-int(ext_diff/2), 
-               right+int(ext_diff/2), 
+        ext = [left - int(ext_diff / 2),
+               right + int(ext_diff / 2),
                bottom, top]
 
     # ---------------
@@ -208,9 +228,27 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
     print('HOST template name:', os.path.basename(host_sed_path))
     print('\n')
 
+    # Most host extracted spectra will not match the template.
+    # Need to figure out if the supplied host mag
+    # is too faint or if it is an issue with pylinear
+    # flux calibration.
+    # Get teh apparent mag of the extracted spectrum
+    # and scale the template to match that.
+    host_appmag = get_appmag_x1d_f106(host_wav, host_flam)
+    sn_appmag = get_appmag_x1d_f106(sn_wav, sn_flam)
+
     sn_template_wav, sn_template_flam = read_sed_scale(sn_sed_path, snmag)
     host_template_wav, host_template_flam = \
-        read_sed_scale(host_sed_path, hostmag)
+        read_sed_scale(host_sed_path, host_appmag)
+
+    print('\nMatched/SN Seg ID:   ', sn_segid,
+          '\nSN magnitude:        ', '{:.3f}'.format(snmag),
+          '\nSN magnitude (from x1d):', '{:.3f}'.format(sn_appmag),
+          '\nHost galaxy mag:     ', '{:.3f}'.format(hostmag),
+          '\nHost galaxy mag (from x1d):', '{:.3f}'.format(host_appmag),
+          '\nHost galaxy Seg ID:  ', host_segid,
+          '\nInserted object type:', obj_type,
+          '\n---------------------\n')
 
     # ---------------
     # figure
@@ -228,9 +266,9 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
     # ---- Direct image centered on host galaxy
     # Add an X to SN location
     ax1.set_ylabel('Y [pixels]', fontsize=15)
-    ax1.imshow(np.log10(dirimg_cutout), extent=ext, 
+    ax1.imshow(np.log10(dirimg_cutout), extent=ext,
                origin='lower', cmap='Greys')
-    ax1.scatter(xsn, ysn, marker='x', lw=5.0, 
+    ax1.scatter(xsn, ysn, marker='x', lw=5.0,
                 s=60, color='crimson')
 
     # ---- Segmentation map for both objects
@@ -241,25 +279,25 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
 
     # ---- SN extracted spectrum
     ax3.set_ylabel('F-lambda [cgs]', fontsize=15)
-    
+
     ax3.plot(sn_wav, sn_flam, color='k', lw=1.5, label='pyLINEAR x1d spec SN')
-    ax3.fill_between(sn_wav, sn_flam - sn_ferr_lo, sn_flam + sn_ferr_hi, 
+    ax3.fill_between(sn_wav, sn_flam - sn_ferr_lo, sn_flam + sn_ferr_hi,
                      color='gray', alpha=0.5)
-    
-    ax3.plot(sn_template_wav, sn_template_flam, 
+
+    ax3.plot(sn_template_wav, sn_template_flam,
              color='dodgerblue', lw=2.0, label='SN template')
 
     # ---- Host galaxy extracted spectrum
     ax4.set_ylabel('F-lambda [cgs]', fontsize=15)
     ax4.set_xlabel('Wavelength [Angstroms]', fontsize=15)
 
-    ax4.plot(host_wav, host_flam, color='k', lw=1.5, 
+    ax4.plot(host_wav, host_flam, color='k', lw=1.5,
              label='pyLINEAR x1d spec host-galaxy', zorder=3)
-    ax4.fill_between(host_wav, host_flam - host_ferr_lo, 
+    ax4.fill_between(host_wav, host_flam - host_ferr_lo,
                      host_flam + host_ferr_hi,
                      color='gray', alpha=0.5, zorder=3)
 
-    ax4.plot(host_template_wav, host_template_flam, 
+    ax4.plot(host_template_wav, host_template_flam,
              color='dodgerblue', lw=1.2, label='HOST-galaxy template',
              alpha=0.9, zorder=2)
 
@@ -273,7 +311,7 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
     sn_max_flux = np.nanmax(sn_flam)
 
     ax3.set_ylim(sn_min_flux * 0.8, sn_max_flux * 1.2)
-    
+
     host_min_flux = np.nanmin(host_flam)
     host_max_flux = np.nanmax(host_flam)
 
@@ -294,8 +332,145 @@ def display_segmap_and_spec(ext_hdu, insert_cat, all_inserted_segids,
     # ---- Save figure
     # plt.show()
     figdir = roman_slitless_dir + 'figures/sn_spectra_inspect/'
+
+    if not os.path.isdir(figdir):
+        os.mkdir(figdir)
+
     figname = figdir + 'sn_' + str(sn_segid) + '_Y106_0_' + \
         str(detector) + '.pdf'
+    fig.savefig(figname, dpi=300, bbox_inches='tight')
+
+    return None
+
+
+def paperfigure(ext_hdu, insert_cat, all_inserted_segids, sn_segid, sedlst):
+    """
+    This is just a pared down version of the above display_segmap_and_spec()
+    function to produce figures for the paper. See that function for notes.
+    """
+
+    # ---------------
+    # Get object info from inserted objects file
+    sn_idx = int(np.where(all_inserted_segids == sn_segid)[0])
+    matched_segid = int(insert_cat[sn_idx][-1])
+
+    assert matched_segid == sn_segid
+
+    snmag = float(insert_cat[sn_idx][2])
+    host_segid = int(float(insert_cat[sn_idx][4]))
+
+    # ---------------
+    # Get extracted 1d spec
+    sn_wav = ext_hdu[('SOURCE', sn_segid)].data['wavelength']
+    sn_flam = ext_hdu[('SOURCE', sn_segid)].data['flam'] * 1e-17
+    sn_ferr_lo = ext_hdu[('SOURCE', sn_segid)].data['flounc'] * 1e-17
+    sn_ferr_hi = ext_hdu[('SOURCE', sn_segid)].data['fhiunc'] * 1e-17
+
+    host_wav = ext_hdu[('SOURCE', host_segid)].data['wavelength']
+    host_flam = ext_hdu[('SOURCE', host_segid)].data['flam'] * 1e-17
+    host_ferr_lo = ext_hdu[('SOURCE', host_segid)].data['flounc'] * 1e-17
+    host_ferr_hi = ext_hdu[('SOURCE', host_segid)].data['fhiunc'] * 1e-17
+
+    # ---------------
+    # Read in SED templates for SN and host
+    sn_sed_idx = int(np.where(sedlst['segid'] == sn_segid)[0])
+    host_sed_idx = int(np.where(sedlst['segid'] == host_segid)[0])
+
+    sn_sed_path = sedlst['sed_path'][sn_sed_idx]
+    host_sed_path = sedlst['sed_path'][host_sed_idx]
+
+    # Get redshift to put in axes title
+    sn_basename = os.path.basename(sn_sed_path)
+    tl = sn_basename.split('_')
+    sn_z = tl[3].replace('z', '').replace('p', '.')
+    redshift = float(sn_z)
+
+    # Most host extracted spectra will not match the template.
+    # Need to figure out if the supplied host mag
+    # is too faint or if it is an issue with pylinear
+    # flux calibration.
+    # Get teh apparent mag of the extracted spectrum
+    # and scale the template to match that.
+    host_appmag = get_appmag_x1d_f106(host_wav, host_flam)
+
+    sn_template_wav, sn_template_flam = read_sed_scale(sn_sed_path, snmag)
+    host_template_wav, host_template_flam = \
+        read_sed_scale(host_sed_path, host_appmag)
+
+    # ---------------
+    # ---- figure and subplots
+    fig = plt.figure(figsize=(15, 3))
+
+    gs = GridSpec(10, 18, wspace=1, hspace=0)
+
+    ax1 = fig.add_subplot(gs[:, :9])
+    ax2 = fig.add_subplot(gs[:, 9:])
+
+    # ---- Set fontsize for legend, labels and title
+    label_fs = 18
+    legend_fs = 20
+
+    # ---- Set labels
+    ax1.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$',  # noqa
+                   fontsize=label_fs)
+    ax1.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=label_fs)
+    ax2.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=label_fs)
+
+    # Plot extracted spectra
+    ax1.plot(sn_wav, sn_flam, color='k', lw=1.5, label='pyLINEAR x1d spec SN')
+    ax1.fill_between(sn_wav, sn_flam - sn_ferr_lo, sn_flam + sn_ferr_hi,
+                     color='gray', alpha=0.5)
+
+    ax2.plot(host_wav, host_flam, color='k', lw=1.5,
+             label='pyLINEAR x1d spec host-galaxy',
+             zorder=3)
+    ax2.fill_between(host_wav, host_flam - host_ferr_lo,
+                     host_flam + host_ferr_hi,
+                     color='gray', alpha=0.5, zorder=3)
+
+    # ---- Plot templates
+    ax1.plot(sn_template_wav, sn_template_flam,
+             color='dodgerblue', lw=2.0,
+             label='SN template'
+             + '\n' + 'SN F106 mag: ' + '{:.2f}'.format(snmag))
+    ax2.plot(host_template_wav, host_template_flam,
+             color='dodgerblue', lw=1.2,
+             label='Host-galaxy template'
+             + '\n' + 'Host-galaxy F106 mag: ' + '{:.2f}'.format(host_appmag),
+             alpha=0.9, zorder=2)
+
+    # ---- Legend
+    ax1.legend(loc=0, frameon=False, fontsize=legend_fs)
+    ax2.legend(loc=0, frameon=False, fontsize=legend_fs)
+
+    # ---- Limits
+    # Decide Y limits based on flux limits
+    sn_min_flux = np.nanmin(sn_flam)
+    sn_max_flux = np.nanmax(sn_flam)
+
+    ax1.set_ylim(sn_min_flux * 0.7, sn_max_flux * 1.65)
+
+    host_min_flux = np.nanmin(host_flam)
+    host_max_flux = np.nanmax(host_flam)
+
+    ax2.set_ylim(host_min_flux * 0.7, host_max_flux * 1.65)
+
+    # Force X limits to be the same for both axes
+    ax1.set_xlim(7600.0, 18200.0)
+    ax2.set_xlim(7600.0, 18200.0)
+
+    # ---- Axes title
+    ax1.set_title('1-hour prism spectrum; z = '
+                  + '{:.3f}'.format(redshift), fontsize=label_fs+2)
+
+    # ---- Save figure
+    figdir = roman_slitless_dir + 'figures/sn_spectra_inspect/'
+
+    if not os.path.isdir(figdir):
+        os.mkdir(figdir)
+
+    figname = figdir + 'sn_' + str(sn_segid) + '_Y106_0_' + \
+        str(detector) + '_' + exptime + '_paperfig.pdf'
     fig.savefig(figname, dpi=300, bbox_inches='tight')
 
     return None
@@ -306,23 +481,17 @@ if __name__ == '__main__':
     # ---------------
     # Info for code to plot
     sn_segid = int(sys.argv[1])
-    detector = '1'
+    detector = '2'
     exptime = '1200s'
 
-    # THIS CODE IS INTENDED TO ONLY BE RUN AFTER 
+    # THIS CODE IS INTENDED TO ONLY BE RUN AFTER
     # PLFFSN2 FINISHES AND NOT ON PLFFSN2.
     # You will also need to rsync the following from PLFFSN2:
     # 1. *SNadded.fits, *SNadded_segmap.fits, and *SNadded.npy
     # 2. SED LST files
     # 3. x1d results
-    # 4. SED txt files
-    # While the salt2*.txt SED files can all be transferred 
-    # simultaneously, the bc03*.txt templates must be done
-    # for each galaxy separately because there are WAY too 
-    # many of them (and we're only going to need a handful
-    # to check these plots).
     ######################
-    
+
     # ---------------
     # Read in npy file with all inserted object info
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
@@ -337,8 +506,19 @@ if __name__ == '__main__':
     # ---------------
     # Read in extracted spectra
     resdir = extdir + 'roman_slitless_sims_results/'
-    x1d = fits.open(resdir + 'romansim_prism_Y106_0_' +
-                    detector + '_' + exptime + '_x1d.fits')
+    x1d = fits.open(resdir + 'romansim_prism_Y106_0_'
+                    + detector + '_' + exptime + '_x1d.fits')
+
+    # ---------------
+    # Read in sedlst
+    sedlst_path = extdir + 'pylinear_lst_files/sed_Y106_0_' + detector + '.lst'
+    sedlst = np.genfromtxt(sedlst_path, dtype=None,
+                           names=['segid', 'sed_path'], encoding='ascii')
+
+    # ---------------
+    paperfigure(x1d, insert_cat, all_inserted_segids, sn_segid, sedlst)
+
+    sys.exit(0)
 
     # ---------------
     # Read in image and segmap
@@ -350,12 +530,6 @@ if __name__ == '__main__':
     segmap = fits.getdata(segmap_path)
 
     # ---------------
-    # Read in sedlst
-    sedlst_path = extdir + 'pylinear_lst_files/sed_Y106_0_' + detector + '.lst'
-    sedlst = np.genfromtxt(sedlst_path, dtype=None, 
-                           names=['segid', 'sed_path'], encoding='ascii')
-
-    # ---------------
     # Call display func
-    display_segmap_and_spec(x1d, insert_cat, all_inserted_segids, sn_segid,
-                            imdat, segmap, sedlst)
+    # display_segmap_and_spec(x1d, insert_cat, all_inserted_segids, sn_segid,
+    #                         imdat, segmap, sedlst)
