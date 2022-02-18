@@ -51,8 +51,8 @@ def get_z_for_mag(m):
 
 # Sigmoid func fitting from Lou
 def sigmoid(x, *p):
-    x0, T, k = p
-    T = np.sqrt(T**2)
+    x0, k = p  # x0, T, k = p
+    T = 1  # np.sqrt(T**2)
     y = (T / (1 + np.exp(-k * (x - x0))))
     return y
 
@@ -69,7 +69,7 @@ def main():
 
     # ---------------------------- Prep
     # Create arrays for plotting
-    deltamag = 0.25
+    deltamag = 0.1
     low_maglim = 21.5
     high_maglim = 29.5
 
@@ -134,9 +134,9 @@ def main():
     all_exptimes = ['3h', '1h', '20m']
 
     # Initial guesses for the sigmoid fitting
-    init_guesses = [[26.5, 1.0, -0.4],
-                    [25., 1.0, -0.4],
-                    [24., 1.0, -0.4]]
+    init_guesses = [[26.5, -0.4],
+                    [25., -0.4],
+                    [24., -0.4]]
 
     # Setup figure
     fig = plt.figure(figsize=(8, 5))
@@ -207,73 +207,40 @@ def main():
                 zorder=2)
 
         # ----------- Fit sigmoid curves and plot
-        if all_exptimes[e] == '20m':
-            # Remove NaNs
-            completeness_valid_idx = \
-                np.where(~np.isnan(effective_completeness))[0]
+        # Remove NaNs
+        completeness_valid_idx = \
+            np.where(~np.isnan(effective_completeness))[0]
 
-            mags_tofit = mags[completeness_valid_idx]
-            effective_completeness = \
-                effective_completeness[completeness_valid_idx]
+        mags_tofit = mags[completeness_valid_idx]
+        effective_completeness = \
+            effective_completeness[completeness_valid_idx]
+        # init guess
+        p0 = init_guesses[e]
 
-            """
-            print(mags_tofit)
-            print(effective_completeness)
+        popt, pcov = curve_fit(sigmoid, mags_tofit,
+                               effective_completeness, p0=p0)
+        perr = np.sqrt(np.diag(np.array(pcov)))
 
-            # Adding a dummy completeness at the start and end
-            # to improve fitting for the 3h and 1h
-            mags_tofit = np.insert(mags_tofit, 0, mags_tofit[0] - deltamag)
-            mags_tofit = np.insert(mags_tofit, 0, mags_tofit[0] - deltamag)
-            mags_tofit = np.insert(mags_tofit, 0, mags_tofit[0] - deltamag)
+        print('Fitted params:', popt)
 
-            mags_tofit = np.append(mags_tofit, mags_tofit[-1] + deltamag)
-            mags_tofit = np.append(mags_tofit, mags_tofit[-1] + deltamag)
-            mags_tofit = np.append(mags_tofit, mags_tofit[-1] + deltamag)
+        # Plot fitted sigmoid
+        ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=1.0,
+                color=sigmoid_cols[e],
+                label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),  # noqa
+                zorder=1)
 
-            effective_completeness = np.insert(effective_completeness, 0, 1.0)
-            effective_completeness = np.insert(effective_completeness, 0, 1.0)
-            effective_completeness = np.insert(effective_completeness, 0, 1.0)
-            effective_completeness = np.append(effective_completeness, 0.0)
-            effective_completeness = np.append(effective_completeness, 0.0)
-            effective_completeness = np.append(effective_completeness, 0.0)
+        # ------ Plot error on sigmoid curves
+        # within error with an alpha level specified.
+        xx = np.arange(20.0, 31.0, 0.05)
 
-            print(mags_tofit)
-            print(effective_completeness)
-            """
+        ps = np.random.multivariate_normal(popt, pcov, 100)
+        ysample = np.asarray([sigmoid(xx, *pi) for pi in ps])
 
-            # init guess
-            p0 = init_guesses[e]
-            print('Inital guess:', p0)
+        lower = np.percentile(ysample, 15.9, axis=0)
+        upper = np.percentile(ysample, 84.1, axis=0)
 
-            popt, pcov = curve_fit(sigmoid, mags_tofit,
-                                   effective_completeness, p0=p0)
-            perr = np.sqrt(np.diag(np.array(pcov)))
-
-            print('Fitted params:', popt)
-
-            # Plot dummy mag and eff completeness to check
-            # can remove this later once code is working
-            # ax.plot(mags_tofit, effective_completeness, 'o--', markersize=5,
-            #         color='w', markeredgecolor=colors[e])
-
-            # Plot fitted sigmoid
-            ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=1.0,
-                    color=sigmoid_cols[e],
-                    label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),  # noqa
-                    zorder=1)
-
-            # ------ Plot error on sigmoid curves
-            # within error with an alpha level specified.
-            xx = np.arange(20.0, 31.0, 0.05)
-
-            ps = np.random.multivariate_normal(popt, pcov, 100)
-            ysample = np.asarray([sigmoid(xx, *pi) for pi in ps])
-
-            lower = np.percentile(ysample, 15.9, axis=0)
-            upper = np.percentile(ysample, 84.1, axis=0)
-
-            ax.fill_between(xx, upper, lower,
-                            color=sigmoid_err_cols[e], alpha=0.5)
+        ax.fill_between(xx, upper, lower,
+                        color=sigmoid_err_cols[e], alpha=0.5)
 
         # Below: old code block for plotting error range.
         """
@@ -342,7 +309,7 @@ def main():
     ax2.set_xticks(mags_for_z_axis_transform)
     ax2.set_xticklabels(['{:.2f}'.format(z) for z in redshift_ticks],
                         rotation=30)
-    ax2.set_xlabel(r'$\mathrm{Redshift\ (assumed\ SN\ at\ peak)}$',
+    ax2.set_xlabel(r'$\mathrm{Approx.\ Redshift\ (assumed\ SN\ at\ peak)}$',
                    fontsize=10)
     ax2.minorticks_off()
 

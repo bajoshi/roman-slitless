@@ -46,6 +46,25 @@ av1200[av1200 == -9999.0] = np.nan
 av3600 = cat['Av3600']
 av3600[av3600 == -9999.0] = np.nan
 
+# Make these plots only for the uncontaminated SNe??
+overlap_idx = cat['overlap']
+
+# flag for axis limits later
+consider_contam_sne = False
+
+if not consider_contam_sne:
+    z400[overlap_idx] = np.nan
+    z1200[overlap_idx] = np.nan
+    z3600[overlap_idx] = np.nan
+
+    phase400[overlap_idx] = np.nan
+    phase1200[overlap_idx] = np.nan
+    phase3600[overlap_idx] = np.nan
+
+    av400[overlap_idx] = np.nan
+    av1200[overlap_idx] = np.nan
+    av3600[overlap_idx] = np.nan
+
 ###########################################
 # --------------------
 fig = plt.figure(figsize=(7, 9))
@@ -172,7 +191,10 @@ ax1.set_xlim(0.0, 3.2)
 ax1.set_ylim(0.0, 3.2)
 
 ax2.set_xlim(0.0, 3.2)
-# ax2.set_ylim(-0.01, 0.01)
+
+# Limit based on consideration of contam/uncontam sne
+if not consider_contam_sne:
+    ax2.set_ylim(-0.002, 0.002)
 
 ax1.legend(loc=0, fontsize=18, frameon=False)
 
@@ -250,6 +272,10 @@ ax1.set_xlim(-10, 10)
 ax1.set_ylim(-10, 10)
 
 ax2.set_xlim(-10, 10)
+
+# Limit based on consideration of contam/uncontam sne
+if not consider_contam_sne:
+    ax2.set_ylim(-2, 2)
 
 ax1.legend(loc=0, fontsize=18, frameon=False)
 
@@ -334,6 +360,10 @@ ax1.set_ylim(0.0, 3.0)
 
 ax2.set_xlim(0.0, 3.0)
 
+# Limit based on consideration of contam/uncontam sne
+if not consider_contam_sne:
+    ax2.set_ylim(-0.2, 0.2)
+
 ax1.legend(loc=0, fontsize=18, frameon=False)
 
 fig.savefig(roman_slitless + 'figures/pylinearrecovery_dust.pdf',
@@ -380,6 +410,11 @@ ax2.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 # ax3.set_xlim(10, 150)
 
 # ax1.set_ylim(-0.015, 0.015)
+
+# Limit based on consideration of contam/uncontam sne
+if not consider_contam_sne:
+    ax1.set_ylim(-0.002, 0.002)
+    ax2.set_ylim(-1.5, 0.5)
 
 fig.savefig(roman_slitless + 'figures/pylinearrecovery_snr.pdf',
             dpi=200, bbox_inches='tight')
