@@ -127,10 +127,16 @@ def main():
     exptime_labels = ['z3600', 'z1200', 'z400']
     colors = ['dodgerblue', 'seagreen', 'goldenrod']
     sigmoid_cols = ['navy', 'green', 'peru']
+    sigmoid_err_cols = ['skyblue', 'lightgreen', 'burlywood']
 
     # The above labels are col names in the catalog
     # and these labels below will be used in the plot
     all_exptimes = ['3h', '1h', '20m']
+
+    # Initial guesses for the sigmoid fitting
+    init_guesses = [[26.5, 1.0, -0.4],
+                    [25., 1.0, -0.4],
+                    [24., 1.0, -0.4]]
 
     # Setup figure
     fig = plt.figure(figsize=(8, 5))
@@ -201,19 +207,56 @@ def main():
                 zorder=2)
 
         # ----------- Fit sigmoid curves and plot
-        # Remove NaNs
-        # if all_exptimes[e] == '20m':
-            completeness_valid_idx = np.where(~np.isnan(effective_completeness))[0]
+        if all_exptimes[e] == '20m':
+            # Remove NaNs
+            completeness_valid_idx = \
+                np.where(~np.isnan(effective_completeness))[0]
 
             mags_tofit = mags[completeness_valid_idx]
-            effective_completeness = effective_completeness[completeness_valid_idx]
+            effective_completeness = \
+                effective_completeness[completeness_valid_idx]
+
+            """
+            print(mags_tofit)
+            print(effective_completeness)
+
+            # Adding a dummy completeness at the start and end
+            # to improve fitting for the 3h and 1h
+            mags_tofit = np.insert(mags_tofit, 0, mags_tofit[0] - deltamag)
+            mags_tofit = np.insert(mags_tofit, 0, mags_tofit[0] - deltamag)
+            mags_tofit = np.insert(mags_tofit, 0, mags_tofit[0] - deltamag)
+
+            mags_tofit = np.append(mags_tofit, mags_tofit[-1] + deltamag)
+            mags_tofit = np.append(mags_tofit, mags_tofit[-1] + deltamag)
+            mags_tofit = np.append(mags_tofit, mags_tofit[-1] + deltamag)
+
+            effective_completeness = np.insert(effective_completeness, 0, 1.0)
+            effective_completeness = np.insert(effective_completeness, 0, 1.0)
+            effective_completeness = np.insert(effective_completeness, 0, 1.0)
+            effective_completeness = np.append(effective_completeness, 0.0)
+            effective_completeness = np.append(effective_completeness, 0.0)
+            effective_completeness = np.append(effective_completeness, 0.0)
+
+            print(mags_tofit)
+            print(effective_completeness)
+            """
+
             # init guess
-            p0 = [25., 1.0, -0.4]
+            p0 = init_guesses[e]
+            print('Inital guess:', p0)
 
             popt, pcov = curve_fit(sigmoid, mags_tofit,
                                    effective_completeness, p0=p0)
             perr = np.sqrt(np.diag(np.array(pcov)))
 
+            print('Fitted params:', popt)
+
+            # Plot dummy mag and eff completeness to check
+            # can remove this later once code is working
+            # ax.plot(mags_tofit, effective_completeness, 'o--', markersize=5,
+            #         color='w', markeredgecolor=colors[e])
+
+            # Plot fitted sigmoid
             ax.plot(mags_tofit, sigmoid(mags_tofit, *popt), lw=1.0,
                     color=sigmoid_cols[e],
                     label=r'$m_c=%.2f\pm%.2f$' % (popt[0], perr[0]),  # noqa
@@ -221,9 +264,7 @@ def main():
 
             # ------ Plot error on sigmoid curves
             # within error with an alpha level specified.
-            # Doing this only for the 20min exptime for now
-            # since it is the best behaved
-            xx = np.arange(16.0, 32.0, 0.05)
+            xx = np.arange(20.0, 31.0, 0.05)
 
             ps = np.random.multivariate_normal(popt, pcov, 100)
             ysample = np.asarray([sigmoid(xx, *pi) for pi in ps])
@@ -231,7 +272,8 @@ def main():
             lower = np.percentile(ysample, 15.9, axis=0)
             upper = np.percentile(ysample, 84.1, axis=0)
 
-            ax.fill_between(xx, upper, lower, color='r', alpha=0.2)
+            ax.fill_between(xx, upper, lower,
+                            color=sigmoid_err_cols[e], alpha=0.5)
 
         # Below: old code block for plotting error range.
         """

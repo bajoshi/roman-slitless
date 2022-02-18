@@ -164,7 +164,7 @@ res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  '
 
 # Arrays to loop over
 pointings = np.arange(0, 1)
-detectors = np.arange(1, 9)
+detectors = np.arange(1, 13)
 
 for pt in pointings:
 
