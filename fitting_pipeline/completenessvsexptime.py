@@ -173,9 +173,9 @@ def main():
                 ztol_counts[mag_idx] += 1
 
                 # This passing string is just for debugging
-                passing = 'PASSING'
+                passing = 'PASSING'  # noqa
             else:
-                passing = 'NOT PASSING'
+                passing = 'NOT PASSING'  # noqa
 
             # Printing some debugging info
             # DO NOT DELETE!
@@ -309,8 +309,9 @@ def main():
     ax2.set_xticks(mags_for_z_axis_transform)
     ax2.set_xticklabels(['{:.2f}'.format(z) for z in redshift_ticks],
                         rotation=30)
-    ax2.set_xlabel(r'$\mathrm{Approx.\ Redshift\ (assumed\ SN\ at\ peak)}$',
-                   fontsize=10)
+    redshift_axis_label = \
+        r'$\mathrm{Approx.\ Redshift\ (assumed\ SN\ at\ peak,\ no\ dust)}$'
+    ax2.set_xlabel(redshift_axis_label, fontsize=10)
     ax2.minorticks_off()
 
     print('Magnitudes:', mt)

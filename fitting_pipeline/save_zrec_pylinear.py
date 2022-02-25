@@ -157,14 +157,9 @@ res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  '
            # + 'Av10800  Av10800_lowerr  Av10800_uperr'
            )
 
-# Header for SExtractor catalog
-# cat_header = ['NUMBER', 'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000',
-#               'FLUX_AUTO', 'FLUXERR_AUTO', 'MAG_AUTO', 'MAGERR_AUTO',
-#               'FLUX_RADIUS', 'FWHM_IMAGE']
-
 # Arrays to loop over
 pointings = np.arange(0, 1)
-detectors = np.arange(1, 13)
+detectors = np.arange(1, 19)
 
 for pt in pointings:
 

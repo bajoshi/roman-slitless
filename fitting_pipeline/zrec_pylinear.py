@@ -65,6 +65,9 @@ if not consider_contam_sne:
     av1200[overlap_idx] = np.nan
     av3600[overlap_idx] = np.nan
 
+# Error bar width
+ebarwidth = 0.05
+
 ###########################################
 # --------------------
 fig = plt.figure(figsize=(7, 9))
@@ -99,13 +102,13 @@ z400acc = (z400 - cat['z_true']) / (1 + cat['z_true'])
 ax1.errorbar(cat['z_true'], z400,
              yerr=z400err, markersize=6.5, fmt='o',
              color='white', ecolor='goldenrod',
-             markeredgecolor='goldenrod', elinewidth=0.1,
+             markeredgecolor='goldenrod', elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[0])
 
 ax2.errorbar(cat['z_true'], z400acc,
              yerr=z400err, markersize=6.5, fmt='o',
              color='white', ecolor='goldenrod',
-             markeredgecolor='goldenrod', elinewidth=0.1)
+             markeredgecolor='goldenrod', elinewidth=ebarwidth)
 
 # Print info
 fail_idx400 = np.where(np.abs(z400acc) >= 0.1)[0]
@@ -129,13 +132,13 @@ z1200acc = (z1200 - cat['z_true']) / (1 + cat['z_true'])
 ax1.errorbar(cat['z_true'], z1200,
              yerr=z1200err, markersize=4.5, fmt='o',
              color='white', ecolor='seagreen',
-             markeredgecolor='seagreen', elinewidth=0.1,
+             markeredgecolor='seagreen', elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[1])
 
 ax2.errorbar(cat['z_true'], z1200acc,
              yerr=z1200err, markersize=4.5, fmt='o',
              color='white', ecolor='seagreen',
-             markeredgecolor='seagreen', elinewidth=0.1)
+             markeredgecolor='seagreen', elinewidth=ebarwidth)
 
 # Print info
 fail_idx1200 = np.where(np.abs(z1200acc) >= 0.1)[0]
@@ -160,13 +163,13 @@ z3600acc = (z3600 - cat['z_true']) / (1 + cat['z_true'])
 ax1.errorbar(cat['z_true'], z3600,
              yerr=z3600err, markersize=2.0, fmt='o',
              color='white', ecolor='dodgerblue',
-             markeredgecolor='dodgerblue', elinewidth=0.1,
+             markeredgecolor='dodgerblue', elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[2])
 
 ax2.errorbar(cat['z_true'], z3600acc,
              yerr=z3600err, markersize=2.0, fmt='o',
              color='white', ecolor='dodgerblue',
-             markeredgecolor='dodgerblue', elinewidth=0.1)
+             markeredgecolor='dodgerblue', elinewidth=ebarwidth)
 
 # Print info
 fail_idx3600 = np.where(np.abs(z3600acc) >= 0.1)[0]
@@ -187,6 +190,8 @@ print('Mean acc 3600 seconds:',
 ax1.set_xticklabels([])
 
 # Limits
+ax1.legend(loc=0, fontsize=18, frameon=False)
+
 ax1.set_xlim(0.0, 3.2)
 ax1.set_ylim(0.0, 3.2)
 
@@ -195,11 +200,11 @@ ax2.set_xlim(0.0, 3.2)
 # Limit based on consideration of contam/uncontam sne
 if not consider_contam_sne:
     ax2.set_ylim(-0.002, 0.002)
-
-ax1.legend(loc=0, fontsize=18, frameon=False)
-
-fig.savefig(roman_slitless + 'figures/pylinearrecovery_z.pdf',
-            dpi=200, bbox_inches='tight')
+    fig.savefig(roman_slitless + 'figures/pylinearrecovery_z_noblend.pdf',
+                dpi=200, bbox_inches='tight')
+else:
+    fig.savefig(roman_slitless + 'figures/pylinearrecovery_z_allsne.pdf',
+                dpi=200, bbox_inches='tight')
 
 fig.clear()
 plt.close(fig)
@@ -213,6 +218,11 @@ gs = fig.add_gridspec(nrows=11, ncols=1, left=0.05, right=0.95, wspace=0.1)
 
 ax1 = fig.add_subplot(gs[:8])
 ax2 = fig.add_subplot(gs[8:])
+
+if consider_contam_sne:
+    ax1.set_title('All SNe', fontsize=30)
+else:
+    ax1.set_title('No blended host-galaxy light', fontsize=30)
 
 ax2.set_ylabel(r'$\Delta \mathrm{Phase}$', fontsize=20)
 ax2.set_xlabel(r'$\mathrm{Phase_{true}}$', fontsize=20)
@@ -232,37 +242,37 @@ phase3600err = np.vstack((cat['phase3600_lowerr'], cat['phase3600_uperr']))
 ax1.errorbar(cat['phase_true'], phase400,
              yerr=phase400err, markersize=6.5,
              fmt='o', color='white', ecolor='goldenrod',
-             markeredgecolor='goldenrod', elinewidth=0.5,
+             markeredgecolor='goldenrod', elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[0])
 
 ax2.errorbar(cat['phase_true'], phase400 - cat['phase_true'],
              yerr=phase400err, markersize=6.5,
              fmt='o', color='white', ecolor='goldenrod',
-             markeredgecolor='goldenrod', elinewidth=0.5)
+             markeredgecolor='goldenrod', elinewidth=ebarwidth)
 
 # --- EXPTIME 1200 seconds
 ax1.errorbar(cat['phase_true'], phase1200,
              yerr=phase1200err, markersize=4.5,
              fmt='o', color='white', ecolor='seagreen',
-             markeredgecolor='seagreen', elinewidth=0.5,
+             markeredgecolor='seagreen', elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[1])
 
 ax2.errorbar(cat['phase_true'], phase1200 - cat['phase_true'],
              yerr=phase1200err, markersize=4.5,
              fmt='o', color='white', ecolor='seagreen',
-             markeredgecolor='seagreen', elinewidth=0.5)
+             markeredgecolor='seagreen', elinewidth=ebarwidth)
 
 # --- EXPTIME 3600 seconds
 ax1.errorbar(cat['phase_true'], phase3600,
              yerr=phase3600err, markersize=2.0,
              fmt='o', color='white', ecolor='dodgerblue',
-             markeredgecolor='dodgerblue', elinewidth=0.5,
+             markeredgecolor='dodgerblue', elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[2])
 
 ax2.errorbar(cat['phase_true'], phase3600 - cat['phase_true'],
              yerr=phase3600err, markersize=2.0,
              fmt='o', color='white', ecolor='dodgerblue',
-             markeredgecolor='dodgerblue', elinewidth=0.5)
+             markeredgecolor='dodgerblue', elinewidth=ebarwidth)
 
 # Ticks
 ax1.set_xticklabels([])
@@ -273,14 +283,17 @@ ax1.set_ylim(-10, 10)
 
 ax2.set_xlim(-10, 10)
 
+# ax1.legend(loc=0, fontsize=18, frameon=False)
+ax1.legend(loc='upper left', fontsize=18, frameon=False)
+
 # Limit based on consideration of contam/uncontam sne
 if not consider_contam_sne:
     ax2.set_ylim(-2, 2)
-
-ax1.legend(loc=0, fontsize=18, frameon=False)
-
-fig.savefig(roman_slitless + 'figures/pylinearrecovery_phase.pdf',
-            dpi=200, bbox_inches='tight')
+    fig.savefig(roman_slitless + 'figures/pylinearrecovery_phase_noblend.pdf',
+                dpi=200, bbox_inches='tight')
+else:
+    fig.savefig(roman_slitless + 'figures/pylinearrecovery_phase_allsne.pdf',
+                dpi=200, bbox_inches='tight')
 
 fig.clear()
 plt.close(fig)
@@ -313,14 +326,14 @@ ax1.errorbar(cat['Av_true'], av400,
              yerr=av400err, markersize=6.5, fmt='o',
              color='white',
              markeredgecolor='goldenrod', ecolor='goldenrod',
-             elinewidth=0.1,
+             elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[0])
 
 ax2.errorbar(cat['Av_true'], av400 - cat['Av_true'],
              yerr=av400err, markersize=6.5, fmt='o',
              color='white',
              markeredgecolor='goldenrod', ecolor='goldenrod',
-             elinewidth=0.1)
+             elinewidth=ebarwidth)
 
 
 # --- EXPTIME 1200 seconds
@@ -328,28 +341,28 @@ ax1.errorbar(cat['Av_true'], av1200,
              yerr=av1200err, markersize=4.5, fmt='o',
              color='white',
              markeredgecolor='seagreen', ecolor='seagreen',
-             elinewidth=0.1,
+             elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[1])
 
 ax2.errorbar(cat['Av_true'], av1200 - cat['Av_true'],
              yerr=av1200err, markersize=4.5, fmt='o',
              color='white',
              markeredgecolor='seagreen', ecolor='seagreen',
-             elinewidth=0.1)
+             elinewidth=ebarwidth)
 
 # --- EXPTIME 3600 seconds
 ax1.errorbar(cat['Av_true'], av3600,
              yerr=av3600err, markersize=2.0, fmt='o',
              color='white',
              markeredgecolor='dodgerblue', ecolor='dodgerblue',
-             elinewidth=0.1,
+             elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[2])
 
 ax2.errorbar(cat['Av_true'], av3600 - cat['Av_true'],
              yerr=av3600err, markersize=2.0, fmt='o',
              color='white',
              markeredgecolor='dodgerblue', ecolor='dodgerblue',
-             elinewidth=0.1)
+             elinewidth=ebarwidth)
 
 # Ticks
 ax1.set_xticklabels([])
@@ -360,14 +373,16 @@ ax1.set_ylim(0.0, 3.0)
 
 ax2.set_xlim(0.0, 3.0)
 
+ax1.legend(loc=0, fontsize=18, frameon=False)
+
 # Limit based on consideration of contam/uncontam sne
 if not consider_contam_sne:
     ax2.set_ylim(-0.2, 0.2)
-
-ax1.legend(loc=0, fontsize=18, frameon=False)
-
-fig.savefig(roman_slitless + 'figures/pylinearrecovery_dust.pdf',
-            dpi=200, bbox_inches='tight')
+    fig.savefig(roman_slitless + 'figures/pylinearrecovery_dust_noblend.pdf',
+                dpi=200, bbox_inches='tight')
+else:
+    fig.savefig(roman_slitless + 'figures/pylinearrecovery_dust_allsne.pdf',
+                dpi=200, bbox_inches='tight')
 
 fig.clear()
 plt.close(fig)
