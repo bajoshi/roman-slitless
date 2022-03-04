@@ -360,7 +360,7 @@ if __name__ == '__main__':
 
     # Set some other params
     img_suffix_list = gen_img_suffixes()
-    exptime_list = [400, 1200, 3600]
+    exptime_list = [1200]  # [400, 1200, 3600]
     roll_angle_list = [0.0, 70.0, 140.0]
 
     dir_img_filt = 'hst_wfc3_f105w'
@@ -569,6 +569,7 @@ if __name__ == '__main__':
             logger.info("Time taken for simulation: "
                         + "{:.2f}".format(ts - start) + " seconds.")
 
+            """
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
                 str(exptime) + 's' + obsstr + '.lst'
@@ -605,7 +606,9 @@ if __name__ == '__main__':
                             + "{:.2f}".format(te) + " seconds.")
             except NameError:
                 logger.info("Finished.")
+            """
 
+        """
         # ---------------------- Remove matrices, tables, and
         # *_res.fits.gz files to save space
         # MATRICES
@@ -661,6 +664,7 @@ if __name__ == '__main__':
                     logger.info('Deleted SED file: ' + sed_fl_to_remove)
                 except FileNotFoundError:
                     continue
+        """
 
         # ----------------------
         # Increment simulation counter

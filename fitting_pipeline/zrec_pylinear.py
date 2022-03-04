@@ -50,7 +50,7 @@ av3600[av3600 == -9999.0] = np.nan
 overlap_idx = cat['overlap']
 
 # flag for axis limits later
-consider_contam_sne = False
+consider_contam_sne = True
 
 if not consider_contam_sne:
     z400[overlap_idx] = np.nan
@@ -66,16 +66,21 @@ if not consider_contam_sne:
     av3600[overlap_idx] = np.nan
 
 # Error bar width
-ebarwidth = 0.05
+ebarwidth = 0.00
 
 ###########################################
 # --------------------
 fig = plt.figure(figsize=(7, 9))
 
-gs = fig.add_gridspec(nrows=11, ncols=1, left=0.05, right=0.95, wspace=0.1)
+gs = fig.add_gridspec(nrows=14, ncols=1, left=0.05, right=0.95, wspace=0.1)
 
 ax1 = fig.add_subplot(gs[:8])
 ax2 = fig.add_subplot(gs[8:])
+
+if consider_contam_sne:
+    ax1.set_title('All SNe', fontsize=30)
+else:
+    ax1.set_title('No blended host-galaxy light', fontsize=30)
 
 # For legend
 all_exptimes = ['20m', '1h', '3h']
@@ -214,15 +219,10 @@ plt.close(fig)
 # -------------------- phase recovery plt
 fig = plt.figure(figsize=(7, 9))
 
-gs = fig.add_gridspec(nrows=11, ncols=1, left=0.05, right=0.95, wspace=0.1)
+gs = fig.add_gridspec(nrows=14, ncols=1, left=0.05, right=0.95, wspace=0.1)
 
 ax1 = fig.add_subplot(gs[:8])
 ax2 = fig.add_subplot(gs[8:])
-
-if consider_contam_sne:
-    ax1.set_title('All SNe', fontsize=30)
-else:
-    ax1.set_title('No blended host-galaxy light', fontsize=30)
 
 ax2.set_ylabel(r'$\Delta \mathrm{Phase}$', fontsize=20)
 ax2.set_xlabel(r'$\mathrm{Phase_{true}}$', fontsize=20)
@@ -302,7 +302,7 @@ plt.close(fig)
 # -------------------- Av recovery plt
 fig = plt.figure(figsize=(7, 9))
 
-gs = fig.add_gridspec(nrows=11, ncols=1, left=0.05, right=0.95, wspace=0.1)
+gs = fig.add_gridspec(nrows=14, ncols=1, left=0.05, right=0.95, wspace=0.1)
 
 ax1 = fig.add_subplot(gs[:8])
 ax2 = fig.add_subplot(gs[8:])
@@ -397,39 +397,59 @@ fig = plt.figure(figsize=(9, 5))
 
 gs = fig.add_gridspec(nrows=12, ncols=1, left=0.15, right=0.95, wspace=0.1)
 
-ax1 = fig.add_subplot(gs[:6])
-ax2 = fig.add_subplot(gs[6:])
-# ax3 = fig.add_subplot(gs[8:])
+ax1 = fig.add_subplot(gs[:4])
+ax2 = fig.add_subplot(gs[4:8])
+ax3 = fig.add_subplot(gs[8:])
 
 # Axis labels
 ax1.set_ylabel(r'$\frac{z_ - z_\mathrm{true}}{1 + z_\mathrm{true}}$',
                fontsize=15)
-ax2.set_ylabel(r'$\Delta \mathrm{Phase}$', fontsize=15)
-# ax3.set_ylabel(r'$\Delta \mathrm{A_v}$', fontsize=15)
-ax2.set_xlabel(r'$\mathrm{SNR}$', fontsize=15)
+ax2.set_ylabel(r'$\Delta \mathrm{Phase}$', fontsize=20)
+ax3.set_ylabel(r'$\Delta \mathrm{A_v}$', fontsize=20)
+ax3.set_xlabel(r'$\mathrm{SNR}$', fontsize=20)
 
 # Plotting
-ax1.scatter(cat['SNR3600'], z3600acc, s=7, color='k', zorder=2)
+# z
 ax1.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
-ax2.scatter(cat['SNR3600'], phase3600 - cat['phase_true'],
-            s=7, color='k', zorder=2)
+ax1.scatter(cat['SNR400'], z400acc, s=23, color='goldenrod',
+            facecolors='None', zorder=2)
+ax1.scatter(cat['SNR1200'], z1200acc, s=15, color='seagreen',
+            facecolors='None', zorder=2)
+ax1.scatter(cat['SNR3600'], z3600acc, s=5, color='dodgerblue',
+            facecolors='None', zorder=2, alpha=0.5)
+
+# Phase
 ax2.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
-# ax3.scatter(cat['SNR6000'], av6000 - cat['Av_true'],
-#             s=7, color='k', zorder=2)
-# ax3.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
+ax2.scatter(cat['SNR400'], phase400 - cat['phase_true'],
+            s=23, color='goldenrod',
+            facecolors='None', zorder=2)
+ax2.scatter(cat['SNR1200'], phase1200 - cat['phase_true'],
+            s=15, color='seagreen',
+            facecolors='None', zorder=2)
+ax2.scatter(cat['SNR3600'], phase3600 - cat['phase_true'],
+            s=5, color='dodgerblue',
+            facecolors='None', zorder=2, alpha=0.5)
 
-# ax1.set_xlim(10, 150)
-# ax2.set_xlim(10, 150)
-# ax3.set_xlim(10, 150)
+# Av
+ax3.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
-# ax1.set_ylim(-0.015, 0.015)
+ax3.scatter(cat['SNR400'], av400 - cat['Av_true'],
+            s=23, color='goldenrod',
+            facecolors='None', zorder=2)
+ax3.scatter(cat['SNR1200'], av1200 - cat['Av_true'],
+            s=15, color='seagreen',
+            facecolors='None', zorder=2)
+ax3.scatter(cat['SNR3600'], av3600 - cat['Av_true'],
+            s=5, color='dodgerblue',
+            facecolors='None', zorder=2, alpha=0.5)
 
 # Limit based on consideration of contam/uncontam sne
 if not consider_contam_sne:
     ax1.set_ylim(-0.002, 0.002)
-    ax2.set_ylim(-1.5, 0.5)
+    ax2.set_ylim(-1.5, 1.5)
+    ax3.set_ylim(-0.15, 0.15)
 
 fig.savefig(roman_slitless + 'figures/pylinearrecovery_snr.pdf',
             dpi=200, bbox_inches='tight')
