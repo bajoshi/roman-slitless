@@ -37,24 +37,34 @@ p127_wav = roman_prism[1].data['Wavelength']
 p127_sen = roman_prism[1].data['Sensitivity']
 
 # --------------
-fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(10, 7))
+# fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(10, 7))
 
-ax2.set_xlabel('Wavelength [A]', fontsize=15)
-ax1.set_ylabel('Sensitivity', fontsize=15)
+fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(9, 4))
+
+sens_unit = r"$\mathrm{[(e^-/s)/(erg\, s^{-1}\, cm^{-2}\, \AA^{-1})]}$"
+
+ax1.set_xlabel(r'$\mathrm{Wavelength\ [\AA]}$', fontsize=15)
+ax1.set_ylabel(r'$\mathrm{Sensitivity}$' + ' ' + sens_unit,
+               fontsize=14)
 
 ax1.plot(g102_wav, g102_sen, '--', color='blue', 
-        label='HST WFC3/G102, +1 order')
+         label='HST WFC3/G102, +1 order')
 ax1.plot(g141_wav, g141_sen, '--', color='crimson', 
-        label='HST WFC3/G141, +1 order')
+         label='HST WFC3/G141, +1 order')
 
 # ax.plot(g150_wav, g150_sen, color='purple', label='Roman grism, +1 order')
 ax1.plot(p127_wav, p127_sen, color='dodgerblue', label='Roman prism')
 
-ax1.legend(loc=0, fontsize=12, frameon=False)
+ax1.legend(loc='upper left', fontsize=12, frameon=False)
 
 ax1.set_xlim(7000, 19000)
 ax1.set_yscale('log')
-ax1.set_ylim(7e14, 6e17)
+ax1.set_ylim(7e14, 1e18)
+
+fig.savefig('figures/hst_roman_sensitivities.pdf', dpi=200, 
+            bbox_inches='tight')
+
+sys.exit(0)
 
 # Now divide the sensitivities and find out by how much
 # the Roman prism is more sensitive

@@ -62,7 +62,7 @@ def main():
     # Read in results file
     extdir = "/Volumes/Joshi_external_HDD/Roman/"
     ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-    results_dir = ext_spectra_dir + 'fitting_results/'
+    results_dir = ext_spectra_dir + 'run1/fitting_results/'
 
     resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
@@ -125,9 +125,11 @@ def main():
 
     # Do this for each exposure time separately
     exptime_labels = ['z3600', 'z1200', 'z400']
-    colors = ['dodgerblue', 'seagreen', 'goldenrod']
-    sigmoid_cols = ['navy', 'green', 'peru']
-    sigmoid_err_cols = ['skyblue', 'lightgreen', 'burlywood']
+
+    # Colors from color brewer
+    colors = ['#1b9e77', '#d95f02', '#7570b3']
+    sigmoid_cols = ['green', 'peru', 'navy']
+    sigmoid_err_cols = ['lightgreen', 'burlywood', 'skyblue']
 
     # The above labels are col names in the catalog
     # and these labels below will be used in the plot
@@ -151,6 +153,9 @@ def main():
 
         total_counts = np.zeros(len(mag_bins) - 1)
         ztol_counts = np.zeros(len(mag_bins) - 1)
+
+        z_acc_list = np.zeros(len(cat))
+        z_inferred_list = np.zeros(len(cat))
 
         for i in range(len(cat)):
 
@@ -177,6 +182,10 @@ def main():
             else:
                 passing = 'NOT PASSING'  # noqa
 
+            # Append to our lists we need to get stats
+            z_acc_list[i] = z_acc
+            z_inferred_list[i] = temp_z
+
             # Printing some debugging info
             # DO NOT DELETE!
             # It took a lot of effort to get the alignment right
@@ -196,6 +205,21 @@ def main():
             #       '{:>.4f}'.format(temp_z_true), '  ',
             #       '{:^10}'.format(overlap_printvar), '      ',
             #       passing)
+
+        # Print some stats
+        # Remove catastrophic failures and invalid values first
+        invalid_idx = np.where(z_inferred_list == -9999.0)[0]
+        z_acc_list[invalid_idx] = np.nan
+        catas_fail_idx = np.where(z_acc_list > 0.1)[0]
+        print(len(catas_fail_idx), 'out of',
+              len(z_acc_list), 'are catastrophic failures.',
+              'i.e.,', '{:.2f}'.format(len(catas_fail_idx)/len(z_acc_list)),
+              'percent.')
+
+        z_acc_list[catas_fail_idx] = np.nan
+
+        print('Mean z-accuracy for this exptime:', np.nanmean(z_acc_list))
+        print('Median z-accuracy for this exptime:', np.nanmedian(z_acc_list))
 
         # Now get effective completeness/exptime and plot
         percent_complete = ztol_counts / total_counts
@@ -314,6 +338,7 @@ def main():
     ax2.set_xlabel(redshift_axis_label, fontsize=10)
     ax2.minorticks_off()
 
+    print('\n')
     print('Magnitudes:', mt)
     print('Redshifts at above magnitudes:', redshift_ticks)
     print('Total sample size:', len(cat))
