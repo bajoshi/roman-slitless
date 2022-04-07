@@ -50,7 +50,7 @@ av3600[av3600 == -9999.0] = np.nan
 overlap_idx = cat['overlap']
 
 # flag for axis limits later
-consider_contam_sne = False
+consider_contam_sne = True
 
 if not consider_contam_sne:
     z400[overlap_idx] = np.nan
@@ -67,6 +67,10 @@ if not consider_contam_sne:
 
 # Error bar width
 ebarwidth = 0.00
+
+exp_400s_color = 'goldenrod'  # '#7570b3'
+exp_1200s_color = 'seagreen'  # '#d95f02'
+exp_3600s_color = 'dodgerblue'  # '#1b9e77'
 
 ###########################################
 # --------------------
@@ -99,6 +103,14 @@ x_arr = np.arange(0.0, 3.5, 0.01)
 ax1.plot(x_arr, x_arr, '--', color='gray', lw=2.0)
 ax2.axhline(y=0.0, ls='--', color='gray', lw=2.0)
 
+# PLot lines for misidentified abs features 
+# from host in SN spectrum
+host_feature_wav = 3951.5  # H+K average
+sn_misID_wav = 6150
+misID_z = ((host_feature_wav * (1+x_arr)) / sn_misID_wav) - 1
+
+ax1.plot(x_arr, misID_z, '--', color='r', lw=2.0)
+
 # --- EXPTIME 400 seconds
 # get error and accuracy
 z400err = np.vstack((cat['z400_lowerr'], cat['z400_uperr']))
@@ -106,14 +118,14 @@ z400acc = (z400 - cat['z_true']) / (1 + cat['z_true'])
 
 ax1.errorbar(cat['z_true'], z400,
              yerr=z400err, markersize=6.5, fmt='o',
-             color='white', ecolor='#7570b3',
-             markeredgecolor='#7570b3', elinewidth=ebarwidth,
+             color='white', ecolor=exp_400s_color,
+             markeredgecolor=exp_400s_color, elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[0])
 
 ax2.errorbar(cat['z_true'], z400acc,
              yerr=z400err, markersize=6.5, fmt='o',
-             color='white', ecolor='#7570b3',
-             markeredgecolor='#7570b3', elinewidth=ebarwidth)
+             color='white', ecolor=exp_400s_color,
+             markeredgecolor=exp_400s_color, elinewidth=ebarwidth)
 
 # Print info
 fail_idx400 = np.where(np.abs(z400acc) >= 0.1)[0]
@@ -136,14 +148,14 @@ z1200acc = (z1200 - cat['z_true']) / (1 + cat['z_true'])
 
 ax1.errorbar(cat['z_true'], z1200,
              yerr=z1200err, markersize=4.5, fmt='o',
-             color='white', ecolor='#d95f02',
-             markeredgecolor='#d95f02', elinewidth=ebarwidth,
+             color='white', ecolor=exp_1200s_color,
+             markeredgecolor=exp_1200s_color, elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[1])
 
 ax2.errorbar(cat['z_true'], z1200acc,
              yerr=z1200err, markersize=4.5, fmt='o',
-             color='white', ecolor='#d95f02',
-             markeredgecolor='#d95f02', elinewidth=ebarwidth)
+             color='white', ecolor=exp_1200s_color,
+             markeredgecolor=exp_1200s_color, elinewidth=ebarwidth)
 
 # Print info
 fail_idx1200 = np.where(np.abs(z1200acc) >= 0.1)[0]
@@ -167,14 +179,14 @@ z3600acc = (z3600 - cat['z_true']) / (1 + cat['z_true'])
 
 ax1.errorbar(cat['z_true'], z3600,
              yerr=z3600err, markersize=2.0, fmt='o',
-             color='white', ecolor='#1b9e77',
-             markeredgecolor='#1b9e77', elinewidth=ebarwidth,
+             color='white', ecolor=exp_3600s_color,
+             markeredgecolor=exp_3600s_color, elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[2])
 
 ax2.errorbar(cat['z_true'], z3600acc,
              yerr=z3600err, markersize=2.0, fmt='o',
-             color='white', ecolor='#1b9e77',
-             markeredgecolor='#1b9e77', elinewidth=ebarwidth)
+             color='white', ecolor=exp_3600s_color,
+             markeredgecolor=exp_3600s_color, elinewidth=ebarwidth)
 
 # Print info
 fail_idx3600 = np.where(np.abs(z3600acc) >= 0.1)[0]
@@ -201,6 +213,9 @@ ax1.set_xlim(0.0, 3.2)
 ax1.set_ylim(0.0, 3.2)
 
 ax2.set_xlim(0.0, 3.2)
+
+plt.show()
+sys.exit(0)
 
 # Limit based on consideration of contam/uncontam sne
 if not consider_contam_sne:
@@ -241,38 +256,38 @@ phase3600err = np.vstack((cat['phase3600_lowerr'], cat['phase3600_uperr']))
 # --- EXPTIME 400 seconds
 ax1.errorbar(cat['phase_true'], phase400,
              yerr=phase400err, markersize=6.5,
-             fmt='o', color='white', ecolor='#7570b3',
-             markeredgecolor='#7570b3', elinewidth=ebarwidth,
+             fmt='o', color='white', ecolor=exp_400s_color,
+             markeredgecolor=exp_400s_color, elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[0])
 
 ax2.errorbar(cat['phase_true'], phase400 - cat['phase_true'],
              yerr=phase400err, markersize=6.5,
-             fmt='o', color='white', ecolor='#7570b3',
-             markeredgecolor='#7570b3', elinewidth=ebarwidth)
+             fmt='o', color='white', ecolor=exp_400s_color,
+             markeredgecolor=exp_400s_color, elinewidth=ebarwidth)
 
 # --- EXPTIME 1200 seconds
 ax1.errorbar(cat['phase_true'], phase1200,
              yerr=phase1200err, markersize=4.5,
-             fmt='o', color='white', ecolor='#d95f02',
-             markeredgecolor='#d95f02', elinewidth=ebarwidth,
+             fmt='o', color='white', ecolor=exp_1200s_color,
+             markeredgecolor=exp_1200s_color, elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[1])
 
 ax2.errorbar(cat['phase_true'], phase1200 - cat['phase_true'],
              yerr=phase1200err, markersize=4.5,
-             fmt='o', color='white', ecolor='#d95f02',
-             markeredgecolor='#d95f02', elinewidth=ebarwidth)
+             fmt='o', color='white', ecolor=exp_1200s_color,
+             markeredgecolor=exp_1200s_color, elinewidth=ebarwidth)
 
 # --- EXPTIME 3600 seconds
 ax1.errorbar(cat['phase_true'], phase3600,
              yerr=phase3600err, markersize=2.0,
-             fmt='o', color='white', ecolor='#1b9e77',
-             markeredgecolor='#1b9e77', elinewidth=ebarwidth,
+             fmt='o', color='white', ecolor=exp_3600s_color,
+             markeredgecolor=exp_3600s_color, elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[2])
 
 ax2.errorbar(cat['phase_true'], phase3600 - cat['phase_true'],
              yerr=phase3600err, markersize=2.0,
-             fmt='o', color='white', ecolor='#1b9e77',
-             markeredgecolor='#1b9e77', elinewidth=ebarwidth)
+             fmt='o', color='white', ecolor=exp_3600s_color,
+             markeredgecolor=exp_3600s_color, elinewidth=ebarwidth)
 
 # Ticks
 ax1.set_xticklabels([])
@@ -325,14 +340,14 @@ av3600err = np.vstack((cat['Av3600_lowerr'], cat['Av3600_uperr']))
 ax1.errorbar(cat['Av_true'], av400,
              yerr=av400err, markersize=6.5, fmt='o',
              color='white',
-             markeredgecolor='#7570b3', ecolor='#7570b3',
+             markeredgecolor=exp_400s_color, ecolor=exp_400s_color,
              elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[0])
 
 ax2.errorbar(cat['Av_true'], av400 - cat['Av_true'],
              yerr=av400err, markersize=6.5, fmt='o',
              color='white',
-             markeredgecolor='#7570b3', ecolor='#7570b3',
+             markeredgecolor=exp_400s_color, ecolor=exp_400s_color,
              elinewidth=ebarwidth)
 
 
@@ -340,28 +355,28 @@ ax2.errorbar(cat['Av_true'], av400 - cat['Av_true'],
 ax1.errorbar(cat['Av_true'], av1200,
              yerr=av1200err, markersize=4.5, fmt='o',
              color='white',
-             markeredgecolor='#d95f02', ecolor='#d95f02',
+             markeredgecolor=exp_1200s_color, ecolor=exp_1200s_color,
              elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[1])
 
 ax2.errorbar(cat['Av_true'], av1200 - cat['Av_true'],
              yerr=av1200err, markersize=4.5, fmt='o',
              color='white',
-             markeredgecolor='#d95f02', ecolor='#d95f02',
+             markeredgecolor=exp_1200s_color, ecolor=exp_1200s_color,
              elinewidth=ebarwidth)
 
 # --- EXPTIME 3600 seconds
 ax1.errorbar(cat['Av_true'], av3600,
              yerr=av3600err, markersize=2.0, fmt='o',
              color='white',
-             markeredgecolor='#1b9e77', ecolor='#1b9e77',
+             markeredgecolor=exp_3600s_color, ecolor=exp_3600s_color,
              elinewidth=ebarwidth,
              label=r'$t_\mathrm{exp}\, =\ $' + all_exptimes[2])
 
 ax2.errorbar(cat['Av_true'], av3600 - cat['Av_true'],
              yerr=av3600err, markersize=2.0, fmt='o',
              color='white',
-             markeredgecolor='#1b9e77', ecolor='#1b9e77',
+             markeredgecolor=exp_3600s_color, ecolor=exp_3600s_color,
              elinewidth=ebarwidth)
 
 # Ticks
@@ -412,37 +427,37 @@ ax3.set_xlabel(r'$\mathrm{SNR}$', fontsize=20)
 # z
 ax1.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
-ax1.scatter(cat['SNR400'], z400acc, s=23, color='#7570b3',
+ax1.scatter(cat['SNR400'], z400acc, s=23, color=exp_400s_color,
             facecolors='None', zorder=2)
-ax1.scatter(cat['SNR1200'], z1200acc, s=15, color='#d95f02',
+ax1.scatter(cat['SNR1200'], z1200acc, s=15, color=exp_1200s_color,
             facecolors='None', zorder=2)
-ax1.scatter(cat['SNR3600'], z3600acc, s=5, color='#1b9e77',
+ax1.scatter(cat['SNR3600'], z3600acc, s=5, color=exp_3600s_color,
             facecolors='None', zorder=2, alpha=0.5)
 
 # Phase
 ax2.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
 ax2.scatter(cat['SNR400'], phase400 - cat['phase_true'],
-            s=23, color='#7570b3',
+            s=23, color=exp_400s_color,
             facecolors='None', zorder=2)
 ax2.scatter(cat['SNR1200'], phase1200 - cat['phase_true'],
-            s=15, color='#d95f02',
+            s=15, color=exp_1200s_color,
             facecolors='None', zorder=2)
 ax2.scatter(cat['SNR3600'], phase3600 - cat['phase_true'],
-            s=5, color='#1b9e77',
+            s=5, color=exp_3600s_color,
             facecolors='None', zorder=2, alpha=0.5)
 
 # Av
 ax3.axhline(y=0.0, ls='--', lw=2.0, color='gray', zorder=1)
 
 ax3.scatter(cat['SNR400'], av400 - cat['Av_true'],
-            s=23, color='#7570b3',
+            s=23, color=exp_400s_color,
             facecolors='None', zorder=2)
 ax3.scatter(cat['SNR1200'], av1200 - cat['Av_true'],
-            s=15, color='#d95f02',
+            s=15, color=exp_1200s_color,
             facecolors='None', zorder=2)
 ax3.scatter(cat['SNR3600'], av3600 - cat['Av_true'],
-            s=5, color='#1b9e77',
+            s=5, color=exp_3600s_color,
             facecolors='None', zorder=2, alpha=0.5)
 
 # Limit based on consideration of contam/uncontam sne
