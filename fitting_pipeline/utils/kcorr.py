@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import griddata
-
+from scipy import stats
+from astropy.table import Table
 from astropy.cosmology import FlatLambdaCDM
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
@@ -318,7 +319,7 @@ if __name__ == '__main__':
     # Also change the name of the lookup file below.
     # Might also want to just quit after the file is
     # written to avoid overwriting the kcorr_test figure.
-    zarr = np.arange(0.5, 3.0, 0.0001)
+    zarr = np.arange(0.4, 3.0, 0.0001)
     # zarr = np.arange(0.1, 4.0, 0.001)
     kcor_arr = np.zeros(len(zarr))
 
@@ -327,12 +328,54 @@ if __name__ == '__main__':
 
     appmag_infer = np.zeros(len(zarr))
 
+    # Read in catalog from Phil to check consistency between 
+    # SN mag vs redshift here and SNANA sim mags vs redshift.
+    # Read in large snana file
+    snana_cat_path = home + \
+        '/Desktop/PIP_WFIRST_STARTERKIT+SETEXP_WFIRST_SIMDATA_G10.DUMP'
+    tbl = Table.read(snana_cat_path, format='ascii')
+
+    # Get redshift and mags
+    allz = tbl['ZCMB']
+    allmag = tbl['MAGT0_Y']
+
+    # Get all IA
+    ia_idx = np.where(tbl['GENTYPE'] == 1)[0]
+
+    # Get only valid mags
+    mag_idx = np.where(allmag >= 10)[0]
+
+    valid_idx = np.intersect1d(mag_idx, ia_idx)
+
+    # Clip to only include type IA
+    allz = allz[valid_idx]
+    allmag = allmag[valid_idx]
+
+    # Subtract avg of SNANA points from blue line
+    # Find mean of gray distribution in z bins
+    # We are doing this to figure out what z to subtract
+    # to make the blue line effectively be the avg of the
+    # gray cloud.
+    delta_z = 0.05
+    zbins = np.arange(0.0 + delta_z, 3.0 + delta_z, delta_z)
+    avg_z = []
+    median_mag = []
+    for j in range(len(zbins)-1):
+        lowz = zbins[j]
+        highz = zbins[j+1]
+        zbin_idx = np.where((allz >= lowz) & (allz < highz))[0]
+        median_mag.append(np.median(allmag[zbin_idx]))
+        avg_z.append((lowz + highz) / 2)
+
+    # Effective "fit" to gray cloud
+    pol = np.polyfit(x=avg_z, y=median_mag, deg=4)
+    pp = np.poly1d(pol)
+
     # Save to lookup file in the same folder as this code
     lookup_table_fname = 'sn_mag_z_lookup.txt'
     # lookup_table_fname = 'sn_mag_z_lookup_comp_plot.txt'
 
     with open(lookup_table_fname, 'w') as fh:
-
         # Write header
         fh.write('#    Redshift    mF106' + '\n')
 
@@ -361,6 +404,8 @@ if __name__ == '__main__':
                                            band=f105)
 
             dist_mod_infer[i] = appmag_f105 + 19.0 - kcor
+            # 18.5 is better here?? Dhawan et al 2015 Fig 1
+            # shows ~18.5 mag in B band
 
             appmag_infer[i] = appmag_f105
 
@@ -372,36 +417,55 @@ if __name__ == '__main__':
             #       '{:.2f}'.format(appmag_f105))
 
             # Write to lookup table
-            fh.write('{:.4f}'.format(redshift) + '  '
-                     + '{:.4f}'.format(appmag_f105))
+            fh.write('{:.4f}'.format(redshift) + '  ')
+            fh.write('{:.4f}'.format(pp(redshift)))
+            # fh.write('{:.4f}'.format(appmag_f105))
             fh.write('\n')
 
-    fig = plt.figure(figsize=(8, 5))
-    ax = fig.add_subplot(111)
+    fig, ax1 = plt.subplots(figsize=(8, 5), nrows=1, ncols=1)
+    # ax = fig.add_subplot(111)
 
-    ax.set_xlabel('Redshift', fontsize=15)
-    ax.set_ylabel('Distance Modulus', fontsize=15)
+    ax1.set_xlabel('Redshift', fontsize=15)
+    ax1.set_ylabel('Distance Modulus', fontsize=15)
 
-    ax.scatter(zarr, dist_mod_infer, s=10, color='k',
-               facecolors='None',
-               label='Inferred DM for SNe in sim: mx - My + Kxy',
-               zorder=1)
-    ax.plot(zarr, dist_mod_lcdm, lw=1.5, color='crimson',
-            label='LCDM DM: 5log(dl) + 25', zorder=2)
-
-    ax.legend(loc=0, fontsize=14)
-
-    # Twin axis for just the apparent mag
-    axt = ax.twinx()
+    # Twin axis for the apparent mags
+    axt = ax1.twinx()
     axt.scatter(zarr, appmag_infer, s=10, facecolors='None',
-                color='dodgerblue', label=r'$m_{F106}$')
+                color='dodgerblue', label=r'$m_{F106}$',
+                zorder=3)
+    
+    # Plot cloud of points from SNANA sim to check
+    axt.scatter(allz, allmag,
+                color='gray', alpha=0.1, s=1, zorder=1,
+                label=r'$\mathrm{SNANA\ simulated}$')
+    # Also plot binned median
+    axt.scatter(avg_z, median_mag, s=10, color='b')
+    axt.set_ylim(18, 32)
 
-    axt.set_ylabel('Apparent magnitude', fontsize=15)
-    axt.legend(loc=0, fontsize=14)
+    # Plot polynomial fit to SNANA points
+    axt.plot(zarr, pp(zarr), '--', lw=3.0, color='#2ca25f')
 
-    fig.savefig(roman_slitless_dir + 'figures/kcorr_test.pdf',
+    axt.legend(loc='upper left', fontsize=14)
+    axt.set_ylabel('Apparent magnitude F106', fontsize=15)
+
+    # Now plot DM
+    # Plotting this after the axt axis plotting stuff
+    # because I want this to be on top.
+    inferred_dm_label = \
+        r'$\mathrm{Inferred\ DM\ for\ SNe\ in\ sim:}$'\
+        + r'$\, m_{Y; F106} - M_{B; F435W} + K_{YB}$'
+    ax1.scatter(zarr, dist_mod_infer, s=10, color='k',
+                facecolors='None',
+                label=inferred_dm_label,
+                zorder=4)
+    ax1.plot(zarr, dist_mod_lcdm, lw=1.5, color='crimson',
+             label=r'$\mathrm{LCDM\ DM:\ 5log}(d_l) + 25$', zorder=5)
+
+    ax1.legend(loc='lower right', fontsize=14)
+
+    fig.savefig(roman_slitless_dir + 'figures/kcorr.pdf',
                 dpi=200, bbox_inches='tight')
-    plt.show()
+    # plt.show()
 
     sys.exit(0)
 

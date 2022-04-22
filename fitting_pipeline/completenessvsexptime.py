@@ -64,7 +64,7 @@ def main():
     ext_spectra_dir = extdir + "roman_slitless_sims_results/"
     results_dir = ext_spectra_dir + 'run1/fitting_results/'
 
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt0_new_optpos.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
     # ---------------------------- Prep

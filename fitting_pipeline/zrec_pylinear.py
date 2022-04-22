@@ -1,4 +1,5 @@
 import numpy as np
+from astropy.io import fits
 
 import os
 import sys
@@ -11,9 +12,13 @@ roman_slitless = home + '/Documents/GitHub/roman-slitless/'
 extdir = "/Volumes/Joshi_external_HDD/Roman/"
 
 ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-results_dir = ext_spectra_dir + 'run1/fitting_results/'
+fitting_resdir = ext_spectra_dir + 'run1/fitting_results/'
+resdir = extdir + 'roman_slitless_sims_results/run1/'
+img_sim_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
 
-resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
+##############################################################################
+# ------------------- PREP
+resfile = fitting_resdir + 'zrecovery_pylinear_sims_pt0.txt'
 cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
 # Remove invalid measures
@@ -68,11 +73,12 @@ if not consider_contam_sne:
 # Error bar width
 ebarwidth = 0.00
 
-exp_400s_color = 'goldenrod'  # '#7570b3'
-exp_1200s_color = 'seagreen'  # '#d95f02'
-exp_3600s_color = 'dodgerblue'  # '#1b9e77'
+# Colors from colorbrewer
+exp_400s_color = '#7570b3'
+exp_1200s_color = '#d95f02'
+exp_3600s_color = '#1b9e77'
 
-###########################################
+##############################################################################
 # --------------------
 fig = plt.figure(figsize=(7, 9))
 
@@ -108,8 +114,7 @@ ax2.axhline(y=0.0, ls='--', color='gray', lw=2.0)
 host_feature_wav = 3951.5  # H+K average
 sn_misID_wav = 6150
 misID_z = ((host_feature_wav * (1+x_arr)) / sn_misID_wav) - 1
-
-ax1.plot(x_arr, misID_z, '--', color='r', lw=2.0)
+# ax1.plot(x_arr, misID_z, '--', color='r', lw=2.0)
 
 # --- EXPTIME 400 seconds
 # get error and accuracy
@@ -129,9 +134,6 @@ ax2.errorbar(cat['z_true'], z400acc,
 
 # Print info
 fail_idx400 = np.where(np.abs(z400acc) >= 0.1)[0]
-
-# print('\nCatastrophic failure fraction 400 seconds:',
-#       "{:.4f}".format(len(fail_idx400) / len(cat)))
 
 # remove outliers
 z400acc[fail_idx400] = np.nan
@@ -160,9 +162,6 @@ ax2.errorbar(cat['z_true'], z1200acc,
 # Print info
 fail_idx1200 = np.where(np.abs(z1200acc) >= 0.1)[0]
 
-# print('\nCatastrophic failure fraction 1200 seconds:',
-#       "{:.4f}".format(len(fail_idx1200) / len(cat)))
-
 # remove outliers
 z1200acc[fail_idx1200] = np.nan
 
@@ -188,11 +187,109 @@ ax2.errorbar(cat['z_true'], z3600acc,
              color='white', ecolor=exp_3600s_color,
              markeredgecolor=exp_3600s_color, elinewidth=ebarwidth)
 
+# ===========================
+# Investigate underestimated redshifts
+sys.path.append(roman_slitless + 'fitting_pipeline/utils/')
+from inspect_obj_x1d import underest_z_figure  # noqa
+
+# Uncomment the case you need
+# underestimates = np.where(z3600acc < -0.5)[0]
+
+# underestimates = np.where((cat['z_true'] > 0.7)
+#                           & (cat['z_true'] < 1.2)
+#                           & (cat['z3600'] > 0.2)
+#                           & (cat['z3600'] < 0.5))[0]
+
+underestimates = np.where((z3600acc < -0.35) & (z3600acc > -0.45))[0]
+
+total_underest = len(underestimates)
+print('Total', total_underest,
+      'underestimates out of', len(cat))
+
+det_list = np.zeros(total_underest, dtype=np.int64)
+segid_list = np.zeros(total_underest, dtype=np.int64)
+
+ztru_list = np.zeros(total_underest)
+zest_list = np.zeros(total_underest)
+
+phase_tru_list = np.zeros(total_underest)
+phase_list = np.zeros(total_underest)
+
+
+for u in range(total_underest):
+    print('------------------')
+    print('IMG and ID :', cat['img_suffix'][underestimates[u]],
+          cat['SNSegID'][underestimates[u]])
+    print('z-tru:', cat['z_true'][underestimates[u]])
+    print('z-est:', z3600[underestimates[u]])
+    print('z-acc:', z3600acc[underestimates[u]])
+    print('------------------\n')
+
+    d = cat['img_suffix'][underestimates[u]].split('_')[-1]
+    det_list[u] = int(d)
+    segid_list[u] = int(cat['SNSegID'][underestimates[u]])
+
+    ztru_list[u] = float(cat['z_true'][underestimates[u]])
+    zest_list[u] = float(z3600[underestimates[u]])
+
+    phase_tru_list[u] = cat['phase_true'][underestimates[u]]
+    phase_list[u] = cat['phase3600'][underestimates[u]]
+
+# Run through the underestimates for some detectors
+# A bit more than a third of all SNe fail this way so
+# you don't want to plot all of them
+exptime = '3600s'
+# all_detectors = np.arange(1, 19)  # needs a string here
+
+all_detectors = ['1']
+
+for detector in all_detectors:
+
+    detector = str(detector)
+
+    # ---------------
+    # Read in extracted spectra
+    x1d = fits.open(resdir + 'romansim_prism_Y106_0_'
+                    + detector + '_' + exptime + '_x1d.fits')
+    
+    # ---------------
+    # Read in sedlst
+    sedlst_path = (extdir + 'pylinear_lst_files/run1/sed_Y106_0_'
+                   + detector + '.lst')
+    sedlst = np.genfromtxt(sedlst_path, dtype=None,
+                           names=['segid', 'sed_path'], encoding='ascii')
+    
+    # ---------------
+    # Now grab all underestimated z IDs in this detector
+    det_underest = np.where(det_list == int(detector))[0]
+    
+    figdir = roman_slitless + 'figures/linear_feature/'
+    
+    for v in range(len(det_underest)):
+        sn_segid = segid_list[det_underest[v]]
+
+        ztru = ztru_list[det_underest[v]]
+        zest = zest_list[det_underest[v]]
+
+        phase_tru = phase_tru_list[det_underest[v]]
+        phase = phase_list[det_underest[v]]
+
+        print('\nPlotting SN', sn_segid, 'on detector', detector)
+        print('z-true:', ztru)
+        print('z-est:', zest)
+
+        print('True phase:', phase_tru)
+        print('Phase:', phase)
+    
+        underest_z_figure(x1d, sn_segid, sedlst, detector, exptime,
+                          figdir, ztru, zest, phase_tru, phase)
+
+sys.exit(0)
+
+# ===========================
+
 # Print info
 fail_idx3600 = np.where(np.abs(z3600acc) >= 0.1)[0]
-
-# print('\nCatastrophic failure fraction 3600 seconds:',
-#       "{:.4f}".format(len(fail_idx3600) / len(cat)))
 
 # remove outliers
 z3600acc[fail_idx3600] = np.nan
@@ -202,6 +299,12 @@ print('Mean acc 3600 seconds:',
 # print('Median acc 3600 seconds:',
 #       "{:.4f}".format(np.nanmedian(np.abs(z3600acc))))
 
+print('\nCatastrophic failure fraction 400 seconds:',
+      "{:.4f}".format(len(fail_idx400) / len(cat)))
+print('\nCatastrophic failure fraction 1200 seconds:',
+      "{:.4f}".format(len(fail_idx1200) / len(cat)))
+print('\nCatastrophic failure fraction 3600 seconds:',
+      "{:.4f}".format(len(fail_idx3600) / len(cat)))
 
 # Ticks
 ax1.set_xticklabels([])
@@ -213,9 +316,6 @@ ax1.set_xlim(0.0, 3.2)
 ax1.set_ylim(0.0, 3.2)
 
 ax2.set_xlim(0.0, 3.2)
-
-plt.show()
-sys.exit(0)
 
 # Limit based on consideration of contam/uncontam sne
 if not consider_contam_sne:
@@ -421,7 +521,7 @@ ax1.set_ylabel(r'$\frac{z_ - z_\mathrm{true}}{1 + z_\mathrm{true}}$',
                fontsize=15)
 ax2.set_ylabel(r'$\Delta \mathrm{Phase}$', fontsize=20)
 ax3.set_ylabel(r'$\Delta \mathrm{A_v}$', fontsize=20)
-ax3.set_xlabel(r'$\mathrm{SNR}$', fontsize=20)
+ax3.set_xlabel(r'$\mathrm{S/N}$', fontsize=20)
 
 # Plotting
 # z

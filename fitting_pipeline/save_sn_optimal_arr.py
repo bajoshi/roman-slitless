@@ -47,7 +47,7 @@ print('Total models:', total_models)
 sn_lam = salt2_spec['lam'][salt2_spec['day'] == 0]
 
 # For clipping to prism wav grid
-x = np.arange(12000.0, 15960.0 + 60.0, 60.0)
+x = np.arange(10020.0, 15960.0 + 60.0, 60.0)
 print('Number of points in approx center of prism spectrum',
       'that will be matched to templates for optimal pos finder:',
       len(x))

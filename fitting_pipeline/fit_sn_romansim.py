@@ -23,9 +23,9 @@ fitting_utils = cwd + '/utils/'
 
 roman_slitless_dir = os.path.dirname(cwd)
 extdir = "/Volumes/Joshi_external_HDD/Roman/"
-ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-results_dir = ext_spectra_dir + 'fitting_results/'
-pylinear_lst_dir = extdir + 'pylinear_lst_files/'
+ext_spectra_dir = extdir + "roman_slitless_sims_results/run1/"
+results_dir = ext_spectra_dir + 'fitting_results/refitting/'
+pylinear_lst_dir = extdir + 'pylinear_lst_files/run1/'
 dirimg_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
 
 sys.path.append(roman_slitless_dir)
@@ -261,7 +261,7 @@ def get_optimal_position(wav, flam, ferr, opt_args=None):
     # compared to the red end, the blue end needs to be brought in more than
     # the red.
     # These MUST be the same as the limits in save_sn_optimal_arr.py
-    clip_idx = np.where((wav >= 12000) & (wav <= 16000))[0]
+    clip_idx = np.where((wav >= 10000) & (wav <= 16000))[0]
     wav = wav[clip_idx]
     flam = flam[clip_idx]
     ferr = ferr[clip_idx]
@@ -417,7 +417,7 @@ def main():
     # ---------- Loop over all simulated and extracted SN spectra ---------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(18, 19, 1)
+    detectors = np.arange(1, 19, 1)
 
     for pt in pointings:
         for det in detectors:
@@ -551,7 +551,6 @@ def main():
                     #         os.remove(emcee_savefile)
 
                     if not os.path.isfile(emcee_savefile):
-
                         # ----- Get optimal starting position
                         # Fix the crazy flam and ferr values
                         # before getting optimal pos
@@ -573,36 +572,6 @@ def main():
                         print("logpost at starting position for SN:")
                         print(logpost_sn(rsn_init, wav, flam, ferr))
                         print("Starting position:", rsn_init)
-
-                        """
-                        #z_smooth, phase_smooth, av_smooth = \
-                        #    get_optimal_position(wav, sf,
-                        #                         ferr/np.sqrt(smoothing_width_pix))
-
-                        fig = plt.figure(figsize=(9,4))
-                        ax = fig.add_subplot(111)
-
-                        ax.plot(wav, flam, color='k', lw=1.5, zorder=1)
-                        ax.fill_between(wav, flam - ferr, flam + ferr,
-                            color='gray', alpha=0.5, zorder=1)
-                        ax.plot(wav, sf, color='firebrick', lw=3.0, zorder=3.0)
-
-                        tm = model_sn(wav, template_inputs[0],
-                                      template_inputs[1], template_inputs[2])
-                        ta = get_y_alpha(tm, flam, ferr)
-                        ax.plot(wav, ta, color='dodgerblue', lw=2.0, zorder=5)
-
-                        print('Start for unsmoothed spec:', z_prior,
-                              phase_prior, av_prior)
-                        print('Start for smoothed spec:', z_smooth,
-                              phase_smooth, av_smooth)
-
-                        ax.set_xlim(7400, 18500)
-                        #ax.set_ylim(1e-19, 3e-18)
-
-                        plt.show()
-                        sys.exit(0)
-                        """
 
                         # generating ball of walkers about optimal
                         # position defined above

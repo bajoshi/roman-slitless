@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from model_sn import model_sn
 
+
 # This class came from stackoverflow
 # SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
 class bcolors:
@@ -19,9 +20,13 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dict, savedir, 
-    fitsmooth=False, orig_wav=None, orig_spec=None, orig_ferr=None, 
-    plot_xlim_min=None, plot_xlim_max=None, plot_ylim_min=None, plot_ylim_max=None):
+
+def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
+                              truth_dict, savedir,
+                              fitsmooth=False, orig_wav=None,
+                              orig_spec=None, orig_ferr=None, 
+                              plot_xlim_min=None, plot_xlim_max=None,
+                              plot_ylim_min=None, plot_ylim_max=None):
 
     h5_path = savedir + 'emcee_sampler_' + object_type + '.h5'
     sampler = emcee.backends.HDFBackend(h5_path)
@@ -30,12 +35,13 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
     print("\nRead in sampler:", h5_path)
     print("Samples shape:", samples.shape)
 
-    #reader = emcee.backends.HDFBackend(pkl_path.replace('.pkl', '.h5'))
-    #samples = reader.get_chain()
-    #tau = reader.get_autocorr_time(tol=0)
+    # reader = emcee.backends.HDFBackend(pkl_path.replace('.pkl', '.h5'))
+    # samples = reader.get_chain()
+    # tau = reader.get_autocorr_time(tol=0)
 
     # Get autocorrelation time
-    # Discard burn-in. You do not want to consider the burn in the corner plots/estimation.
+    # Discard burn-in. You do not want to consider
+    # the burn in the corner plots/estimation.
     tau = sampler.get_autocorr_time(tol=0)
     if not np.any(np.isnan(tau)):
         burn_in = int(2 * np.max(tau))
@@ -49,7 +55,8 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
     print("Thinning steps:", thinning_steps)
 
     # construct truth arr and plot
-    truth_arr = np.array([truth_dict['z'], truth_dict['phase'], truth_dict['Av']])
+    truth_arr = np.array([truth_dict['z'], truth_dict['phase'],
+                          truth_dict['Av']])
 
     # plot trace
     fig1, axes1 = plt.subplots(ndim, figsize=(10, 6), sharex=True)
@@ -113,11 +120,12 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
     flam = args_obj[1]
     ferr = args_obj[2]
 
-    fig3 = plt.figure(figsize=(9,4))
+    fig3 = plt.figure(figsize=(9, 4))
     ax3 = fig3.add_subplot(111)
 
     ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$', fontsize=15)
+    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$',
+                   fontsize=15)
 
     model_count = 0
     ind_list = []
@@ -145,7 +153,7 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list, truth_dic
            (model_day >= cq_day[0]) and (model_day <= cq_day[2]) and \
            (model_av >= cq_av[0]) and (model_av <= cq_av[2]):
 
-           model_okay = 1
+            model_okay = 1
 
         # Now plot if the model is okay
         if model_okay:

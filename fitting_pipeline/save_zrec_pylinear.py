@@ -132,173 +132,175 @@ def get_faint_sn_mag(segid, segdata, dir_img):
     return faint_mag
 
 
-# ---------------------------------------
-img_filt = 'Y106_'
-ext_root = 'romansim_prism_'
-
-exptime1 = '_400s'
-exptime2 = '_1200s'
-exptime3 = '_3600s'
-# exptime4 = '_10800s'
-
-res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  '
-           + 'overlap  Y106mag  SNR400  SNR1200  SNR3600  '
-           + 'z400  z400_lowerr  z400_uperr  '
-           + 'phase400  phase400_lowerr  phase400_uperr  '
-           + 'Av400  Av400_lowerr  Av400_uperr  '
-           + 'z1200  z1200_lowerr  z1200_uperr  '
-           + 'phase1200  phase1200_lowerr  phase1200_uperr  '
-           + 'Av1200  Av1200_lowerr  Av1200_uperr  '
-           + 'z3600  z3600_lowerr  z3600_uperr  '
-           + 'phase3600  phase3600_lowerr  phase3600_uperr  '
-           + 'Av3600  Av3600_lowerr  Av3600_uperr  '
-           # + 'z10800  z10800_lowerr  z10800_uperr  '
-           # + 'phase10800  phase10800_lowerr  phase10800_uperr  '
-           # + 'Av10800  Av10800_lowerr  Av10800_uperr'
-           )
-
-# Arrays to loop over
-pointings = np.arange(0, 1)
-detectors = np.arange(1, 19)
-
-for pt in pointings:
-
-    # Save results to text file
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt' + str(pt) + '.txt'
-
-    with open(resfile, 'w') as fh:
-        fh.write(res_hdr + '\n')
-
-        for det in detectors:
-
-            # ----- Get img suffix, segid, and truth values
-            img_suffix = img_filt + str(pt) + '_' + str(det)
-
-            # ----- Read in sed.lst
-            sedlst_header = ['segid', 'sed_path']
-            sedlst_path = extdir + 'pylinear_lst_files/' + 'sed_' \
-                + img_suffix + '.lst'
-            sedlst = np.genfromtxt(sedlst_path, dtype=None,
-                                   names=sedlst_header, encoding='ascii')
-
-            # ----- Read in npy file for inserted SNe
-            insert_npy_path = img_sim_dir + '5deg_Y106_0_' + \
-                str(det) + '_SNadded.npy'
-            insert_cat = np.load(insert_npy_path)
-            # Grab all inserted segids
-            all_inserted_segids = insert_cat[:, -1].astype(np.int64)
-
-            # ----- Read in x1d file to get spectra for SNR
-            ext_spec_filename1 = ext_spectra_dir + ext_root + img_suffix \
-                + exptime1 + '_x1d.fits'
-            ext_hdu1 = fits.open(ext_spec_filename1)
-
-            ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix \
-                + exptime2 + '_x1d.fits'
-            ext_hdu2 = fits.open(ext_spec_filename2)
-
-            ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix \
-                + exptime3 + '_x1d.fits'
-            ext_hdu3 = fits.open(ext_spec_filename3)
-
-            # ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix \
-            #     + exptime4 + '_x1d.fits'
-            # ext_hdu4 = fits.open(ext_spec_filename4)
-
-            # ----- Read in catalog from SExtractor
-            # cat_filename = img_sim_dir + '5deg_' + img_suffix \
-            #    + '_SNadded.cat'
-            # cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header,
-            #                     encoding='ascii')
-
-            # -----Read in segmentation map
-            # segmap = img_sim_dir + '5deg_' + img_suffix + '_segmap.fits'
-            # segdata = fits.getdata(segmap)
-
-            # ----- Name of direct image
-            # dir_img_name = segmap.replace('_segmap.fits', '_SNadded.fits')
-            # dir_img = fits.getdata(dir_img_name)
-
-            # ----- loop and find all SN segids
-            all_sn_segids = []
-            for i in range(len(sedlst)):
-                if ('salt' in sedlst['sed_path'][i])\
-                        or ('contam' in sedlst['sed_path'][i]):
-                    all_sn_segids.append(sedlst['segid'][i])
-
-            print('ALL SN segids in this file:', all_sn_segids)
-            print(len(all_sn_segids), 'SN in', img_suffix + '\n')
-
-            # ----- Now loop over all segids in this img
-            for segid in tqdm(all_sn_segids, desc='Processing SN'):
-
-                segid_idx = int(np.where(sedlst['segid'] == segid)[0])
-
-                # ----- Get magnitude in Y106 from insert cat
-                sn_idx = int(np.where(all_inserted_segids == segid)[0])
-                matched_segid = int(insert_cat[sn_idx][-1])
-
-                assert matched_segid == segid
-                snmag = float(insert_cat[sn_idx][2])
-
-                # ---- Get template inputs
-                template_name = os.path.basename(sedlst['sed_path'][segid_idx])
-                # Get template inputs needed for plotting
-                template_inputs = get_template_inputs(template_name)
-
-                if 'contam' in template_name:
-                    overlap = 'True'
-                else:
-                    overlap = 'False'
-
-                true_z = template_inputs[0]
-                true_phase = template_inputs[1]
-                true_av = template_inputs[2]
-
-                # ----- Get SNR
-                snr1 = get_correct_snr(ext_hdu1, segid)
-                snr2 = get_correct_snr(ext_hdu2, segid)
-                snr3 = get_correct_snr(ext_hdu3, segid)
-                # snr4 = get_correct_snr(ext_hdu4, segid)
-
-                # ----- Write to file
-                # --- ID and true quantities
-                fh.write(img_suffix + '  ' + str(segid) + '  ')
-                fh.write('{:.4f}'.format(true_z) + '  '
-                         + str(true_phase) + '  ')
-                fh.write('{:.3f}'.format(true_av) + '  ')
-                fh.write(overlap + '  ')
-                fh.write('{:.2f}'.format(snmag) + '  ')
-                fh.write('{:.2f}'.format(snr1) + '  ')
-                fh.write('{:.2f}'.format(snr2) + '  ')
-                fh.write('{:.2f}'.format(snr3) + '  ')
-                # fh.write('{:.2f}'.format(snr4) + '  ')
-
-                # ----- Construct the filenames for this segid
-                snstr1 = str(segid) + '_' + img_suffix + exptime1
-                emcee_savefile1 = results_dir + 'emcee_sampler_sn' \
-                    + snstr1 + '.h5'
-
-                snstr2 = str(segid) + '_' + img_suffix + exptime2
-                emcee_savefile2 = results_dir + 'emcee_sampler_sn' \
-                    + snstr2 + '.h5'
-
-                snstr3 = str(segid) + '_' + img_suffix + exptime3
-                emcee_savefile3 = results_dir + 'emcee_sampler_sn' \
-                    + snstr3 + '.h5'
-
-                # snstr4 = str(segid) + '_' + img_suffix + exptime4
-                # emcee_savefile4 = results_dir + 'emcee_sampler_sn' \
-                #     + snstr4 + '.h5'
-
-                # ----------------
-                check_and_write(fh, emcee_savefile1)
-                check_and_write(fh, emcee_savefile2)
-                check_and_write(fh, emcee_savefile3)
-                # check_and_write(fh, emcee_savefile4)
-                fh.write('\n')
-
-            ext_hdu1.close()
-            ext_hdu2.close()
-            ext_hdu3.close()
-            # ext_hdu4.close()
+if __name__ == '__main__':
+    # ---------------------------------------
+    img_filt = 'Y106_'
+    ext_root = 'romansim_prism_'
+    
+    exptime1 = '_400s'
+    exptime2 = '_1200s'
+    exptime3 = '_3600s'
+    # exptime4 = '_10800s'
+    
+    res_hdr = ('#  img_suffix  SNSegID  z_true  phase_true  Av_true  '
+               + 'overlap  Y106mag  SNR400  SNR1200  SNR3600  '
+               + 'z400  z400_lowerr  z400_uperr  '
+               + 'phase400  phase400_lowerr  phase400_uperr  '
+               + 'Av400  Av400_lowerr  Av400_uperr  '
+               + 'z1200  z1200_lowerr  z1200_uperr  '
+               + 'phase1200  phase1200_lowerr  phase1200_uperr  '
+               + 'Av1200  Av1200_lowerr  Av1200_uperr  '
+               + 'z3600  z3600_lowerr  z3600_uperr  '
+               + 'phase3600  phase3600_lowerr  phase3600_uperr  '
+               + 'Av3600  Av3600_lowerr  Av3600_uperr  '
+               # + 'z10800  z10800_lowerr  z10800_uperr  '
+               # + 'phase10800  phase10800_lowerr  phase10800_uperr  '
+               # + 'Av10800  Av10800_lowerr  Av10800_uperr'
+               )
+    
+    # Arrays to loop over
+    pointings = np.arange(0, 1)
+    detectors = np.arange(1, 19)
+    
+    for pt in pointings:
+    
+        # Save results to text file
+        resfile = results_dir + 'zrecovery_pylinear_sims_pt' + str(pt) + '.txt'
+    
+        with open(resfile, 'w') as fh:
+            fh.write(res_hdr + '\n')
+    
+            for det in detectors:
+    
+                # ----- Get img suffix, segid, and truth values
+                img_suffix = img_filt + str(pt) + '_' + str(det)
+    
+                # ----- Read in sed.lst
+                sedlst_header = ['segid', 'sed_path']
+                sedlst_path = extdir + 'pylinear_lst_files/' + 'sed_' \
+                    + img_suffix + '.lst'
+                sedlst = np.genfromtxt(sedlst_path, dtype=None,
+                                       names=sedlst_header, encoding='ascii')
+    
+                # ----- Read in npy file for inserted SNe
+                insert_npy_path = img_sim_dir + '5deg_Y106_0_' + \
+                    str(det) + '_SNadded.npy'
+                insert_cat = np.load(insert_npy_path)
+                # Grab all inserted segids
+                all_inserted_segids = insert_cat[:, -1].astype(np.int64)
+    
+                # ----- Read in x1d file to get spectra for SNR
+                ext_spec_filename1 = ext_spectra_dir + ext_root + img_suffix \
+                    + exptime1 + '_x1d.fits'
+                ext_hdu1 = fits.open(ext_spec_filename1)
+    
+                ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix \
+                    + exptime2 + '_x1d.fits'
+                ext_hdu2 = fits.open(ext_spec_filename2)
+    
+                ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix \
+                    + exptime3 + '_x1d.fits'
+                ext_hdu3 = fits.open(ext_spec_filename3)
+    
+                # ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix \
+                #     + exptime4 + '_x1d.fits'
+                # ext_hdu4 = fits.open(ext_spec_filename4)
+    
+                # ----- Read in catalog from SExtractor
+                # cat_filename = img_sim_dir + '5deg_' + img_suffix \
+                #    + '_SNadded.cat'
+                # cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header,
+                #                     encoding='ascii')
+    
+                # -----Read in segmentation map
+                # segmap = img_sim_dir + '5deg_' + img_suffix + '_segmap.fits'
+                # segdata = fits.getdata(segmap)
+    
+                # ----- Name of direct image
+                # dir_img_name = segmap.replace('_segmap.fits', '_SNadded.fits')
+                # dir_img = fits.getdata(dir_img_name)
+    
+                # ----- loop and find all SN segids
+                all_sn_segids = []
+                for i in range(len(sedlst)):
+                    if ('salt' in sedlst['sed_path'][i])\
+                            or ('contam' in sedlst['sed_path'][i]):
+                        all_sn_segids.append(sedlst['segid'][i])
+    
+                print('ALL SN segids in this file:', all_sn_segids)
+                print(len(all_sn_segids), 'SN in', img_suffix + '\n')
+    
+                # ----- Now loop over all segids in this img
+                for segid in tqdm(all_sn_segids, desc='Processing SN'):
+    
+                    segid_idx = int(np.where(sedlst['segid'] == segid)[0])
+    
+                    # ----- Get magnitude in Y106 from insert cat
+                    sn_idx = int(np.where(all_inserted_segids == segid)[0])
+                    matched_segid = int(insert_cat[sn_idx][-1])
+    
+                    assert matched_segid == segid
+                    snmag = float(insert_cat[sn_idx][2])
+    
+                    # ---- Get template inputs
+                    template_name = os.path.basename(sedlst['sed_path'][segid_idx])
+                    # Get template inputs needed for plotting
+                    template_inputs = get_template_inputs(template_name)
+    
+                    if 'contam' in template_name:
+                        overlap = 'True'
+                    else:
+                        overlap = 'False'
+    
+                    true_z = template_inputs[0]
+                    true_phase = template_inputs[1]
+                    true_av = template_inputs[2]
+    
+                    # ----- Get SNR
+                    snr1 = get_correct_snr(ext_hdu1, segid)
+                    snr2 = get_correct_snr(ext_hdu2, segid)
+                    snr3 = get_correct_snr(ext_hdu3, segid)
+                    # snr4 = get_correct_snr(ext_hdu4, segid)
+    
+                    # ----- Write to file
+                    # --- ID and true quantities
+                    fh.write(img_suffix + '  ' + str(segid) + '  ')
+                    fh.write('{:.4f}'.format(true_z) + '  '
+                             + str(true_phase) + '  ')
+                    fh.write('{:.3f}'.format(true_av) + '  ')
+                    fh.write(overlap + '  ')
+                    fh.write('{:.2f}'.format(snmag) + '  ')
+                    fh.write('{:.2f}'.format(snr1) + '  ')
+                    fh.write('{:.2f}'.format(snr2) + '  ')
+                    fh.write('{:.2f}'.format(snr3) + '  ')
+                    # fh.write('{:.2f}'.format(snr4) + '  ')
+    
+                    # ----- Construct the filenames for this segid
+                    snstr1 = str(segid) + '_' + img_suffix + exptime1
+                    emcee_savefile1 = results_dir + 'emcee_sampler_sn' \
+                        + snstr1 + '.h5'
+    
+                    snstr2 = str(segid) + '_' + img_suffix + exptime2
+                    emcee_savefile2 = results_dir + 'emcee_sampler_sn' \
+                        + snstr2 + '.h5'
+    
+                    snstr3 = str(segid) + '_' + img_suffix + exptime3
+                    emcee_savefile3 = results_dir + 'emcee_sampler_sn' \
+                        + snstr3 + '.h5'
+    
+                    # snstr4 = str(segid) + '_' + img_suffix + exptime4
+                    # emcee_savefile4 = results_dir + 'emcee_sampler_sn' \
+                    #     + snstr4 + '.h5'
+    
+                    # ----------------
+                    check_and_write(fh, emcee_savefile1)
+                    check_and_write(fh, emcee_savefile2)
+                    check_and_write(fh, emcee_savefile3)
+                    # check_and_write(fh, emcee_savefile4)
+                    fh.write('\n')
+    
+                ext_hdu1.close()
+                ext_hdu2.close()
+                ext_hdu3.close()
+                # ext_hdu4.close()
+    
