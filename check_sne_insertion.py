@@ -37,7 +37,7 @@ assert os.path.isdir(pylinear_lst_dir)
 assert os.path.isdir(roman_direct_dir)
 
 sys.path.append(fitting_utils)
-from kcorr import get_kcorr_Hogg
+from kcorr import get_kcorr_Hogg  # noqa
 
 # ------------------------------------
 # TEST 1:
@@ -45,7 +45,7 @@ from kcorr import get_kcorr_Hogg
 # There should be greater than 200 SNe detected in each.
 
 pt = '0'  # Enter the pointing you want to test
-total_detectors = 1  # Enter up to 18 depending on how many you want to test
+total_detectors = 18  # Enter up to 18 depending on how many you want to test
 
 
 def read_numsn(sedlst):
@@ -54,7 +54,7 @@ def read_numsn(sedlst):
         all_sed_lines = sed_fh.readlines()
         num_sn = 0
         for line in all_sed_lines:
-            if 'salt' in line:
+            if ('salt' in line) or ('contam' in line):
                 num_sn += 1
     
     return num_sn
