@@ -47,7 +47,7 @@ sn_day_arr = np.arange(-19, 51, 1)
 # Set pylinear f_lambda scaling factor
 pylinear_flam_scale_fac = 1e-17
 
-av_optfindarr = np.arange(0.5, 5.5, 0.5)
+av_optfindarr = np.arange(0.0, 5.5, 0.5)
 redshift_optfindarr = np.arange(0.01, 3.01, 0.01)
 
 # Load in all models
@@ -261,7 +261,7 @@ def get_optimal_position(wav, flam, ferr, opt_args=None):
     # compared to the red end, the blue end needs to be brought in more than
     # the red.
     # These MUST be the same as the limits in save_sn_optimal_arr.py
-    clip_idx = np.where((wav >= 10000) & (wav <= 16000))[0]
+    clip_idx = np.where((wav >= 9000) & (wav <= 16000))[0]
     wav = wav[clip_idx]
     flam = flam[clip_idx]
     ferr = ferr[clip_idx]
@@ -417,7 +417,7 @@ def main():
     # ---------- Loop over all simulated and extracted SN spectra ---------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(1, 5, 1)
 
     for pt in pointings:
         for det in detectors:

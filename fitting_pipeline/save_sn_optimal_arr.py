@@ -36,7 +36,7 @@ del dl_cat
 redshift_arr = np.arange(0.01, 3.01, 0.01)
 
 # Av array
-av_arr = np.arange(0.5, 5.5, 0.5)
+av_arr = np.arange(0.0, 5.5, 0.5)
 
 # -------- Now save all models to an npy array
 total_models = len(sn_day_arr) * len(redshift_arr) * len(av_arr)
@@ -47,7 +47,7 @@ print('Total models:', total_models)
 sn_lam = salt2_spec['lam'][salt2_spec['day'] == 0]
 
 # For clipping to prism wav grid
-x = np.arange(10020.0, 15960.0 + 60.0, 60.0)
+x = np.arange(9000.0, 15960.0 + 60.0, 60.0)
 print('Number of points in approx center of prism spectrum',
       'that will be matched to templates for optimal pos finder:',
       len(x))
@@ -103,19 +103,21 @@ sys.exit(0)
 # ------------------
 # Now check the output
 # Redefined for plotting
-sn_lam = np.arange(7500.0, 18030.0, 30.0)  # NOT THE SAME AS THE sn_lam ARRAY ABOVE
+# NOT THE SAME AS THE sn_lam ARRAY ABOVE
+sn_lam = np.arange(7500.0, 18030.0, 30.0)
 
 av_arr = np.arange(0.5, 5.5, 0.5)
 redshift_arr = np.arange(0.01, 3.01, 0.01)
-sn_day_arr = np.arange(-19,51,1)
+sn_day_arr = np.arange(-19, 51, 1)
+
 
 def retrieve_sn_optpars(big_index):
 
     av_subidx, z_idx = np.divmod(big_index, len(redshift_arr))
-    trash, av_idx    = np.divmod(av_subidx, len(av_arr))
+    trash, av_idx = np.divmod(av_subidx, len(av_arr))
     phase_idx, trash = np.divmod(big_index, len(av_arr)*len(redshift_arr))
 
-    #print(z_idx, av_subidx, phase_idx, trash)
+    # print(z_idx, av_subidx, phase_idx, trash)
 
     z = redshift_arr[z_idx]
     av = av_arr[av_idx]
@@ -124,6 +126,7 @@ def retrieve_sn_optpars(big_index):
     del trash
 
     return z, phase, av
+
 
 def check_output():
 
