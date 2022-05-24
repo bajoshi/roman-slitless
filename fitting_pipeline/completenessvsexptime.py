@@ -62,14 +62,14 @@ def main():
     # Read in results file
     extdir = "/Volumes/Joshi_external_HDD/Roman/"
     ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-    results_dir = ext_spectra_dir + 'run1/fitting_results/'
+    results_dir = ext_spectra_dir + 'fitting_results/'
 
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt0_new_optpos.txt'
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
     # ---------------------------- Prep
     # Create arrays for plotting
-    deltamag = 0.1
+    deltamag = 0.2
     low_maglim = 21.5
     high_maglim = 29.5
 
@@ -80,6 +80,8 @@ def main():
         mags.append((mag_bins[m] + mag_bins[m + 1]) / 2)
     # Need to convert to numpy array for where stmt in sigmoid fit
     mags = np.array(mags)
+    print(mag_bins)
+    print(mags)
 
     print("Magnitude range for the SNe:",
           '{:.2f}'.format(np.min(cat['Y106mag'])),

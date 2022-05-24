@@ -9,37 +9,55 @@ import matplotlib.pyplot as plt
 
 home = os.getenv('HOME')
 roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
+fitting_utils = roman_slitless_dir + 'fitting_pipeline/utils/'
 
 sys.path.append(roman_slitless_dir + 'fitting_pipeline/utils/')
 from get_template_inputs import get_template_inputs
 from get_snr import get_snr
 from get_all_sn_segids import get_all_sn_segids
 
-def get_avg_pylinear_z1spec():
+extdir = '/Volumes/Joshi_external_HDD/Roman/'
+
+# And load table for SN Ia mF106 to z conversion
+sn_mag_z = np.genfromtxt(fitting_utils + 'sn_mag_z_lookup.txt',
+                         dtype=None, names=True, encoding='ascii')
+
+
+def get_sn_mag_from_z(redshift):
+
+    z_idx = np.argmin(np.abs(sn_mag_z['Redshift'] - redshift))
+    snmag = float(sn_mag_z['mF106'][z_idx])
+
+    return snmag
+
+
+def get_avg_pylinear_1hr_spec():
 
     # Set directories
-    ext_spectra_dir = "/Volumes/Joshi_external_HDD/Roman/roman_slitless_sims_results/"
-    img_sim_dir = "/Volumes/Joshi_external_HDD/Roman/roman_direct_sims/sims2021/K_5degimages_part1/"
-    pylinear_lst_dir = "/Volumes/Joshi_external_HDD/Roman/pylinear_lst_files/"
+    ext_spectra_dir = extdir + "roman_slitless_sims_results/"
+    pylinear_lst_dir = extdir + "pylinear_lst_files/"
 
-    # Now get all spectra that are 1 hour exptime and close to z~1
+    # Now get all spectra that are 1 hour exptime and around 23.5 mag
     # ------------ Gather all spectra
-    all_spec  = []
+    all_spec = []
     all_noise = []
     avg_snr_1hr = []
 
     total_spectra = 0
 
-    for i in range(3):
+    for det in range(1, 19):
 
         print('----------')
 
-        sedlst_fl = pylinear_lst_dir + 'sed_Y106_0_' + str(i+1) + '.lst'
-        sedlst = np.genfromtxt(sedlst_fl, dtype=None, names=['segid', 'sed_path'], encoding='ascii')
+        sedlst_fl = pylinear_lst_dir + 'sed_Y106_0_' + str(det) + '.lst'
+        sedlst = np.genfromtxt(sedlst_fl, dtype=None,
+                               names=['segid', 'sed_path'],
+                               encoding='ascii')
 
         all_sn_segids = get_all_sn_segids(sedlst_fl)
 
-        one_hr_x1d = ext_spectra_dir + 'romansim_prism_Y106_0_' + str(i+1) + '_1200s_x1d.fits'
+        one_hr_x1d = ext_spectra_dir + 'romansim_prism_Y106_0_' + \
+            str(det) + '_1200s_x1d.fits'
         xhdu = fits.open(one_hr_x1d)
 
         for j in range(len(all_sn_segids)):
@@ -48,11 +66,17 @@ def get_avg_pylinear_z1spec():
 
             sed_idx = int(np.where(sedlst['segid'] == segid)[0])
             template_name = sedlst['sed_path'][sed_idx]
+
+            if 'contam' in template_name:
+                continue
+
             inp = get_template_inputs(template_name)
             ztrue = inp[0]
 
-            # Check if the redshift is okay
-            if (ztrue >= 0.97) and (ztrue <= 1.03):
+            snmag = get_sn_mag_from_z(ztrue)
+
+            # Check if the magnitude is okay
+            if (snmag >= 23.4) and (snmag <= 23.6):
 
                 # Get spectrum
                 wav = xhdu[('SOURCE', segid)].data['wavelength']
@@ -71,7 +95,8 @@ def get_avg_pylinear_z1spec():
 
                 total_spectra += 1
 
-                print(segid, ztrue, '{:.2f}'.format(snr))
+                print(total_spectra, '{:.2f}'.format(snmag),
+                      '{:.2f}'.format(snr), ztrue)
 
         xhdu.close()
 
@@ -90,13 +115,16 @@ def get_avg_pylinear_z1spec():
 
     return wav, mean_spec, mean_noise
 
+
 if __name__ == '__main__':
 
     # pyLINEAR spectra
-    wav, mean_spec, mean_noise = get_avg_pylinear_z1spec()
+    wav, mean_spec, mean_noise = get_avg_pylinear_1hr_spec()
+
+    sys.exit(0)
 
     # Rubin's scaled spectrum from Jeff Kruk
-    comp = np.genfromtxt("/Volumes/Joshi_external_HDD/Roman/sensitivity_files/Rubin_SNIa_z1_1hr.txt",
+    comp = np.genfromtxt(extdir + "sensitivity_files/Rubin_SNIa_z1_1hr.txt",
                          dtype=None, names=True, encoding='ascii')
 
     # Scaling factor 

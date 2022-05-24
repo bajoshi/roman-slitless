@@ -303,4 +303,3 @@ if __name__ == '__main__':
                 ext_hdu2.close()
                 ext_hdu3.close()
                 # ext_hdu4.close()
-    

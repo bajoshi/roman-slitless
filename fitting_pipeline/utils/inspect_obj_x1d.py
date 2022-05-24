@@ -15,7 +15,8 @@ from get_template_inputs import get_template_inputs
 
 home = os.getenv('HOME')
 roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
-throughput_dir = roman_slitless_dir + 'fitting_pipeline/utils/throughputs/'
+fitting_utils = roman_slitless_dir + 'fitting_pipeline/utils/'
+throughput_dir = fitting_utils + 'throughputs/'
 extdir = '/Volumes/Joshi_external_HDD/Roman/'
 
 sys.path.append(roman_slitless_dir)
@@ -28,6 +29,18 @@ f106_filt_path = throughput_dir + 'F105W_IR_throughput.csv'
 filt = np.genfromtxt(f106_filt_path,
                      delimiter=',', dtype=None, names=True,
                      encoding='ascii', usecols=(1, 2))
+
+# And load table for SN Ia mF106 to z conversion
+sn_mag_z = np.genfromtxt(fitting_utils + 'sn_mag_z_lookup.txt',
+                         dtype=None, names=True, encoding='ascii')
+
+
+def get_sn_mag_from_z(redshift):
+
+    z_idx = np.argmin(np.abs(sn_mag_z['Redshift'] - redshift))
+    snmag = float(sn_mag_z['mF106'][z_idx])
+
+    return snmag
 
 
 def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
@@ -355,7 +368,7 @@ def plot_best_fit(axes, sn_segid, sn_spec_name, detector, exptime,
 
     # ----- Get sampler and flat samples
     fitting_resdir = extdir\
-        + 'roman_slitless_sims_results/run1/fitting_results/'
+        + 'roman_slitless_sims_results/fitting_results/'
     img_suffix = 'Y106_0_' + str(detector)
     snstr = str(sn_segid) + '_' + img_suffix + '_' + exptime
     emcee_savefile = fitting_resdir + 'emcee_sampler_sn' \
@@ -417,7 +430,7 @@ def plot_best_fit(axes, sn_segid, sn_spec_name, detector, exptime,
             chi2 = np.nansum((m - flam)**2/ferr**2)
             all_chi2.append(chi2)
 
-    axes.text(x=0.06, y=0.3, s='---  best fit models', 
+    axes.text(x=0.58, y=0.3, s='---  best fit models', 
               verticalalignment='top', horizontalalignment='left', 
               transform=axes.transAxes, color='magenta', size=14)
 
@@ -425,7 +438,7 @@ def plot_best_fit(axes, sn_segid, sn_spec_name, detector, exptime,
 
 
 def underest_z_figure(ext_hdu, sn_segid, sedlst, detector, exptime,
-                      figdir, ztru, zest, phase_true, phase):
+                      figdir):
 
     sn_idx = int(np.where(sedlst['segid'] == sn_segid)[0])
     sn_spec_name = os.path.basename(sedlst['sed_path'][sn_idx])
@@ -462,6 +475,7 @@ def underest_z_figure(ext_hdu, sn_segid, sedlst, detector, exptime,
 
     # ----- First get truth values
     template_inputs = get_template_inputs(sn_spec_name)
+    print(template_inputs)
 
     truth_dict = {}
     truth_dict['z'] = template_inputs[0]
@@ -478,7 +492,7 @@ def underest_z_figure(ext_hdu, sn_segid, sedlst, detector, exptime,
     ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=18)
 
     # Plot extracted spectra
-    ax.plot(sn_wav, sn_flam, color='k', lw=2.5,
+    ax.plot(sn_wav, sn_flam, color='k', lw=2.0,
             label='pyLINEAR x1d spec SN', zorder=3)
     ax.fill_between(sn_wav, sn_flam - sn_ferr_lo, sn_flam + sn_ferr_hi,
                     color='gray', alpha=0.5)
@@ -509,7 +523,8 @@ def underest_z_figure(ext_hdu, sn_segid, sedlst, detector, exptime,
         min_flux = sn_min_flux
         max_flux = sn_max_flux
 
-    ax.set_ylim(min_flux * 0.8, max_flux * 1.5)
+    # ax.set_ylim(min_flux * 0.8, max_flux * 1.5)
+    ax.set_ylim(2e-20, 5e-18)
     ax.set_xlim(wmin, wmax)
 
     ax.set_yscale('log')
@@ -543,7 +558,7 @@ def underest_z_figure(ext_hdu, sn_segid, sedlst, detector, exptime,
     # print('True template chi2::', np.sum((m - sn_flam)**2/sn_ferr**2))
     # print('All best fit models chi2:\n', all_chi2)
 
-    ax.legend(loc='lower left', frameon=False, fontsize=14)
+    ax.legend(loc='lower right', frameon=False, fontsize=14)
 
     # -----
     if not os.path.isdir(figdir):
@@ -559,7 +574,7 @@ def underest_z_figure(ext_hdu, sn_segid, sedlst, detector, exptime,
     return None
 
 
-def paperfigure(ext_hdu, sn_segid, host_segid, snmag, sedlst,
+def paperfigure(ext_hdu, sn_segid, host_segid, sedlst,
                 detector, exptime, sub_const=None,
                 figdir=roman_slitless_dir + 'figures/sn_spectra_inspect/'):
     """
@@ -601,7 +616,9 @@ def paperfigure(ext_hdu, sn_segid, host_segid, snmag, sedlst,
     # and scale the template to match that.
     host_appmag = get_appmag_x1d_f106(host_wav, host_flam)
 
-    sn_template_wav, sn_template_flam = read_sed_scale(sn_sed_path, snmag)
+    sn_appmag = get_sn_mag_from_z(redshift)
+
+    sn_template_wav, sn_template_flam = read_sed_scale(sn_sed_path, sn_appmag)
     host_template_wav, host_template_flam = \
         read_sed_scale(host_sed_path, host_appmag)
 
@@ -612,12 +629,10 @@ def paperfigure(ext_hdu, sn_segid, host_segid, snmag, sedlst,
 
     # ---- Set fontsize for legend, labels and title
     label_fs = 18
-    legend_fs = 14
+    legend_fs = 15
 
     # ---- Set labels
-    # ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$',  # noqa
-    #               fontsize=label_fs)
-    ax.set_ylabel(r'$\mathrm{f_\lambda\ + constant}$',  # noqa
+    ax.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$',  # noqa
                   fontsize=label_fs)
     ax.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=label_fs)
 
@@ -637,11 +652,13 @@ def paperfigure(ext_hdu, sn_segid, host_segid, snmag, sedlst,
     ax.plot(sn_template_wav, sn_template_flam,
             color='dodgerblue', lw=2.0,
             label='SN template'
-            + '\n' + 'SN F106 mag: ' + '{:.2f}'.format(snmag))
+            + '\n' + 'SN F106 mag: ' + '{:.2f}'.format(sn_appmag))
 
     # If we need to subtract a constant from host flambda
     if sub_const is not None:
         host_template_flam -= sub_const
+        ax.set_ylabel(r'$\mathrm{f_\lambda\ + constant}$',  # noqa
+                      fontsize=label_fs)
 
     ax.plot(host_template_wav, host_template_flam,
             color='crimson', lw=1.5,
@@ -671,6 +688,7 @@ def paperfigure(ext_hdu, sn_segid, host_segid, snmag, sedlst,
         max_flux = sn_max_flux
 
     ax.set_ylim(min_flux * 0.1, max_flux * 2.0)
+    # ax.set_ylim(1e-21, 1e-17)
     ax.set_xlim(wmin, wmax)
 
     ax.set_yscale('log')
@@ -715,10 +733,12 @@ if __name__ == '__main__':
     # Info for code to plot
     detector = int(sys.argv[1])
     sn_segid = int(sys.argv[2])
-    snmag = float(sys.argv[3])  # only needed for paperfigure()
-    sub_const = float(sys.argv[4])  # only needed for paperfigure()
+    exptime = sys.argv[3]
 
-    exptime = '1200s'
+    try:
+        sub_const = float(sys.argv[4])  # only needed for paperfigure()
+    except IndexError:
+        sub_const = None
 
     # THIS CODE IS INTENDED TO ONLY BE RUN AFTER
     # PLFFSN2 FINISHES AND NOT ON PLFFSN2.
@@ -731,7 +751,8 @@ if __name__ == '__main__':
     # ---------------
     # Read in npy file with all inserted object info
     # img_sim_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
-    # insert_npy_path = img_sim_dir + '5deg_Y106_0_' + detector + '_SNadded.npy'
+    # insert_npy_path = img_sim_dir + '5deg_Y106_0_' +\
+    #     detector + '_SNadded.npy'
 
     # insert_cat = np.load(insert_npy_path)
 
@@ -740,26 +761,26 @@ if __name__ == '__main__':
 
     # ---------------
     # Read in extracted spectra
-    resdir = extdir + 'roman_slitless_sims_results/run1/'
+    resdir = extdir + 'roman_slitless_sims_results/'
     x1d = fits.open(resdir + 'romansim_prism_Y106_0_'
                     + str(detector) + '_' + exptime + '_x1d.fits')
 
     # ---------------
     # Read in sedlst
     sedlst_path = extdir\
-        + 'pylinear_lst_files/run1/sed_Y106_0_' + str(detector) + '.lst'
+        + 'pylinear_lst_files/sed_Y106_0_' + str(detector) + '.lst'
     sedlst = np.genfromtxt(sedlst_path, dtype=None,
                            names=['segid', 'sed_path'], encoding='ascii')
 
     host_segid = get_host_segid(sedlst, sn_segid)
+    print('Host SegID:', host_segid)
 
     # ---------------
-    paperfigure(x1d, sn_segid, host_segid, snmag, sedlst,
-                detector, exptime, sub_const)
-    # underest_z_figure(x1d, sn_segid, sedlst, detector, exptime,
-    #                   figdir=roman_slitless_dir + 'figures/sn_spectra_inspect/',
-    #                   ztru=0.8505, zest=0.265,
-    #                   phase_true=3, phase=-7)
+    # paperfigure(x1d, sn_segid, host_segid, sedlst,
+    #             detector, exptime, sub_const)
+    underest_z_figure(x1d, sn_segid, sedlst, detector, exptime,
+                      figdir=roman_slitless_dir + 
+                      'figures/sn_spectra_inspect/')
 
     sys.exit(0)
 

@@ -23,9 +23,9 @@ fitting_utils = cwd + '/utils/'
 
 roman_slitless_dir = os.path.dirname(cwd)
 extdir = "/Volumes/Joshi_external_HDD/Roman/"
-ext_spectra_dir = extdir + "roman_slitless_sims_results/run1/"
-results_dir = ext_spectra_dir + 'fitting_results/refitting/'
-pylinear_lst_dir = extdir + 'pylinear_lst_files/run1/'
+ext_spectra_dir = extdir + "roman_slitless_sims_results/"
+results_dir = ext_spectra_dir + 'fitting_results/'
+pylinear_lst_dir = extdir + 'pylinear_lst_files/'
 dirimg_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
 
 sys.path.append(roman_slitless_dir)
@@ -417,7 +417,7 @@ def main():
     # ---------- Loop over all simulated and extracted SN spectra ---------- #
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 5, 1)
+    detectors = np.arange(10, 19, 1)
 
     for pt in pointings:
         for det in detectors:
