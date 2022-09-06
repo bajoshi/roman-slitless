@@ -24,7 +24,7 @@ fitting_utils = cwd + '/utils/'
 roman_slitless_dir = os.path.dirname(cwd)
 extdir = "/Volumes/Joshi_external_HDD/Roman/"
 ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-results_dir = ext_spectra_dir + 'fitting_results/'
+results_dir = ext_spectra_dir + 'fitting_results_resamp/'
 pylinear_lst_dir = extdir + 'pylinear_lst_files/'
 dirimg_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
 
@@ -67,7 +67,8 @@ dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
 
 del dl_cat
 
-sn_opt_arr = np.load('/Volumes/Joshi_external_HDD/Roman/allsnmodspec.npy')
+opt_arr_file = '/Volumes/Joshi_external_HDD/Roman/allsnmodspec_resamp.npy'
+sn_opt_arr = np.load(opt_arr_file)
 print("Done loading all models. Time taken:",
       "{:.3f}".format(time.time() - start), "seconds.")
 # --------------------------------------
@@ -262,6 +263,7 @@ def get_optimal_position(wav, flam, ferr, opt_args=None):
     # the red.
     # These MUST be the same as the limits in save_sn_optimal_arr.py
     clip_idx = np.where((wav >= 9000) & (wav <= 16000))[0]
+
     wav = wav[clip_idx]
     flam = flam[clip_idx]
     ferr = ferr[clip_idx]
@@ -452,7 +454,7 @@ def main():
                 # --------------- Read in the extracted spectra
                 # for full sim
                 ext_spec_filename = (ext_spectra_dir + ext_root + img_suffix
-                                     + exptime + '_x1d.fits')
+                                     + exptime + '_x1d_resamp.fits')
                 # for shortsim
                 # ext_spec_filename = ext_spectra_dir + ext_root + '_x1d.fits'
                 ext_hdu = fits.open(ext_spec_filename)
@@ -466,7 +468,8 @@ def main():
 
                     print("\n#####################################")
                     print("Fitting SegID:", segid,
-                          "with exposure time:", exptime)
+                          "with exposure time:", exptime,
+                          "on detector:", det)
 
                     # ----- Get spectrum
                     segid_idx = int(np.where(sedlst['segid'] == segid)[0])
@@ -527,7 +530,7 @@ def main():
                     # Check if file exists and continue if all okay
                     snstr = str(segid) + '_' + img_suffix + exptime
                     emcee_savefile = (results_dir + 'emcee_sampler_sn'
-                                      + snstr + '.h5')
+                                      + snstr + '_resamp.h5')
 
                     if snr < 3.0:
                         # if os.path.isfile(emcee_savefile):
@@ -601,6 +604,12 @@ def main():
                         # ----- Set up args
                         args_sn = [wav, flam, ferr]
 
+                        # ---------- Stuff needed for plotting
+                        truth_dict = {}
+                        truth_dict['z'] = template_inputs[0]
+                        truth_dict['phase'] = template_inputs[1]
+                        truth_dict['Av'] = template_inputs[2]
+
                         # ----- Now run emcee on SN
                         backend = emcee.backends.HDFBackend(emcee_savefile)
                         backend.reset(nwalkers, ndim_sn)
@@ -619,12 +628,7 @@ def main():
                               np.mean(sampler.acceptance_fraction), "\n")
                         print(f"{bcolors.ENDC}")
 
-                        # ---------- Stuff needed for plotting
-                        truth_dict = {}
-                        truth_dict['z'] = template_inputs[0]
-                        truth_dict['phase'] = template_inputs[1]
-                        truth_dict['Av'] = template_inputs[2]
-
+                        # ----- Plotting
                         if fitsmooth:
                             orig_wav = \
                                 ext_hdu[('SOURCE', segid)].data['wavelength']

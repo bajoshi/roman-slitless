@@ -27,7 +27,7 @@ from get_template_inputs import get_template_inputs # noqa
 pylinear_flam_scale_fac = 1e-17
 
 
-def resample_spec(wav, flux, ferr, new_wav_grid, plotfig=False):
+def resample_spec(wav, flux, fle, fhe, new_wav_grid, plotfig=False):
 
     # Also resample error
     # This is likely the wrong thing to do
@@ -35,7 +35,8 @@ def resample_spec(wav, flux, ferr, new_wav_grid, plotfig=False):
 
     # Using griddata because the flux conserving resampler
     # below does something that gives all NaNs here.
-    new_err = griddata(points=wav, values=ferr, xi=new_wav_grid)
+    new_lo_err = griddata(points=wav, values=fle, xi=new_wav_grid)
+    new_hi_err = griddata(points=wav, values=fhe, xi=new_wav_grid)
 
     # Now resample the flux
     # Get astropy formats
@@ -60,7 +61,7 @@ def resample_spec(wav, flux, ferr, new_wav_grid, plotfig=False):
         fig.clear()
         plt.close(fig)
 
-    return resampled_spec, new_err
+    return resampled_spec, new_lo_err, new_hi_err
 
 
 if __name__ == '__main__':
@@ -168,31 +169,35 @@ if __name__ == '__main__':
                 for segid in tqdm(all_sn_segids, desc='SN on det ' + str(det)):
 
                     # ----- Get spectrum
+                    # NOT multiplying by pylinear scale fac here because 
+                    # it will be multiplied prior to fitting when read in
+                    # by fit_sn_romansim.py
                     wav = ext_hdu[('SOURCE', segid)].data['wavelength']
-                    flam = ext_hdu[('SOURCE', segid)].data['flam'] * \
-                        pylinear_flam_scale_fac
-
-                    ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc'] * \
-                        pylinear_flam_scale_fac
-                    ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc'] * \
-                        pylinear_flam_scale_fac
+                    flam = ext_hdu[('SOURCE', segid)].data['flam']
+                    ferr_lo = ext_hdu[('SOURCE', segid)].data['flounc']
+                    ferr_hi = ext_hdu[('SOURCE', segid)].data['fhiunc']
 
                     # ----- Get noise level
                     ferr = (ferr_lo + ferr_hi) / 2.0
 
                     # ----- Now resample
-                    resampled_spec, resampled_err = \
-                        resample_spec(wav, flam, ferr, prism_wav_grid)
+                    resampled_spec, resampled_flo_err, resampled_fhi_err = \
+                        resample_spec(wav, flam, ferr_lo, ferr_hi,
+                                      prism_wav_grid)
 
                     # Create table and save
-                    c1 = fits.Column(name='wav', array=prism_wav_grid,
+                    c1 = fits.Column(name='wavelength', array=prism_wav_grid,
                                      format='E')
                     c2 = fits.Column(name='flam', array=resampled_spec,
                                      format='E')
-                    c3 = fits.Column(name='ferr', array=resampled_err,
+                    c3 = fits.Column(name='flounc', array=resampled_flo_err,
+                                     format='E')
+                    c4 = fits.Column(name='fhiunc', array=resampled_fhi_err,
                                      format='E')
 
-                    tab = fits.BinTableHDU.from_columns([c1, c2, c3])
+                    tab = fits.BinTableHDU.from_columns([c1, c2, c3, c4],
+                                                        name='SOURCE',
+                                                        ver=segid)
 
                     hdul.append(tab)
 

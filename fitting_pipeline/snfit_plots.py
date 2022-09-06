@@ -8,7 +8,7 @@ from model_sn import model_sn
 
 
 # This class came from stackoverflow
-# SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python
+# SEE: https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-python  # noqa
 class bcolors:
     HEADER = '\033[95m'
     BLUE = '\033[94m'
@@ -28,7 +28,7 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
                               plot_xlim_min=None, plot_xlim_max=None,
                               plot_ylim_min=None, plot_ylim_max=None):
 
-    h5_path = savedir + 'emcee_sampler_' + object_type + '.h5'
+    h5_path = savedir + 'emcee_sampler_' + object_type + '_resamp.h5'
     sampler = emcee.backends.HDFBackend(h5_path)
 
     samples = sampler.get_chain()
@@ -72,10 +72,11 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
     axes1[-1].set_xlabel("Step number")
 
     fig1.savefig(savedir + 'emcee_trace_' + object_type + '.pdf', 
-        dpi=200, bbox_inches='tight')
+                 dpi=200, bbox_inches='tight')
 
     # Create flat samples
-    flat_samples = sampler.get_chain(discard=burn_in, thin=thinning_steps, flat=True)
+    flat_samples = sampler.get_chain(discard=burn_in,
+                                     thin=thinning_steps, flat=True)
     print("\nFlat samples shape:", flat_samples.shape)
 
     # plot corner plot
@@ -91,9 +92,13 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
     print("Visual extinction [mag]:", cq_av)
     print(f"{bcolors.ENDC}")
 
-    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84], labels=label_list, 
-        label_kwargs={"fontsize": 14}, show_titles='True', title_kwargs={"fontsize": 14},
-        truth_color='tab:red', truths=truth_arr, smooth=0.5, smooth1d=0.5)
+    fig = corner.corner(flat_samples, quantiles=[0.16, 0.5, 0.84],
+                        labels=label_list, 
+                        label_kwargs={"fontsize": 14},
+                        show_titles='True',
+                        title_kwargs={"fontsize": 14},
+                        truth_color='tab:red', truths=truth_arr,
+                        smooth=0.5, smooth1d=0.5)
 
     # Extract the axes
     axes = np.array(fig.axes).reshape((ndim, ndim))
@@ -105,15 +110,15 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
     z_err_high = cq_z[2] - cq_z[1]
     z_err_low = cq_z[1] - cq_z[0]
 
-    ax_z.set_title(r"$z \, =\,$" + r"${:.3f}$".format(cq_z[1]) + \
-        r"$\substack{+$" + r"${:.3f}$".format(z_err_high) + r"$\\ -$" + \
-        r"${:.3f}$".format(z_err_low) + r"$}$", 
-        fontsize=11)
+    ax_z.set_title(r"$z \, =\,$" + r"${:.3f}$".format(cq_z[1]) +
+                   r"$\substack{+$" + r"${:.3f}$".format(z_err_high) +
+                   r"$\\ -$" + r"${:.3f}$".format(z_err_low) + r"$}$", 
+                   fontsize=11)
 
     fig.savefig(savedir + 'corner_' + object_type + '.pdf', 
-        dpi=200, bbox_inches='tight')
+                dpi=200, bbox_inches='tight')
 
-    # ------------ Plot 100 random models from the parameter 
+    # ------------ Plot 200 random models from the parameter 
     # space within +-1sigma of corner estimates
     # first pull out required stuff from args
     wav = args_obj[0]
@@ -124,8 +129,8 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
     ax3 = fig3.add_subplot(111)
 
     ax3.set_xlabel(r'$\mathrm{\lambda\ [\AA]}$', fontsize=15)
-    ax3.set_ylabel(r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$',
-                   fontsize=15)
+    flam_label = r'$\mathrm{f_\lambda\ [erg\, s^{-1}\, cm^{-2}\, \AA^{-1}]}$'
+    ax3.set_ylabel(flam_label, fontsize=15)
 
     model_count = 0
     ind_list = []
@@ -169,33 +174,32 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
 
     if fitsmooth:
         ax3.plot(orig_wav, orig_spec, color='k', lw=1.0, zorder=1)
-        ax3.fill_between(orig_wav, orig_spec - orig_ferr, orig_spec + orig_ferr, 
-            color='gray', alpha=0.5, zorder=1)
+        ax3.fill_between(orig_wav, orig_spec - orig_ferr,
+                         orig_spec + orig_ferr,
+                         color='gray', alpha=0.5, zorder=1)
         ax3.set_xlim(plot_xlim_min, plot_xlim_max)
         ax3.set_ylim(plot_ylim_min, plot_ylim_max)
     else:
         ax3.plot(wav, flam, color='k', lw=1.0, zorder=1)
         ax3.fill_between(wav, flam - ferr, flam + ferr, 
-            color='gray', alpha=0.5, zorder=1)
+                         color='gray', alpha=0.5, zorder=1)
 
     # ADD LEGEND
     ax3.text(x=0.65, y=0.92, s='--- Simulated data', 
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax3.transAxes, color='k', size=12)
+             verticalalignment='top', horizontalalignment='left', 
+             transform=ax3.transAxes, color='k', size=12)
     ax3.text(x=0.65, y=0.85, s='--- 200 randomly chosen samples', 
-        verticalalignment='top', horizontalalignment='left', 
-        transform=ax3.transAxes, color='royalblue', size=12)
+             verticalalignment='top', horizontalalignment='left', 
+             transform=ax3.transAxes, color='royalblue', size=12)
 
     fig3.savefig(savedir + 'emcee_overplot_' + object_type + '.pdf', 
-        dpi=200, bbox_inches='tight')
+                 dpi=200, bbox_inches='tight')
 
     # Close all figures
     fig1.clear()
     fig.clear()
     fig3.clear()
 
-    #plt.clf()
-    #plt.cla()
     plt.close(fig1)
     plt.close(fig)
     plt.close(fig3)

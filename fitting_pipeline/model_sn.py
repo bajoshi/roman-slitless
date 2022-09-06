@@ -9,15 +9,18 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 fitting_utils = cwd + '/utils/'
 
 sys.path.append(fitting_utils)
-import dust_utils as du
-import proper_and_lum_dist as cosmo
+import dust_utils as du  # noqa
+import proper_and_lum_dist as cosmo  # noqa
 
 # Define any required constants/arrays
-sn_day_arr = np.arange(-20,51,1)
+sn_scalefac = 1.734e40  # see sn_scaling.py
+sn_day_arr = np.arange(-20, 51, 1)
 
 # Read in SALT2 SN IA file from Lou
-salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt", \
-    dtype=None, names=['day', 'lam', 'flam'], encoding='ascii')
+salt2_spec = np.genfromtxt(fitting_utils + "templates/salt2_template_0.txt",
+                           dtype=None, names=['day', 'lam', 'flam'],
+                           encoding='ascii')
+
 
 def model_sn(x, z, day, sn_av):
 
@@ -25,7 +28,7 @@ def model_sn(x, z, day, sn_av):
     day_idx_ = np.argmin(abs(sn_day_arr - day))
     day_idx = np.where(salt2_spec['day'] == sn_day_arr[day_idx_])[0]
 
-    sn_spec_llam = salt2_spec['flam'][day_idx]
+    sn_spec_llam = salt2_spec['flam'][day_idx] * sn_scalefac
     sn_spec_lam = salt2_spec['lam'][day_idx]
 
     # ------ Apply dust extinction
@@ -35,7 +38,6 @@ def model_sn(x, z, day, sn_av):
     sn_lam_z, sn_flam_z = cosmo.apply_redshift(sn_spec_lam, sn_dusty_llam, z)
 
     # ------ Calibration polynomial
-
 
     # ------ Regrid to Roman wavelength sampling
     sn_mod = griddata(points=sn_lam_z, values=sn_flam_z, xi=x)

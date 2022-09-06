@@ -10,7 +10,7 @@ from tqdm import tqdm
 # Assign directories and custom imports
 extdir = "/Volumes/Joshi_external_HDD/Roman/"
 ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-results_dir = ext_spectra_dir + 'fitting_results/'
+results_dir = ext_spectra_dir + 'fitting_results_resamp/'
 img_sim_dir = extdir + "roman_direct_sims/sims2021/K_5degimages_part1/"
 
 cwd = os.path.dirname(os.path.abspath(__file__))
@@ -160,12 +160,13 @@ if __name__ == '__main__':
     
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19)
+    detectors = np.arange(1, 12)
     
     for pt in pointings:
     
         # Save results to text file
-        resfile = results_dir + 'zrecovery_pylinear_sims_pt' + str(pt) + '.txt'
+        resfile = (results_dir + 'zrecovery_pylinear_sims_pt'
+                   + str(pt) + '_resamp.txt')
     
         with open(resfile, 'w') as fh:
             fh.write(res_hdr + '\n')
@@ -191,25 +192,26 @@ if __name__ == '__main__':
     
                 # ----- Read in x1d file to get spectra for SNR
                 ext_spec_filename1 = ext_spectra_dir + ext_root + img_suffix \
-                    + exptime1 + '_x1d.fits'
+                    + exptime1 + '_x1d_resamp.fits'
                 ext_hdu1 = fits.open(ext_spec_filename1)
     
                 ext_spec_filename2 = ext_spectra_dir + ext_root + img_suffix \
-                    + exptime2 + '_x1d.fits'
+                    + exptime2 + '_x1d_resamp.fits'
                 ext_hdu2 = fits.open(ext_spec_filename2)
     
                 ext_spec_filename3 = ext_spectra_dir + ext_root + img_suffix \
-                    + exptime3 + '_x1d.fits'
+                    + exptime3 + '_x1d_resamp.fits'
                 ext_hdu3 = fits.open(ext_spec_filename3)
     
-                # ext_spec_filename4 = ext_spectra_dir + ext_root + img_suffix \
-                #     + exptime4 + '_x1d.fits'
+                # ext_spec_filename4 = (ext_spectra_dir + ext_root + img_suffix
+                #                       + exptime4 + '_x1d.fits')
                 # ext_hdu4 = fits.open(ext_spec_filename4)
     
                 # ----- Read in catalog from SExtractor
-                # cat_filename = img_sim_dir + '5deg_' + img_suffix \
+                # cat_filename = img_sim_dir + '5deg_' + img_suffix
                 #    + '_SNadded.cat'
-                # cat = np.genfromtxt(cat_filename, dtype=None, names=cat_header,
+                # cat = np.genfromtxt(cat_filename, dtype=None,
+                #                     names=cat_header,
                 #                     encoding='ascii')
     
                 # -----Read in segmentation map
@@ -217,7 +219,8 @@ if __name__ == '__main__':
                 # segdata = fits.getdata(segmap)
     
                 # ----- Name of direct image
-                # dir_img_name = segmap.replace('_segmap.fits', '_SNadded.fits')
+                # dir_img_name = \
+                #     segmap.replace('_segmap.fits', '_SNadded.fits')
                 # dir_img = fits.getdata(dir_img_name)
     
                 # ----- loop and find all SN segids
@@ -243,7 +246,8 @@ if __name__ == '__main__':
                     snmag = float(insert_cat[sn_idx][2])
     
                     # ---- Get template inputs
-                    template_name = os.path.basename(sedlst['sed_path'][segid_idx])
+                    template_name = \
+                        os.path.basename(sedlst['sed_path'][segid_idx])
                     # Get template inputs needed for plotting
                     template_inputs = get_template_inputs(template_name)
     
@@ -278,15 +282,15 @@ if __name__ == '__main__':
                     # ----- Construct the filenames for this segid
                     snstr1 = str(segid) + '_' + img_suffix + exptime1
                     emcee_savefile1 = results_dir + 'emcee_sampler_sn' \
-                        + snstr1 + '.h5'
+                        + snstr1 + '_resamp.h5'
     
                     snstr2 = str(segid) + '_' + img_suffix + exptime2
                     emcee_savefile2 = results_dir + 'emcee_sampler_sn' \
-                        + snstr2 + '.h5'
+                        + snstr2 + '_resamp.h5'
     
                     snstr3 = str(segid) + '_' + img_suffix + exptime3
                     emcee_savefile3 = results_dir + 'emcee_sampler_sn' \
-                        + snstr3 + '.h5'
+                        + snstr3 + '_resamp.h5'
     
                     # snstr4 = str(segid) + '_' + img_suffix + exptime4
                     # emcee_savefile4 = results_dir + 'emcee_sampler_sn' \
