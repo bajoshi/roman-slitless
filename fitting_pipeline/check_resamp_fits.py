@@ -139,7 +139,7 @@ if __name__ == '__main__':
                   left=0.05, right=0.95,
                   top=0.95, bottom=0.05)
 
-    ewidth = 0.2
+    ewidth = 0.0
     ecol = 'r'
     
     # first row -- lowest exptime; 400 seconds
@@ -218,8 +218,50 @@ if __name__ == '__main__':
                  fmt='o', color='k')
 
     # Axes limits
+    ax1.set_xlim(-0.05, 3.05)
+    ax1.set_ylim(-0.05, 3.05)
+    ax4.set_xlim(-0.05, 3.05)
+    ax4.set_ylim(-0.05, 3.05)
+    ax7.set_xlim(-0.05, 3.05)
+    ax7.set_ylim(-0.05, 3.05)
+
+    ax2.set_xlim(-20, 20)
+    ax2.set_ylim(-20, 20)
+    ax5.set_xlim(-20, 20)
+    ax5.set_ylim(-20, 20)
+    ax8.set_xlim(-20, 20)
+    ax8.set_ylim(-20, 20)
+
+    ax3.set_xlim(-0.1, 5.1)
+    ax3.set_ylim(-0.1, 5.1)
+    ax6.set_xlim(-0.1, 5.1)
+    ax6.set_ylim(-0.1, 5.1)
+    ax9.set_xlim(-0.1, 5.1)
+    ax9.set_ylim(-0.1, 5.1)
 
     # Axes labels
+    ax1.set_xlabel('Redshift resampled', fontsize=11)
+    ax1.set_ylabel('Redshift const-samp', fontsize=11)
+    ax4.set_xlabel('Redshift resampled', fontsize=11)
+    ax4.set_ylabel('Redshift const-samp', fontsize=11)
+    ax7.set_xlabel('Redshift resampled', fontsize=11)
+    ax7.set_ylabel('Redshift const-samp', fontsize=11)
+
+    ax2.set_xlabel('Phase resampled', fontsize=11)
+    ax2.set_ylabel('Phase const-samp', fontsize=11)
+    ax5.set_xlabel('Phase resampled', fontsize=11)
+    ax5.set_ylabel('Phase const-samp', fontsize=11)
+    ax8.set_xlabel('Phase resampled', fontsize=11)
+    ax8.set_ylabel('Phase const-samp', fontsize=11)
+
+    ax3.set_xlabel('Av resampled', fontsize=11)
+    ax3.set_ylabel('Av const-samp', fontsize=11)
+    ax6.set_xlabel('Av resampled', fontsize=11)
+    ax6.set_ylabel('Av const-samp', fontsize=11)
+    ax9.set_xlabel('Av resampled', fontsize=11)
+    ax9.set_ylabel('Av const-samp', fontsize=11)
+
+    # 
 
     plt.show()
 

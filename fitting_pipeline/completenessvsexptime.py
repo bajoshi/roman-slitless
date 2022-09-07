@@ -62,14 +62,14 @@ def main():
     # Read in results file
     extdir = "/Volumes/Joshi_external_HDD/Roman/"
     ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-    results_dir = ext_spectra_dir + 'fitting_results/'
+    results_dir = ext_spectra_dir + 'fitting_results_resamp/'
 
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt0_resamp.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
     # ---------------------------- Prep
     # Create arrays for plotting
-    deltamag = 0.2
+    deltamag = 0.5
     low_maglim = 21.5
     high_maglim = 29.5
 
