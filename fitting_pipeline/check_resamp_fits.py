@@ -138,16 +138,16 @@ def construct_color_array(old_sigmaz, new_sigmaz, sigmaz_thresh):
              (np.abs(new_sigmaz[c]) <= sigmaz_thresh):
             color_arr.append('k')
         # Case 2: old sampling pass but new fail
-        elif (np.abs(old_sigmaz[c]) <= sigmaz_thresh) and\
-             (np.abs(new_sigmaz[c]) > sigmaz_thresh):
+        if (np.abs(old_sigmaz[c]) <= sigmaz_thresh) and\
+                (np.abs(new_sigmaz[c]) > sigmaz_thresh):
             color_arr.append('b')
         # Case 3: new sampling pass but old fail
-        elif (np.abs(old_sigmaz[c]) > sigmaz_thresh) and\
-             (np.abs(new_sigmaz[c]) <= sigmaz_thresh):
+        if (np.abs(old_sigmaz[c]) > sigmaz_thresh) and\
+                (np.abs(new_sigmaz[c]) <= sigmaz_thresh):
             color_arr.append('r')
         # Case 4: both fail
-        elif (np.abs(old_sigmaz[c]) > sigmaz_thresh) and\
-             (np.abs(new_sigmaz[c]) > sigmaz_thresh):
+        if (np.abs(old_sigmaz[c]) > sigmaz_thresh) and\
+                (np.abs(new_sigmaz[c]) > sigmaz_thresh):
             color_arr.append('none')
 
     color_arr = np.array(color_arr, dtype=str)
@@ -167,6 +167,7 @@ def construct_color_array(old_sigmaz, new_sigmaz, sigmaz_thresh):
     new_pass_frac = (len(pass_idx) + len(red_idx)) / len(old_sigmaz)
     print('Total pass fraction OLD:', '{:.4f}'.format(old_pass_frac))
     print('Total pass fraction NEW:', '{:.4f}'.format(new_pass_frac))
+    print('DIFF:', '{:.4f}'.format(new_pass_frac - old_pass_frac))
 
     return color_arr
 

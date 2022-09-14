@@ -228,7 +228,7 @@ def main():
         effective_completeness = percent_complete * classification_eff
 
         exptime = all_exptimes[e]
-        ax.plot(mags, effective_completeness, 'o--', markersize=5,
+        ax.plot(mags, effective_completeness, 'o', markersize=5,
                 color=colors[e], label=r'$t_\mathrm{exp}\, =\ $' + exptime,
                 zorder=2)
 
