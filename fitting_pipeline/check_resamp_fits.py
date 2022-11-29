@@ -474,4 +474,29 @@ if __name__ == '__main__':
     fig.clear()
     plt.close(fig)
 
+    # Plot redshift vs phase residuals
+    # Trying to check if we see the same degeneracy
+    # as in figure 14 in Blondin & Tonry 2007 (BT07).
+    # We will use the residuals from the 3h exptime
+    # which pass the sigma_z threshold.
+    # NOTE: the way they define residual is DIFFERENT
+    # from ours. So I'm using a definition consistent
+    # with BT07 here.
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111)
+
+    zdiff = z3600_old - ztrue_3600
+    agediff = phase3600_old - phasetrue_3600
+
+    ax.scatter(zdiff[old_pass_3600], agediff[old_pass_3600],
+               s=5, color='k')
+
+    ax.axhline(y=0.0, ls='dotted')
+    ax.axvline(x=0.0, ls='dotted')
+
+    ax.set_xlabel(r'$\Delta z$', fontsize=15)
+    ax.set_ylabel(r'$\Delta t\ \mathrm{[Days]}$', fontsize=15)
+
+    plt.show()
+
     sys.exit(0)

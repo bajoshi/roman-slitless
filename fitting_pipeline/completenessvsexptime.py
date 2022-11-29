@@ -62,9 +62,9 @@ def main():
     # Read in results file
     extdir = "/Volumes/Joshi_external_HDD/Roman/"
     ext_spectra_dir = extdir + "roman_slitless_sims_results/"
-    results_dir = ext_spectra_dir + 'fitting_results_resamp/'
+    results_dir = ext_spectra_dir + 'fitting_results/'
 
-    resfile = results_dir + 'zrecovery_pylinear_sims_pt0_resamp.txt'
+    resfile = results_dir + 'zrecovery_pylinear_sims_pt0.txt'
     cat = np.genfromtxt(resfile, dtype=None, names=True, encoding='ascii')
 
     # ---------------------------- Prep
@@ -146,6 +146,10 @@ def main():
     fig = plt.figure(figsize=(8, 5))
     ax = fig.add_subplot(111)
 
+    # Show the mag dist as a light histogram
+    ax1 = ax.twinx()
+    ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray', alpha=0.3)
+
     for e in range(len(exptime_labels)):
 
         print('\nWorking on exposure time:', all_exptimes[e])
@@ -222,6 +226,14 @@ def main():
 
         print('Mean z-accuracy for this exptime:', np.nanmean(z_acc_list))
         print('Median z-accuracy for this exptime:', np.nanmedian(z_acc_list))
+
+        pass_idx = np.where(z_acc_list <= z_tol)[0]
+        print('Total sample size for all SNe passing z-accuracy cut:',
+              len(pass_idx))
+        # This number is identical to np.sum(ztol_counts)
+
+        # Also plot the ztol counts as a step histogram
+        # ax1.step(mags, ztol_counts, color=colors[e], where='mid')
 
         # Now get effective completeness/exptime and plot
         percent_complete = ztol_counts / total_counts
@@ -310,10 +322,6 @@ def main():
             ax.plot(mags, pc2, '--', color='k',
                     label=r'$\frac{\Delta z}{1+z} \leq 0.001$')  # noqa
         """
-
-    # Show the mag dist as a light histogram
-    ax1 = ax.twinx()
-    ax1.hist(cat['Y106mag'], bins=mag_bins, color='gray', alpha=0.3)
 
     # ----------- Top redshift axis
     # Don't need to plot anything
