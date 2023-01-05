@@ -2,7 +2,8 @@ import scipy.integrate as spint
 import numpy as np
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
-astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
+astropy_cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc,
+                              Tcmb0=2.725 * u.K, Om0=0.3)
 
 # -------- Define cosmology -------- # 
 # Flat Lambda CDM
@@ -11,6 +12,7 @@ omega_m0 = 0.3
 omega_lam0 = 1.0 - omega_m0
 
 speed_of_light_kms = 299792.458  # km per s
+
 
 def gen_lookup_table():
 
@@ -36,7 +38,7 @@ def gen_lookup_table():
             # now get age
             age_at_z = astropy_cosmo.age(z).value  # in Gyr
 
-            fh.write('{:.4f}'.format(z)     + '  ' 
+            fh.write('{:.4f}'.format(z) + '  ' 
                      '{:.8e}'.format(dl_cm) + '  '
                      '{:.8e}'.format(dp_cm) + '  '
                      '{:.5e}'.format(age_at_z) + '\n')
@@ -44,6 +46,7 @@ def gen_lookup_table():
     print("Lookup table saved.")
 
     return None
+
 
 def print_info():
 
@@ -54,6 +57,7 @@ def print_info():
 
     return None
 
+
 def proper_distance(redshift):
     """
     This function will integrate 1/(a*a*H)
@@ -63,12 +67,15 @@ def proper_distance(redshift):
     """
     ae = 1 / (1 + redshift)
 
-    p = lambda a: 1/(a*a*H0*np.sqrt((omega_m0/a**3) + omega_lam0 + ((1 - omega_m0 - omega_lam0)/a**2)))
+    p = lambda a: 1/(a*a*H0*np.sqrt((omega_m0/a**3)
+                                    + omega_lam0
+                                    + ((1 - omega_m0 - omega_lam0)/a**2)))
     dp = spint.quadrature(p, ae, 1.0)
 
     dp = dp[0] * speed_of_light_kms
 
     return dp
+
 
 def luminosity_distance(redshift):
     """
@@ -81,6 +88,7 @@ def luminosity_distance(redshift):
 
     return dl
 
+
 def apply_redshift(restframe_wav, restframe_lum, redshift):
     
     dl = luminosity_distance(redshift)  # returns dl in Mpc
@@ -91,10 +99,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 
     return redshifted_wav, redshifted_flux
 
+
 if __name__ == '__main__':
 
     gen_lookup_table()
-
-    
-
-
