@@ -5,7 +5,6 @@ import numpy as np
 import os
 import sys
 import time
-import glob
 import shutil
 import socket
 
@@ -568,6 +567,8 @@ if __name__ == '__main__':
             ts = time.time()
             logger.info("Time taken for simulation: "
                         + "{:.2f}".format(ts - start) + " seconds.")
+
+            sys.exit(0)
 
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
