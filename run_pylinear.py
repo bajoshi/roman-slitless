@@ -10,6 +10,21 @@ import socket
 
 import logging
 
+# Noise parameters
+# check Russell's notes in pylinear notebooks
+# also check WFIRST tech report TR1901
+# Also see file from Rick Kessler which came from Jeff Kruk
+# in folder sensitivity_files in external drive
+# Noise budget
+# Readnoise is effective readnoise rate
+# Assumed average 1.1 factor for Zodi
+BCK_ZODIACAL = 1.047  # e/pix/sec
+BCK_THERMAL = 0.0637249  # e/pix/sec
+DARK = 0.005  # e/pix/sec
+READNOISE_RMS = 15
+# Effective sky
+SKY = BCK_ZODIACAL + BCK_THERMAL
+
 
 def get_dithered_locations(ra_cen, dec_cen, nobs):
     """
@@ -286,6 +301,66 @@ def get_truth_sn(roman_direct_dir, img_suffix):
     return num_truth_sn
 
 
+def noise_img_save(dat, noise_dict):
+
+    # Get the noise params and exptime
+    EXPTIME = noise_dict['exptime']
+    BKG = noise_dict['sky']
+    DC = noise_dict['dark']
+    RN = noise_dict['readnoise']
+
+    # First add background
+    dat += BKG
+
+    # Add dark current
+    dat += DC
+
+    # Test figure
+    """
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    im = ax.imshow(dat[1080: 1180, 980: 1220], origin='lower', cmap='Greys')
+    fig.colorbar(im)
+    fig.savefig('test_noisefig.png')
+    sys.exit(0)
+    """
+
+    # Add Poisson noise
+    abs_data = np.abs(dat)
+    poissonnoise_data = np.random.normal(scale=np.sqrt(abs_data),
+                                         size=dat.shape)
+
+    dat += poissonnoise_data
+
+
+    # Add readnoise
+    readnoise_data = np.random.normal(scale=RN/EXPTIME,
+                                      size=dat.shape)
+
+    dat += readnoise_data
+
+    # STIPS goes a few steps further and adds in the errors
+    # due to corrections for: flat field, dark current, and
+    # cosmic rays but we will stop here for now.
+
+    # Save the noised image
+    # first create new header
+    noisehdr = noise_dict['oldhdr']
+    noisehdr['history'] = 'Noise added'
+    noisehdr['EXPTIME'] = EXPTIME
+    noisehdr['BKG'] = SKY
+    noisehdr['RN_RMS'] = RN
+    noisehdr['DARK'] = DARK
+
+    new_sci_hdu = fits.PrimaryHDU(data=dat, header=noisehdr)
+    fn = noise_dict['filename']
+    fn = fn.replace('.fits', noise_dict['filesuffix'] + '.fits')
+    new_sci_hdu.writeto(fn, overwrite=True)
+
+    return None
+
+
 if __name__ == '__main__':
 
     # ---------------------- Preliminary stuff
@@ -479,25 +554,11 @@ if __name__ == '__main__':
         for e in range(len(exptime_list)):
             # ---------------------- Add noise
             logger.info("Adding noise... ")
-            # check Russell's notes in pylinear notebooks
-            # also check WFIRST tech report TR1901
-            # Also see file from Rick Kessler which came from Jeff Kruk
-            # in folder sensitivity_files in external drive
-            # Noise budget
-            # Readnoise is effective readnoise rate
-            # Assumed average 1.1 factor for Zodi
-            BCK_ZODIACAL = 1.047  # e/pix/sec
-            BCK_THERMAL = 0.0637249  # e/pix/sec
-            DARK = 0.005  # e/pix/sec
-            READNOISE = 0.031  # e/pix/sec
-            # Effective sky
-            SKY = BCK_ZODIACAL + BCK_THERMAL
 
             exptime = exptime_list[e]  # seconds
 
             # Number of reads
             nreads = int(np.ceil(exptime / 900))
-            read_total = nreads * READNOISE
 
             for i in range(len(roll_angle_list)):
 
@@ -508,9 +569,28 @@ if __name__ == '__main__':
 
                 # open the fits file
                 with fits.open(oldf) as hdul:
-                    sci = hdul[('SCI', 1)].data    # the science image
-                    size = sci.shape              # dimensionality of the image
+                    sci = hdul[('SCI', 1)].data  # the science image
+                    size = sci.shape  # dimensionality of the image
 
+                    # ---------------------- WITH STIPS
+                    # This is very similar to how it is done in STIPS
+                    # We need this to send to IPAC but for pyLINEAR internal
+                    # purposes we will still use the older method for now.
+                    # The noise params (sky, dark, readnoise) are global here
+                    # but need to be in the dict because the noise_img_save
+                    # func is also imported into other codes.
+                    noise_dict = {'filename': os.path.basename(oldf),
+                                  'filesuffix': '_noised',
+                                  'exptime': e,
+                                  'oldhdr': hdul[('SCI', 1)].header,
+                                  'sky': SKY,
+                                  'dark': DARK,
+                                  'readnoise': READNOISE_RMS}
+
+                    noise_img_save(sci, noise_dict)
+                    logger.info("Noised 2D FLT images saved.")
+
+                    # ---------------------- MANUAL METHOD
                     # update the science extension with sky background
                     # and dark current
                     signal = (sci + SKY + DARK)
@@ -522,7 +602,7 @@ if __name__ == '__main__':
                     # Randomly vary signal about its mean.
                     # Assuming Gaussian distribution
                     # first get the uncertainty
-                    variance = signal + read_total**2
+                    variance = signal + READNOISE_RMS**2
                     sigma = np.sqrt(variance)
 
                     # Replace any NaNs in the sigma array

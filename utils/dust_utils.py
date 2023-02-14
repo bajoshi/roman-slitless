@@ -1,7 +1,8 @@
 import numpy as np
-from numba import jit
+# from numba import jit
 
-@jit(nopython=True)
+
+# @jit(nopython=True)
 def get_klambda(wav):
     # Calzetti law
     # wavlength has to be in microns
@@ -21,7 +22,8 @@ def get_klambda(wav):
 
     return klam
 
-@jit(nopython=True)
+
+# @jit(nopython=True)
 def get_dust_atten_model(model_wav_arr, model_flux_arr, av):
     """
     This function will apply the Calzetti dust extinction law 
@@ -30,11 +32,11 @@ def get_dust_atten_model(model_wav_arr, model_flux_arr, av):
     It assumes that the model it is being given is dust-free.
     It assumes that the model wavelengths it is given are in Angstroms.
 
-    It returns the dust-attenuated flux array at the same wavelengths as before.
+    It returns the dust-attenuated flux array
+    at the same wavelengths as before.
     """
-        
     # Now loop over the dust-free SED and generate a new dust-attenuated SED
-    #print("Applying dust attenuation...")
+    # print("Applying dust attenuation...")
     dust_atten_model_flux = np.empty(len(model_wav_arr), np.float64)
 
     current_wav = model_wav_arr / 1e4  # because this has to be in microns
@@ -49,12 +51,13 @@ def get_dust_atten_model(model_wav_arr, model_flux_arr, av):
             klam = get_klambda(cw)
             alam = klam * av / 4.05
 
-            dust_atten_model_flux[i] = model_flux_arr[i] * 10**(-1 * 0.4 * alam)
+            dust_atten_model_flux[i] = (model_flux_arr[i] *
+                                        10**(-1 * 0.4 * alam))
         else:
             dust_atten_model_flux[i] = model_flux_arr[i]
 
-        #print(i, cw, alam, 10**(-1 * 0.4 * alam), \
-        #      "{:.2e}".format(model_flux_arr[i]), "{:.2e}".format(dust_atten_model_flux[i]))
+        # print(i, cw, alam, 10**(-1 * 0.4 * alam), \
+        #      "{:.2e}".format(model_flux_arr[i]),
+        #      "{:.2e}".format(dust_atten_model_flux[i]))
 
     return dust_atten_model_flux
-

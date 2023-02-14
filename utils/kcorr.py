@@ -328,7 +328,7 @@ if __name__ == '__main__':
 
     appmag_infer = np.zeros(len(zarr))
 
-    # Read in catalog from Phil to check consistency between 
+    # Read in catalog from Phil to check consistency between
     # SN mag vs redshift here and SNANA sim mags vs redshift.
     # Read in large snana file
     snana_cat_path = home + \
@@ -433,7 +433,7 @@ if __name__ == '__main__':
     axt.scatter(zarr, appmag_infer, s=10, facecolors='None',
                 color='dodgerblue', label=r'$m_{F106}$',
                 zorder=3)
-    
+
     # Plot cloud of points from SNANA sim to check
     axt.scatter(allz, allmag,
                 color='gray', alpha=0.1, s=1, zorder=1,

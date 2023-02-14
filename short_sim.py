@@ -2,56 +2,63 @@ import numpy as np
 from astropy.io import fits
 from astropy.modeling import models
 from skimage.morphology import label
-import matplotlib.pyplot as plt
 
+import copy
 import os
 import sys
-import socket
 import subprocess
 
 import pylinear
 
 from gen_sed_lst import get_sn_z, get_sn_spec_path
+from run_pylinear import noise_img_save
 
-if 'plffsn2' in socket.gethostname():
-    extdir = "/astro/ffsn/Joshi/"
-else:
-    extdir = "/Volumes/Joshi_external_HDD/Roman/"
-
-img_sim_dir = extdir + "roman_direct_sims/sims2021/K_5degimages_part1/"
-savedir = img_sim_dir + 'shortsim/'
-if not os.path.isdir(savedir):
-    os.mkdir(savedir)
+datadir = os.getcwd() + '/' + 'short_sim_test/'
+if not os.path.isdir(datadir):
+    os.mkdir(datadir)
 
 # Params of sim
 NPIX = 4096
 NUM_SNE = 1
 REF_COUNTS = 13696.77
 SIZE = 50  # half of cutout
-SNMAG_CENTRAL = 27.0
+SNMAG_CENTRAL = 24.5
 ZP = 26.264  # For WFC3/F105W and for WFI/F106
 PIXSCL = 0.108  # arcsec per pix
 MODEL = 'GAUSS'  # model to use for fake SNe; GAUSS or REFSTAR
 
+rollangles = [0.0, 70.0, 140.0]
+
 MAGLIM = 29.0
 BEAM = '+1'
-EXPTIME = 334  # seconds per FLT file; we have 3 exposures
+EXPTIME = 3600  # seconds per FLT file; we have 3 exposures
+
+# Get a header with WCS
+extdir = '/Volumes/Joshi_external_HDD/Roman/'
+roman_sims_seds = extdir + "roman_slitless_sims_seds/"
+img_sim_dir = extdir + 'roman_direct_sims/sims2021/K_5degimages_part1/'
+dirimg_hdr = fits.getheader(img_sim_dir + '5deg_Y106_0_1.fits')
+
+obs_ra = float(dirimg_hdr['CRVAL1'])
+obs_dec = float(dirimg_hdr['CRVAL2'])
+
+print('Obs coords:', obs_ra, obs_dec)
 
 # Noise budget
 # See the prism info file from Jeff Kruk
 # for all these numbers.
 # Readnoise is effective readnoise rate
 # Assumed average 1.1 factor for Zodi
-BCK_ZODIACAL = 1.047 # e/pix/sec
+BCK_ZODIACAL = 1.047  # e/pix/sec
 BCK_THERMAL = 0.0637249  # e/pix/sec
 DARK = 0.005  # e/pix/sec
-READNOISE = 0.031  # e/pix/sec
+READNOISE = 15  # electrons RMS
 # Effective sky
 SKY = BCK_ZODIACAL + BCK_THERMAL
 
 
 # Change to working directory
-os.chdir(savedir)
+os.chdir(datadir)
 
 
 def get_counts(mag):
@@ -67,9 +74,9 @@ def insert_sne_getsedlst_shortsim():
     # ---------------
     if MODEL == 'REFSTAR':
         # Get reference image
-        # Read in the reference image of the star from 
+        # Read in the reference image of the star from
         # Y106_0_6 at 72.1175280, -53.5739388 (~16th mag)
-        ref_cutout_path = img_sim_dir + 'ref_cutout_psf.fits'
+        ref_cutout_path = datadir + 'ref_cutout_psf.fits'
         ref_data = fits.getdata(ref_cutout_path)
     elif MODEL == 'GAUSS':
         # Generate Gaussian model from astropy
@@ -82,12 +89,11 @@ def insert_sne_getsedlst_shortsim():
     # Empty array to store inserted sne properties
     insert_cat = np.zeros((NUM_SNE, 3))
 
-    # Get a header with WCS
-    hdr = fits.getheader(img_sim_dir + '5deg_Y106_0_1.fits')
-
     # ---------------
     # Loop over sne to insert
     for i in range(NUM_SNE):
+
+        print('\nWorking on SN:', i+1)
 
         # Decide some random mag for the SN and get counts
         # Position of SN
@@ -99,7 +105,7 @@ def insert_sne_getsedlst_shortsim():
             r = 2048
             c = 2048
         else:
-            snmag = np.random.normal(loc=SNMAG_CENTRAL, scale=0.01, size=None)
+            snmag = np.random.normal(loc=SNMAG_CENTRAL, scale=0.2, size=None)
 
             r = np.random.randint(low=110, high=3985, size=None)
             c = np.random.randint(low=110, high=3985, size=None)
@@ -107,7 +113,6 @@ def insert_sne_getsedlst_shortsim():
         sncounts = get_counts(snmag)
 
         if MODEL == 'GAUSS':
-            
             # Put the SN in the center of the image
             gaussfunc.x_mean = c
             gaussfunc.y_mean = r
@@ -116,14 +121,14 @@ def insert_sne_getsedlst_shortsim():
 
             full_img += gaussfunc(x, y)
 
-            # Also ensure that the number of pixels in 
+            # Also ensure that the number of pixels in
             # manual segmap above threshold sum up to required
-            # counts. 
+            # counts.
             # See Russell's pyLINEAR notebooks for creating segmap
             # create a segmentation map from this image
-            threshold = 0.2  # threshold to apply to the image
+            threshold = 0.4  # threshold to apply to the image
             good = full_img > threshold  # these pixels belong to a source
-            segmap = label(good)  # now these pixels have unique segmentation IDs
+            segmap = label(good)  # now these pixels have unique SegIDs
 
             print('Total good pixels:', len(np.where(good)[0]))
             actual_counts = np.sum(full_img[good])
@@ -132,7 +137,7 @@ def insert_sne_getsedlst_shortsim():
             scale_fac = sncounts / actual_counts
             # with np.printoptions(precision=2):
             #     print(full_img[good])
-            
+
             print('Scaling factor:', scale_fac)
             full_img *= scale_fac
 
@@ -141,18 +146,14 @@ def insert_sne_getsedlst_shortsim():
             # with np.printoptions(precision=4):
             #     print(full_img[good])
 
-            # print(segmap[2048-10:2048+10, 
+            # print(segmap[2048-10:2048+10,
             #              2048-10:2048+10])
 
             # fig = plt.figure(figsize=(7, 7))
             # ax = fig.add_subplot(111)
-            # ax.imshow(full_img[2048-25:2048+25, 
+            # ax.imshow(full_img[2048-25:2048+25,
             #                    2048-25:2048+25], origin='lower')
             # plt.show()
-
-            # ------- Now save segmap
-            fits.writeto(savedir + 'test_segmap.fits',
-                         segmap, header=hdr, overwrite=True)
 
         else:
             # Scale SN and add to full image
@@ -168,14 +169,21 @@ def insert_sne_getsedlst_shortsim():
             insert_cat[i][2] = snmag
 
     # Save the file
-    savefile = savedir + 'shortsim_image.fits'
+    savefile = datadir + 'shortsim_image.fits'
 
-    hdu = fits.PrimaryHDU(data=full_img, header=hdr)
-    hdu.writeto(savefile, overwrite=True)
+    # Create a header (pyLINEAR needs WCS)
+    hdr = dirimg_hdr
+
+    ihdu = fits.PrimaryHDU(data=full_img, header=hdr)
+    ihdu.writeto(savefile, overwrite=True)
+
+    # ------- Now save segmap
+    shdu = fits.PrimaryHDU(data=segmap, header=hdr)
+    shdu.writeto(datadir + 'test_segmap.fits', overwrite=True)
 
     # =====================================
     # Create SED LST file
-    sedlst_filename = savedir + 'sed_shortsim.lst'
+    sedlst_filename = datadir + 'sed_shortsim.lst'
 
     # Open an empty file for writing sed lst
     with open(sedlst_filename, 'w') as fh:
@@ -198,6 +206,7 @@ def insert_sne_getsedlst_shortsim():
             # First we need the correct z
             z = get_sn_z(m)
             spec_path = get_sn_spec_path(z)
+            # spec_path = gen_delta_comb_spec()
 
             # ------------ Write to file
             fh.write(str(j+1) + " " + spec_path + "\n")
@@ -205,17 +214,58 @@ def insert_sne_getsedlst_shortsim():
     return None
 
 
+def gen_delta_comb_spec(plot=False, scalefac=1e-17):
+
+    # define an overall wav grid
+    lamgrid = np.arange(7000, 20000)
+
+    # define the spacing between the comb "teeth"
+    stepsize = 80.0  # angstroms
+
+    spec = np.zeros(len(lamgrid))
+
+    for i in range(len(lamgrid)):
+        current_wav = lamgrid[i]
+        if (current_wav % stepsize) == 0:
+            spec[i] = 1.0
+
+    # Test figure
+    if plot:
+        fig = plt.figure(figsize=(10, 4))
+        ax = fig.add_subplot(111)
+        ax.plot(lamgrid, spec, color='k', lw=1.2)
+        plt.show()
+
+    # Scale to some sensible flam units
+    spec *= scalefac
+
+    # Now save
+    # This is to match the behaviour of the other funcs
+    # that generate spectra.
+    combspec_file = roman_sims_seds + 'comb_spec.txt'
+    with open(combspec_file, 'w') as fh:
+        fh.write("#  lam  flux")
+        fh.write("\n")
+
+        for j in range(len(lamgrid)):
+            fh.write("{:.2f}".format(lamgrid[j]) + " " + str(spec[j]))
+            fh.write("\n")
+
+    return combspec_file
+
+
 def run_pylinear_shortsim():
 
-    segfile = savedir + 'test_segmap.fits'
-    obslst = savedir + 'obs_shortsim.lst'
-    wcslst = savedir + 'wcs_shortsim.lst'
-    sedlst = savedir + 'sed_shortsim.lst'
-    fltlst = savedir + 'flt_shortsim.lst'
+    segfile = datadir + 'test_segmap.fits'
+    obslst = datadir + 'obs_shortsim.lst'
+    wcslst = datadir + 'wcs_shortsim.lst'
+    sedlst = datadir + 'sed_shortsim.lst'
+    fltlst = datadir + 'flt_shortsim.lst'
 
     # ---------------------- Get sources
-    sources = pylinear.source.SourceCollection(segfile, obslst, 
-                                               detindex=0, maglim=MAGLIM)
+    sources = pylinear.source.SourceCollection(segfile, obslst,
+                                               detindex=0,
+                                               maglim=MAGLIM)
 
     # Set up
     grisms = pylinear.grism.GrismCollection(wcslst, observed=False)
@@ -231,15 +281,35 @@ def run_pylinear_shortsim():
 
     # ---------------------- Add noise
     for f in range(3):
-        flt = savedir + 'shortsim' + str(f+1) + '_flt.fits'
+        flt = datadir + 'shortsim' + str(f+1) + '_flt.fits'
         flthdu = fits.open(flt)
 
         sci = flthdu[1].data
-
+        size = sci.shape
         print('Data range:', np.min(sci), '  ', np.max(sci))
 
-        size = sci.shape
+        # make a copy of the sci img before sending it off
+        # to be modified in two different ways. If this copy
+        # isn't made then the first func directly modifies the
+        # sci data and the second noising actually does it twice.
+        sci_copy = copy.deepcopy(sci)
 
+        # ---- WITH STIPS
+        # This is very similar to how it is done in STIPS
+        # We need this to send to IPAC but for pyLINEAR internal
+        # purposes we will still use the older method for now.
+        noise_dict = {'filename': os.path.basename(flt),
+                      'filesuffix': '_noised_stips',
+                      'exptime': EXPTIME,
+                      'oldhdr': flthdu[1].header,
+                      'sky': SKY,
+                      'dark': DARK,
+                      'readnoise': READNOISE}
+
+        noise_img_save(sci_copy, noise_dict)
+        print("Noised 2D FLT images saved.")
+
+        # ---- MANUAL WAY
         # Add sky and dark
         signal = (sci + SKY + DARK)
 
@@ -250,7 +320,8 @@ def run_pylinear_shortsim():
         sigma = np.sqrt(variance)
 
         # Photometric variation
-        new_sig = np.random.normal(loc=signal, 
+        # This resulting image is now in electrons
+        new_sig = np.random.normal(loc=signal,
                                    scale=sigma, size=size)
 
         # Subtract background and go back to e/s
@@ -261,13 +332,13 @@ def run_pylinear_shortsim():
         noised_hdul = fits.HDUList()
         noised_hdul.append(fits.PrimaryHDU(header=flthdu[0].header))
         # 1st extension with the SCI data
-        noised_hdul.append(fits.ImageHDU(data=final_sig, 
+        noised_hdul.append(fits.ImageHDU(data=final_sig,
                                          header=flthdu[1].header))
         # 2nd extension with the ERR
-        noised_hdul.append(fits.ImageHDU(data=sigma/EXPTIME, 
+        noised_hdul.append(fits.ImageHDU(data=sigma/EXPTIME,
                                          header=flthdu[2].header))
         # 3rd extension with the DQ Array
-        noised_hdul.append(fits.ImageHDU(data=flthdu[3].data, 
+        noised_hdul.append(fits.ImageHDU(data=flthdu[3].data,
                                          header=flthdu[3].header))
 
         fltname = flt.replace('_flt', '_flt_noised')
@@ -275,6 +346,8 @@ def run_pylinear_shortsim():
 
         # Close open HDU
         flthdu.close()
+
+    sys.exit(0)
 
     # Generate FLT LST and start extraction
     with open(fltlst, 'w') as fh:
@@ -286,7 +359,7 @@ def run_pylinear_shortsim():
         fh.write(hdr2)
 
         for i in range(3):
-            flt = savedir + 'shortsim' + str(i+1) + '_flt_noised.fits'
+            flt = datadir + 'shortsim' + str(i+1) + '_flt_noised.fits'
             fh.write('\n' + flt)
 
     print('Noised FLTs and written FLT LST.')
@@ -294,45 +367,86 @@ def run_pylinear_shortsim():
     # ---------------------- Extraction
     print('Starting extraction...')
 
-    tablespath = savedir + 'tables/'
+    tablespath = datadir + 'tables/'
 
     grisms = pylinear.grism.GrismCollection(fltlst, observed=True)
-    tabulate = pylinear.modules.Tabulate('pdt', 
+    tabulate = pylinear.modules.Tabulate('pdt',
                                          path=tablespath, ncpu=0)
-    tabulate.run(grisms, sources, BEAM) 
-    
+    tabulate.run(grisms, sources, BEAM)
+
     extraction_parameters = grisms.get_default_extraction()
-    
+
     extpar_fmt = 'Default parameters: range = {lamb0}, {lamb1} A,' + \
                  ' sampling = {dlamb} A'
     print(extpar_fmt.format(**extraction_parameters))
-    
+
     # Set extraction params
     sources.update_extraction_parameters(**extraction_parameters)
     method = 'golden'  # golden, grid, or single
     extroot = 'shortsim_'
     logdamp = [-6, -1, 0.1]
 
-    pylinear.modules.extract.extract1d(grisms, sources, BEAM, logdamp, 
-                                       method, extroot, tablespath, 
-                                       inverter='lsqr', ncpu=6, 
+    pylinear.modules.extract.extract1d(grisms, sources, BEAM, logdamp,
+                                       method, extroot, tablespath,
+                                       inverter='lsqr', ncpu=6,
                                        group=False)
 
     return None
 
 
-if __name__ == '__main__':
+def create_obs_wcs_lst():
 
+    # -------- OBS
+    obs_filt = 'hst_wfc3_f105w'
+    obslst_file = datadir + 'obs_shortsim.lst'
+    imgfile = datadir + 'shortsim_image.fits'
+
+    with open(obslst_file, 'w') as fho:
+        fho.write('# Image File name' + '\n')
+        fho.write('# Observing band' + '\n')
+
+        fho.write('\n' + imgfile + '  ' + obs_filt)
+
+    # -------- WCS
+    wcslst_file = datadir + 'wcs_shortsim.lst'
+
+    with open(wcslst_file, 'w') as fhw:
+
+        hdr = ('# TELESCOPE = Roman' + '\n'
+               '# INSTRUMENT = WFI' + '\n'
+               '# DETECTOR = WFI' + '\n'
+               '# GRISM = P127' + '\n'
+               '# BLOCKING = ' + '\n')
+
+        fhw.write(hdr + '\n')
+
+        for r in range(len(rollangles)):
+            obs_roll = rollangles[r]
+
+            fhw.write('shortsim' + str(r+1))
+            fhw.write('  ' + str(obs_ra))
+            fhw.write('  ' + str(obs_dec))
+            fhw.write('  ' + str(obs_roll))
+            fhw.write('  P127' + '\n')
+
+    return None
+
+
+if __name__ == '__main__':
+    """
     # ======================
     # Insert SNe and assign the SEDs
     insert_sne_getsedlst_shortsim()
 
+    # Create required lists
+    create_obs_wcs_lst()
+
     # Run SExtractor to generate segmap
     if MODEL == 'REFSTAR':
-        subprocess.run(['sex', 'shortsim_image.fits', 
-                        '-c', 'default_config.txt'], 
+        subprocess.run(['sex', 'shortsim_image.fits',
+                        '-c', 'default_config.txt'],
                        check=True)
-
+    """
     # Run pyLINEAR
     run_pylinear_shortsim()
 

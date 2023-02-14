@@ -39,7 +39,7 @@ if 'plffsn2' in socket.gethostname():
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
     roman_slitless_dir = extdir + "GitHub/roman-slitless/"
-    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
+    fitting_utils = roman_slitless_dir + "utils/"
 
     pickles_path = extdir + 'Pickles_stellar_library/for_romansim/'
 
@@ -53,7 +53,7 @@ else:
 
     home = os.getenv("HOME")
     roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
+    fitting_utils = roman_slitless_dir + "utils/"
 
     pickles_path = '/Volumes/Joshi_external_HDD/' + \
         'Pickles_stellar_library/for_romansim/'

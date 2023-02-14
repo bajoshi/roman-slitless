@@ -132,3 +132,14 @@ emcee_sampler_testgalaxy1.h5
 figures/.DS_Store
 fitting_pipeline/.DS_Store
 fitting_pipeline/utils/.DS_Store
+
+# Ignore FITS files
+*.fits
+# In case the above doesn't work because
+# it only looks in the topmost directory level.
+# Seems like it works for now.
+# ~/Documents/GitHub/roman-slitless/**/*.fits
+
+# Ignore H5 files
+*.h5
+
