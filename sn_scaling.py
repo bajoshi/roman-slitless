@@ -11,9 +11,9 @@ home = os.getenv('HOME')
 fitting_utils = os.getcwd() + "/fitting_pipeline/utils/"
 
 # Also load in lookup table for luminosity distance
-dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt', 
+dl_cat = np.genfromtxt(fitting_utils + 'dl_lookup_table.txt',
                        dtype=None, names=True)
-# Get arrays 
+# Get arrays
 dl_z_arr = np.asarray(dl_cat['z'], dtype=np.float64)
 dl_cm_arr = np.asarray(dl_cat['dl_cm'], dtype=np.float64)
 age_gyr_arr = np.asarray(dl_cat['age_gyr'], dtype=np.float64)
@@ -43,7 +43,7 @@ def apply_redshift(restframe_wav, restframe_lum, redshift):
 def filter_conv(filter_wav, filter_thru, spec_wav, spec_flam):
 
     # First grid the spectrum wavelengths to the filter wavelengths
-    spec_on_filt_grid = griddata(points=spec_wav, values=spec_flam, 
+    spec_on_filt_grid = griddata(points=spec_wav, values=spec_flam,
                                  xi=filter_wav)
 
     # Remove NaNs

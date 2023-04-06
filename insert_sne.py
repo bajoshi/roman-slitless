@@ -25,7 +25,7 @@ else:
 
     home = os.getenv('HOME')
     roman_slitless_dir = home + '/Documents/GitHub/roman-slitless/'
-    utils_dir = roman_slitless_dir + 'fitting_pipeline/utils/'
+    utils_dir = roman_slitless_dir + 'utils/'
 
 assert os.path.isdir(roman_direct_dir)
 
@@ -438,7 +438,7 @@ if __name__ == '__main__':
     # ---------------
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(1, 2, 1)
 
     for pt in pointings:
         for det in detectors:

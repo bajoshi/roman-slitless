@@ -71,7 +71,7 @@ def read_pickle_make_plots_sn(object_type, ndim, args_obj, label_list,
 
     axes1[-1].set_xlabel("Step number")
 
-    fig1.savefig(savedir + 'emcee_trace_' + object_type + '.pdf', 
+    fig1.savefig(savedir + 'emcee_trace_' + object_type + '.pdf',
                  dpi=200, bbox_inches='tight')
 
     # Create flat samples

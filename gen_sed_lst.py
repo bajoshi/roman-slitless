@@ -1057,7 +1057,7 @@ def gen_sed_lst():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(1, 19, 1)
+    detectors = np.arange(1, 2, 1)
 
     for pt in pointings:
         for det in tqdm(detectors, desc="Detector", leave=False):
@@ -1226,9 +1226,9 @@ def isoverlapping(sn_segpix, host_segpix):
 def abs_scale(spec_wav, spec_flam, objmag):
 
     # Read in F106 bandpass # Using WFC3/F105W
-    f105 = np.genfromtxt(fitting_utils + 'throughputs/F105W_IR_throughput.csv',
-                         delimiter=',', dtype=None, names=['wav', 'trans'],
-                         encoding='ascii', usecols=(1, 2), skip_header=1)
+    f105 = np.genfromtxt(fitting_utils + 'throughputs/F105W_IR_throughput.txt',
+                         dtype=None, names=['wav', 'trans'],
+                         encoding='ascii', skip_header=1)
 
     # Convolve spectrum with filter
     filt_flam = filter_conv(f105['wav'], f105['trans'],

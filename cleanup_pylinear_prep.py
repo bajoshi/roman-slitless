@@ -12,7 +12,6 @@ if 'plffsn2' in socket.gethostname():
     roman_direct_dir = extdir + 'roman_direct_sims/sims2021/'
 
     roman_slitless_dir = extdir + "GitHub/roman-slitless/"
-    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
 else:
     extdir = '/Volumes/Joshi_external_HDD/Roman/'
@@ -23,7 +22,6 @@ else:
 
     home = os.getenv("HOME")
     roman_slitless_dir = home + "/Documents/GitHub/roman-slitless/"
-    fitting_utils = roman_slitless_dir + "fitting_pipeline/utils/"
 
 assert os.path.isdir(roman_sims_seds)
 assert os.path.isdir(pylinear_lst_dir)

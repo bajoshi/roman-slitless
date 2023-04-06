@@ -8,7 +8,7 @@ import os
 import sys
 import subprocess
 
-import pylinear
+# import pylinear
 
 from gen_sed_lst import get_sn_z, get_sn_spec_path
 from run_pylinear import noise_img_save
@@ -174,12 +174,21 @@ def insert_sne_getsedlst_shortsim():
     # Create a header (pyLINEAR needs WCS)
     hdr = dirimg_hdr
 
-    ihdu = fits.PrimaryHDU(data=full_img, header=hdr)
-    ihdu.writeto(savefile, overwrite=True)
+    ihdul = fits.HDUList()
+    ext_sci = fits.ImageHDU(data=full_img, header=hdr, name='SCI')
+    ihdul.append(ext_sci)
+    ext_err = fits.ImageHDU(data=np.sqrt(full_img), header=hdr, name='ERR')
+    ihdul.append(ext_err)
+    ext_dq = fits.ImageHDU(data=np.ones(full_img.shape),
+                           header=hdr, name='DQ')
+    ihdul.append(ext_dq)
+    ihdul.writeto(savefile, overwrite=True)
 
     # ------- Now save segmap
-    shdu = fits.PrimaryHDU(data=segmap, header=hdr)
-    shdu.writeto(datadir + 'test_segmap.fits', overwrite=True)
+    shdul = fits.HDUList()
+    ext1 = fits.ImageHDU(data=segmap, header=hdr, name='SCI')
+    shdul.append(ext1)
+    shdul.writeto(datadir + 'test_segmap.fits', overwrite=True)
 
     # =====================================
     # Create SED LST file
@@ -261,7 +270,7 @@ def run_pylinear_shortsim():
     wcslst = datadir + 'wcs_shortsim.lst'
     sedlst = datadir + 'sed_shortsim.lst'
     fltlst = datadir + 'flt_shortsim.lst'
-
+    '''
     # ---------------------- Get sources
     sources = pylinear.source.SourceCollection(segfile, obslst,
                                                detindex=0,
@@ -278,7 +287,7 @@ def run_pylinear_shortsim():
     simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
     simulate.run(grisms, sources, BEAM)
     print("Simulation done.")
-
+    '''
     # ---------------------- Add noise
     for f in range(3):
         flt = datadir + 'shortsim' + str(f+1) + '_flt.fits'
@@ -346,6 +355,8 @@ def run_pylinear_shortsim():
 
         # Close open HDU
         flthdu.close()
+
+        sys.exit(0)
 
     sys.exit(0)
 
@@ -433,10 +444,10 @@ def create_obs_wcs_lst():
 
 
 if __name__ == '__main__':
-    """
     # ======================
     # Insert SNe and assign the SEDs
     insert_sne_getsedlst_shortsim()
+    sys.exit(0)
 
     # Create required lists
     create_obs_wcs_lst()
@@ -446,7 +457,7 @@ if __name__ == '__main__':
         subprocess.run(['sex', 'shortsim_image.fits',
                         '-c', 'default_config.txt'],
                        check=True)
-    """
+
     # Run pyLINEAR
     run_pylinear_shortsim()
 

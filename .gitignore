@@ -143,3 +143,13 @@ fitting_pipeline/utils/.DS_Store
 # Ignore H5 files
 *.h5
 
+# Ignore figures
+*.pdf
+*.png
+
+# Ignore txt files
+*.txt
+
+# Ignore SED files
+*.sed
+

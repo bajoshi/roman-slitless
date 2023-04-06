@@ -272,7 +272,7 @@ def gen_img_suffixes():
 
     # Arrays to loop over
     pointings = np.arange(0, 1)
-    detectors = np.arange(8, 19, 1)
+    detectors = np.arange(1, 2, 1)
 
     img_filt = 'Y106_'
 
@@ -309,37 +309,39 @@ def noise_img_save(dat, noise_dict):
     DC = noise_dict['dark']
     RN = noise_dict['readnoise']
 
+    fn = noise_dict['filename']
+    filesuffix = noise_dict['filesuffix']
+
     # First add background
     dat += BKG
 
     # Add dark current
     dat += DC
 
-    # Test figure
-    """
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    im = ax.imshow(dat[1080: 1180, 980: 1220], origin='lower', cmap='Greys')
-    fig.colorbar(im)
-    fig.savefig('test_noisefig.png')
-    sys.exit(0)
-    """
-
     # Add Poisson noise
     abs_data = np.abs(dat)
     poissonnoise_data = np.random.normal(scale=np.sqrt(abs_data),
                                          size=dat.shape)
-
     dat += poissonnoise_data
-
 
     # Add readnoise
     readnoise_data = np.random.normal(scale=RN/EXPTIME,
                                       size=dat.shape)
-
     dat += readnoise_data
-
+    """
+    # Test figure
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    # use ds9 to pick some box with a 2d spec in it
+    im = ax.imshow(dat[1610: 1660, 1950: 2100], origin='lower', cmap='Greys')
+    fig.colorbar(im)
+    fig.savefig('test_noisefig_stips.png')
+    print("STIPS noised image saved. Params:")
+    print('Exptime:', EXPTIME)
+    print('File base name:', fn)
+    # sys.exit(0)
+    """
     # STIPS goes a few steps further and adds in the errors
     # due to corrections for: flat field, dark current, and
     # cosmic rays but we will stop here for now.
@@ -354,8 +356,8 @@ def noise_img_save(dat, noise_dict):
     noisehdr['DARK'] = DARK
 
     new_sci_hdu = fits.PrimaryHDU(data=dat, header=noisehdr)
-    fn = noise_dict['filename']
-    fn = fn.replace('.fits', noise_dict['filesuffix'] + '.fits')
+    fn = fn.replace('.fits',
+                    filesuffix + '_' + str(EXPTIME) + 's.fits')
     new_sci_hdu.writeto(fn, overwrite=True)
 
     return None
@@ -535,6 +537,7 @@ if __name__ == '__main__':
 
         # ---------------------- Proceed if all okay
         # ---------------------- Get sources
+        """
         sources = pylinear.source.SourceCollection(segfile, obslst,
                                                    detindex=0, maglim=maglim)
 
@@ -549,6 +552,7 @@ if __name__ == '__main__':
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
+        """
 
         # ---------------------- Now do the exptime dependent stuff
         for e in range(len(exptime_list)):
@@ -580,15 +584,15 @@ if __name__ == '__main__':
                     # but need to be in the dict because the noise_img_save
                     # func is also imported into other codes.
                     noise_dict = {'filename': os.path.basename(oldf),
-                                  'filesuffix': '_noised',
-                                  'exptime': e,
+                                  'filesuffix': '_stipsnoised',
+                                  'exptime': exptime,
                                   'oldhdr': hdul[('SCI', 1)].header,
                                   'sky': SKY,
                                   'dark': DARK,
                                   'readnoise': READNOISE_RMS}
 
-                    noise_img_save(sci, noise_dict)
-                    logger.info("Noised 2D FLT images saved.")
+                    # noise_img_save(sci, noise_dict)
+                    # logger.info("Noised 2D FLT images saved.")
 
                     # ---------------------- MANUAL METHOD
                     # update the science extension with sky background
@@ -641,6 +645,23 @@ if __name__ == '__main__':
                                                + 's' + '_flt')
                     hdul.writeto(newfilename, overwrite=True)
 
+                    """
+                    # Test figure
+                    # Identical to the block in the STIPS func above
+                    import matplotlib.pyplot as plt
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111)
+                    # use ds9 to pick some box with a 2d spec in it
+                    im = ax.imshow(final_sig[1610: 1660, 1950: 2100],
+                                   origin='lower', cmap='Greys')
+                    fig.colorbar(im)
+                    fig.savefig('test_noisefig_manual.png')
+                    print("\nManual noised image saved. Params:")
+                    print('Exptime:', exptime)
+                    print('File base name:', oldf)
+                    sys.exit(0)
+                    """
+
                 logger.info("Written: " + newfilename)
 
             logger.info("Noise addition done. Check simulated images.")
@@ -648,8 +669,7 @@ if __name__ == '__main__':
             logger.info("Time taken for simulation: "
                         + "{:.2f}".format(ts - start) + " seconds.")
 
-            sys.exit(0)
-
+            """
             # ---------------------- Extraction
             fltlst = pylinear_lst_dir + 'flt_' + img_suffix + '_' + \
                 str(exptime) + 's' + obsstr + '.lst'
@@ -686,10 +706,12 @@ if __name__ == '__main__':
                             + "{:.2f}".format(te) + " seconds.")
             except NameError:
                 logger.info("Finished.")
+            """
 
         # ---------------------- Remove matrices, tables, and
         # *_res.fits.gz files to save space
         # MATRICES
+        # note: matrices won't exist if the extraction wasn't done
         for e in range(len(exptime_list)):
             exptime = exptime_list[e]
             rmextroot = simroot + '_' + img_suffix + '_' + str(exptime) + 's'
