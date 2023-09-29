@@ -537,7 +537,6 @@ if __name__ == '__main__':
 
         # ---------------------- Proceed if all okay
         # ---------------------- Get sources
-        """
         sources = pylinear.source.SourceCollection(segfile, obslst,
                                                    detindex=0, maglim=maglim)
 
@@ -552,7 +551,6 @@ if __name__ == '__main__':
         simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
         simulate.run(grisms, sources, beam)
         logger.info("Simulation done.")
-        """
 
         # ---------------------- Now do the exptime dependent stuff
         for e in range(len(exptime_list)):

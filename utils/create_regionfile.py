@@ -16,7 +16,7 @@ def create_regions(ra, dec, reg_file, color='green', width=1, text=None):
         fh.write("fk5" + "\n")
 
         for i in range(len(ra)):
-            # region radius is 1 arcsec written in degrees
+            # ds9 region radius is 1 arcsec written in degrees
             if isinstance(text, np.ndarray) or isinstance(text, list):
 
                 fh.write("circle(" +

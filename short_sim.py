@@ -2,13 +2,14 @@ import numpy as np
 from astropy.io import fits
 from astropy.modeling import models
 from skimage.morphology import label
+import matplotlib.pyplot as plt
 
 import copy
 import os
 import sys
 import subprocess
 
-# import pylinear
+import pylinear
 
 from gen_sed_lst import get_sn_z, get_sn_spec_path
 from run_pylinear import noise_img_save
@@ -270,7 +271,7 @@ def run_pylinear_shortsim():
     wcslst = datadir + 'wcs_shortsim.lst'
     sedlst = datadir + 'sed_shortsim.lst'
     fltlst = datadir + 'flt_shortsim.lst'
-    '''
+
     # ---------------------- Get sources
     sources = pylinear.source.SourceCollection(segfile, obslst,
                                                detindex=0,
@@ -287,7 +288,7 @@ def run_pylinear_shortsim():
     simulate = pylinear.modules.Simulate(sedlst, gzip=False, ncpu=0)
     simulate.run(grisms, sources, BEAM)
     print("Simulation done.")
-    '''
+
     # ---------------------- Add noise
     for f in range(3):
         flt = datadir + 'shortsim' + str(f+1) + '_flt.fits'
